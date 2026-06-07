@@ -21,7 +21,7 @@ export default function Home() {
               Automate employee operations from onboarding to payroll.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600">
-              A professional Week 1 frontend foundation with routing, reusable UI,
+              Hello, A professional Week 1 frontend foundation with routing, reusable UI,
               authentication forms, and backend-ready service structure.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
