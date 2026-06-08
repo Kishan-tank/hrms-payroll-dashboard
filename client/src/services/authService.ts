@@ -29,7 +29,7 @@ export const authService = {
   register(data: RegisterForm) {
     const payload = {
       email: data.email,
-      name: data.name,
+      name: data.fullName,
       password: data.password,
     };
 

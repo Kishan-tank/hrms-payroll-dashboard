@@ -14,9 +14,22 @@ export interface RegisterRequest {
 
 export interface User {
   id: string;
-  fullName: string;
+  name: string;
+  fullName?: string;
   email: string;
   role: 'admin' | 'manager' | 'employee';
+  department?: string;
+  designation?: string;
+}
+
+export type LoginForm = LoginRequest;
+export type RegisterForm = RegisterRequest;
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  user: User;
 }
 
 export interface ValidationRule {
