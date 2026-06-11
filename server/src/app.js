@@ -3,6 +3,10 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/authRoutes.js";
+import employeeRoutes from "./routes/employeeRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import reportsRoutes from "./routes/reportsRoutes.js";
+import payrollRoutes from "./routes/payrollRoutes.js";
 const app = express();
 
 app.use(express.json());
@@ -27,4 +31,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 app.use("/api/auth", authRoutes);
+app.use("/api/employees", employeeRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports", reportsRoutes);
+app.use("/api/payroll", payrollRoutes);
+
 export default app;
