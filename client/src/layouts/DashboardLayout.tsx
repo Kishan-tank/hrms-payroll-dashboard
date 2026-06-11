@@ -16,14 +16,14 @@ export default function DashboardLayout({
   userRole,
 }: DashboardLayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Left navigation */}
+    <div className="min-h-screen bg-slate-50">
       <Sidebar />
 
-      {/* Main workspace */}
-      <div className="min-h-screen pb-24 lg:ml-72 lg:pb-0">
+      <div className="min-h-screen pb-24 lg:ml-64 lg:pb-0">
         <Navbar title={title} userName={userName} userRole={userRole} />
-        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="px-4 py-6 sm:px-6">
+          <div>{children}</div>
+        </main>
       </div>
     </div>
   );
