@@ -24,7 +24,7 @@ const benefits = [
 const stats = [
   { label: 'Companies', value: '2,500+' },
   { label: 'Employees Managed', value: '1.2M+' },
-  { label: 'Payroll Processed', value: '$4.8B+' },
+  { label: 'Payroll Processed', value: '₹4.8B+' },
   { label: 'Uptime SLA', value: '99.99%' },
 ];
 

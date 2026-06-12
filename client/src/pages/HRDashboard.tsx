@@ -68,7 +68,6 @@ export default function HRDashboard() {
   return (
     <DashboardLayout title="HR Dashboard">
       <div className="space-y-6">
-        {/* Title row */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-950">HR Dashboard</h1>
