@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 const attendanceSchema = new mongoose.Schema({
   employeeId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -21,3 +23,4 @@ const attendanceSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+export default mongoose.model("Attendance", attendanceSchema);

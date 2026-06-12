@@ -21,3 +21,5 @@ const leaveSchema = new mongoose.Schema({
     default: "Pending",
   }
 }, { timestamps: true });
+
+export default mongoose.model("Leave", leaveSchema);

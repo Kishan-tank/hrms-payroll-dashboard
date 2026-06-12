@@ -1,0 +1,86 @@
+import dotenv from "dotenv";
+import connectDB from "../config/db.js";
+import User from "../models/user.js";
+import Employee from "../models/employee.js";
+import Attendance from "../models/attendance.js";
+import Leave from "../models/leave.js";
+import bcrypt from "bcrypt";
+
+dotenv.config();
+
+const seedDatabase = async () => {
+  try {
+    await connectDB();
+
+    console.log("Clearing old data...");
+    await User.deleteMany({});
+    await Employee.deleteMany({});
+    await Attendance.deleteMany({});
+    await Leave.deleteMany({});
+
+    console.log("Creating Users and Employees...");
+    const hashedPassword = await bcrypt.hash("password123", 10);
+
+    const employeeData = [
+      { name: "Anil Kumar", email: "anil@example.com", role: "hr", dept: "HR", basicPay: 70000, eId: "EMP001" },
+      { name: "Priya Nair", email: "priya@example.com", role: "employee", dept: "Marketing", basicPay: 76000, eId: "EMP002" },
+      { name: "Rahul Mehta", email: "rahul@example.com", role: "employee", dept: "Sales", basicPay: 91000, eId: "EMP003" },
+      { name: "Sneha Rao", email: "sneha@example.com", role: "employee", dept: "Engineering", basicPay: 54000, eId: "EMP004" }
+    ];
+
+    const employees = [];
+
+    for (const data of employeeData) {
+      // 1. Create User (for login)
+      const user = await User.create({
+        name: data.name,
+        email: data.email,
+        password: hashedPassword,
+        role: data.role,
+        department: data.dept,
+        designation: "Staff",
+      });
+
+      // 2. Create Employee Profile
+      const emp = await Employee.create({
+        employeeId: data.eId,
+        name: data.name,
+        email: data.email,
+        department: data.dept,
+        role: "Staff",
+        joinDate: new Date("2022-01-15"),
+        basicPay: data.basicPay,
+        userId: user._id
+      });
+      employees.push(emp);
+    }
+
+    console.log("Creating Attendance records...");
+    const today = new Date().toISOString().split('T')[0];
+    
+    await Attendance.create([
+      { employeeId: employees[0]._id, date: today, checkIn: "09:00 AM", checkOut: "06:00 PM", status: "Present" },
+      { employeeId: employees[1]._id, date: today, checkIn: "09:45 AM", checkOut: "06:00 PM", status: "Late" },
+      { employeeId: employees[2]._id, date: today, checkIn: "-", checkOut: "-", status: "Absent" },
+      { employeeId: employees[3]._id, date: today, checkIn: "-", checkOut: "-", status: "Leave" }
+    ]);
+
+    console.log("Creating Leave records...");
+    await Leave.create([
+      { employeeId: employees[1]._id, type: "Sick Leave", fromDate: today, toDate: today, days: 1, status: "Approved" },
+      { employeeId: employees[2]._id, type: "Earned Leave", fromDate: "2026-06-18", toDate: "2026-06-20", days: 3, status: "Pending" }
+    ]);
+
+    console.log("\n✅ Database seeded successfully!");
+    console.log("\n--- TEST ACCOUNTS ---");
+    console.log("HR Login: anil@example.com / password123");
+    console.log("Employee Login: priya@example.com / password123");
+    
+    process.exit(0);
+  } catch (error) {
+    console.error("Seed error:", error.message);
+    process.exit(1);
+  }
+};
+
+seedDatabase();
