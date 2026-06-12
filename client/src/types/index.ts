@@ -17,7 +17,7 @@ export interface User {
   name: string;
   fullName?: string;
   email: string;
-  role: 'admin' | 'manager' | 'employee';
+  role: 'admin' | 'manager' | 'employee' | 'hr';
   department?: string;
   designation?: string;
 }

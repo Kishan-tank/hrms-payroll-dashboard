@@ -1,20 +1,49 @@
 import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { useAuthContext } from '../context/AuthContext';
 
-type IconName = 'dashboard' | 'employees' | 'attendance' | 'leave' | 'payroll' | 'reports' | 'settings' | 'logout' | 'building' | 'chevron';
+type IconName =
+  | 'dashboard'
+  | 'employees'
+  | 'attendance'
+  | 'leave'
+  | 'payroll'
+  | 'reports'
+  | 'settings'
+  | 'logout'
+  | 'building'
+  | 'chevron';
 
-const navItems: Array<{ label: string; path: string; icon: IconName }> = [
-  { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-  { label: 'Employees', path: '/employees', icon: 'employees' },
+interface NavItem {
+  label: string;
+  path: string;
+  icon: IconName;
+  /** Roles that can see this item; undefined = all authenticated roles */
+  roles?: Array<'employee' | 'hr' | 'admin' | 'manager'>;
+}
+
+/** Full menu catalogue — roles filter which items are rendered */
+const ALL_NAV_ITEMS: NavItem[] = [
+  { label: 'Dashboard', path: '/dashboard', icon: 'dashboard', roles: ['employee'] },
+  { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['hr', 'admin', 'manager'] },
+  { label: 'Employees', path: '/employees', icon: 'employees', roles: ['hr', 'admin', 'manager'] },
   { label: 'Attendance', path: '/attendance', icon: 'attendance' },
   { label: 'Leave Management', path: '/leave', icon: 'leave' },
   { label: 'Payroll', path: '/payroll', icon: 'payroll' },
-  { label: 'Reports', path: '/reports', icon: 'reports' },
+  { label: 'Reports', path: '/reports', icon: 'reports', roles: ['hr', 'admin', 'manager'] },
   { label: 'Settings', path: '/settings', icon: 'settings' },
 ];
 
 function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: string }) {
-  const common = { className, fill: 'none', stroke: 'currentColor', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 2, viewBox: '0 0 24 24' };
+  const common = {
+    className,
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    strokeWidth: 2,
+    viewBox: '0 0 24 24',
+  };
   switch (name) {
     case 'building':
       return <svg {...common}><path d="M8 21h8M9 8h1m-1 4h1m-1 4h1m4-8h1m-1 4h1m-1 4h1M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M4 21h16" /></svg>;
@@ -31,7 +60,12 @@ function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: str
     case 'reports':
       return <svg {...common}><path d="M4 19V5M9 19V9M14 19V7M19 19v-5M3 19h18" /></svg>;
     case 'settings':
-      return <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8 3.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 20.4 8a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.1.4 1.7 1.7 0 0 0-.6 1Z" /></svg>;
+      return (
+        <svg {...common}>
+          <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8 3.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 20.4 8a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.1.4 1.7 1.7 0 0 0-.6 1Z" />
+        </svg>
+      );
     case 'logout':
       return <svg {...common}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>;
     case 'chevron':
@@ -43,23 +77,27 @@ function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: str
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const navigate = useNavigate();
+  const { user, logout } = useAuthContext();
+
+  /** Items visible to the current user */
+  const navItems = ALL_NAV_ITEMS.filter((item) => {
+    if (!item.roles) return true; // visible to all authenticated users
+    if (!user) return false;
+    return item.roles.includes(user.role as 'employee' | 'hr' | 'admin' | 'manager');
+  });
 
   return (
     <aside
       className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-slate-950 shadow-xl lg:inset-y-0 lg:left-0 lg:border-r lg:border-t-0"
       style={{ width: collapsed ? 72 : 256 }}
     >
+      {/* ── Desktop sidebar ── */}
       <div className="hidden h-full flex-col lg:flex">
+        {/* Logo */}
         <div className="flex items-center gap-3 border-b border-white/10 px-5 py-6">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white"
-            aria-label="Go home"
-          >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white">
             <Icon name="building" className="h-6 w-6" />
-          </button>
+          </span>
           {!collapsed && (
             <div>
               <p className="text-lg font-bold leading-tight text-white">HRMSPro</p>
@@ -68,24 +106,42 @@ export default function Sidebar() {
           )}
           <button
             type="button"
-            onClick={() => setCollapsed((value) => !value)}
+            onClick={() => setCollapsed((v) => !v)}
             className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-slate-400 transition hover:bg-white/15 hover:text-white"
             aria-label="Toggle sidebar"
           >
-            <Icon name="chevron" className={`h-4 w-4 transition ${collapsed ? 'rotate-180' : ''}`} />
+            <Icon
+              name="chevron"
+              className={`h-4 w-4 transition ${collapsed ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
 
+        {/* Role badge */}
+        {!collapsed && user && (
+          <div className="mx-3 mt-4 rounded-xl bg-white/5 px-3 py-2 text-center">
+            <span className="block text-xs font-semibold text-slate-400">Logged in as</span>
+            <span className="block text-sm font-bold text-white">
+              {user.role === 'hr' || user.role === 'admin' || user.role === 'manager'
+                ? 'HR Manager'
+                : 'Employee'}
+            </span>
+          </div>
+        )}
+
+        {/* Nav links */}
         <nav className="flex flex-1 flex-col gap-2 px-3 py-6">
           {navItems.map((item) => (
             <NavLink
-              key={item.path}
+              key={`${item.path}-${item.label}`}
               to={item.path}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
                 [
                   'flex h-[52px] items-center gap-4 rounded-2xl px-4 text-lg font-semibold transition',
-                  isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/20' : 'text-slate-400 hover:bg-white/10 hover:text-white',
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/20'
+                    : 'text-slate-400 hover:bg-white/10 hover:text-white',
                 ].join(' ')
               }
             >
@@ -95,10 +151,11 @@ export default function Sidebar() {
           ))}
         </nav>
 
+        {/* Logout */}
         <div className="px-3 pb-6">
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={logout}
             className="flex h-[52px] w-full items-center gap-4 rounded-2xl px-4 text-left text-lg font-semibold text-red-400 transition hover:bg-red-500/10"
           >
             <Icon name="logout" className="h-5 w-5" />
@@ -107,10 +164,11 @@ export default function Sidebar() {
         </div>
       </div>
 
+      {/* ── Mobile bottom nav ── */}
       <nav className="flex gap-2 overflow-x-auto p-3 lg:hidden">
         {navItems.slice(0, 5).map((item) => (
           <NavLink
-            key={item.path}
+            key={`${item.path}-${item.label}`}
             to={item.path}
             className={({ isActive }) =>
               [
@@ -123,6 +181,15 @@ export default function Sidebar() {
             <span>{item.label}</span>
           </NavLink>
         ))}
+        {/* Logout in mobile nav too */}
+        <button
+          type="button"
+          onClick={logout}
+          className="flex min-w-max items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-red-400"
+        >
+          <Icon name="logout" className="h-4 w-4" />
+          <span>Logout</span>
+        </button>
       </nav>
     </aside>
   );

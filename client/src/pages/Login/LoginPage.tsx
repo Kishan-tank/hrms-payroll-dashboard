@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import GradientBackground from '../../components/GradientBackground';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthContext } from '../../context/AuthContext';
 import { validateField } from '../../utils/validation';
 import type { LoginRequest } from '../../types';
 
@@ -17,7 +17,7 @@ function Icon({ name, className = 'h-4 w-4' }: { name: 'building' | 'mail' | 'lo
 }
 
 export default function LoginPage() {
-  const { login, isLoading, error: apiError, clearError } = useAuth();
+  const { login, loginAs, isLoading, error: apiError, clearError } = useAuthContext();
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [form, setForm] = useState<LoginRequest>({ email: '', password: '' });
@@ -39,7 +39,7 @@ export default function LoginPage() {
     if (passwordError) nextErrors.password = passwordError;
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
-    login(form);
+    void login(form);
   }, [form, login]);
 
   return (
@@ -123,12 +123,31 @@ export default function LoginPage() {
               <button type="button" className="text-sm font-medium text-blue-600">Forgot password?</button>
             </div>
 
-            <button type="submit" disabled={isLoading} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(37,99,235,0.3)] transition hover:bg-blue-700 disabled:opacity-70">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(37,99,235,0.3)] transition hover:bg-blue-700 disabled:opacity-70"
+            >
               {isLoading ? 'Signing in...' : 'Sign In as HR Manager'}
             </button>
-            <button type="submit" disabled={isLoading} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:opacity-70">
-              Sign In as Employee
-            </button>
+
+            {/* Quick-access demo buttons */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => loginAs('hr')}
+                className="flex-1 rounded-xl border border-blue-200 bg-blue-50 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+              >
+                Demo: HR Manager
+              </button>
+              <button
+                type="button"
+                onClick={() => loginAs('employee')}
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+              >
+                Demo: Employee
+              </button>
+            </div>
           </div>
 
           <p className="mt-6 text-center text-sm text-slate-500">
