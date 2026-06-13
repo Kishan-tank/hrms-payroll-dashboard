@@ -19,18 +19,18 @@ interface NavItem {
   path: string;
   icon: IconName;
   /** Roles that can see this item; undefined = all authenticated roles */
-  roles?: Array<'employee' | 'hr' | 'admin' | 'manager'>;
+  roles?: Array<'employee' | 'hr-manager'>;
 }
 
 /** Full menu catalogue — roles filter which items are rendered */
 const ALL_NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: 'dashboard', roles: ['employee'] },
-  { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['hr', 'admin', 'manager'] },
-  { label: 'Employees', path: '/employees', icon: 'employees', roles: ['hr', 'admin', 'manager'] },
+  { label: 'Dashboard', path: '/employee-dashboard', icon: 'dashboard', roles: ['employee'] },
+  { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['hr-manager'] },
+  { label: 'Employees', path: '/employees', icon: 'employees', roles: ['hr-manager'] },
   { label: 'Attendance', path: '/attendance', icon: 'attendance' },
   { label: 'Leave Management', path: '/leave', icon: 'leave' },
   { label: 'Payroll', path: '/payroll', icon: 'payroll' },
-  { label: 'Reports', path: '/reports', icon: 'reports', roles: ['hr', 'admin', 'manager'] },
+  { label: 'Reports', path: '/reports', icon: 'reports', roles: ['hr-manager'] },
   { label: 'Settings', path: '/settings', icon: 'settings' },
 ];
 
@@ -83,7 +83,7 @@ export default function Sidebar() {
   const navItems = ALL_NAV_ITEMS.filter((item) => {
     if (!item.roles) return true; // visible to all authenticated users
     if (!user) return false;
-    return item.roles.includes(user.role as 'employee' | 'hr' | 'admin' | 'manager');
+    return item.roles.includes(user.role as 'employee' | 'hr-manager');
   });
 
   return (
@@ -122,7 +122,7 @@ export default function Sidebar() {
           <div className="mx-3 mt-4 rounded-xl bg-white/5 px-3 py-2 text-center">
             <span className="block text-xs font-semibold text-slate-400">Logged in as</span>
             <span className="block text-sm font-bold text-white">
-              {user.role === 'hr' || user.role === 'admin' || user.role === 'manager'
+              {user.role === 'hr-manager'
                 ? 'HR Manager'
                 : 'Employee'}
             </span>

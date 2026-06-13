@@ -14,8 +14,11 @@ export function useAuth() {
     try {
       const res = await authAPI.login(credentials);
       const { token, user: u } = res.data as { token: string; user: User };
+      const value = String(u.role || credentials.email).toLowerCase().replace(/\s+/g, "-");
+      u.role = value.includes("hr") ? "hr-manager" : "employee";
+
       localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(u));
-      setUser(u); navigate('/dashboard');
+      setUser(u); navigate(u.role === 'employee' ? '/employee-dashboard' : '/hr-dashboard');
     } catch (err: unknown) {
       setError(((err as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Login failed');
     } finally { setIsLoading(false); }
@@ -26,8 +29,12 @@ export function useAuth() {
     try {
       const res = await authAPI.register(data);
       const { token, user: u } = res.data as { token: string; user: User };
+      const value = String(u.role || data.role || '').toLowerCase().replace(/\s+/g, "-");
+      u.role = value.includes("hr") ? "hr-manager" : "employee";
+
+      localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
       localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(u));
-      setUser(u); navigate('/dashboard');
+      setUser(u); navigate(u.role === 'employee' ? '/employee-dashboard' : '/hr-dashboard');
     } catch (err: unknown) {
       setError(((err as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Registration failed');
     } finally { setIsLoading(false); }

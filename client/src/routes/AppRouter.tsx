@@ -49,7 +49,7 @@ export default function AppRouter() {
           </Route>
 
           {/* ── HR / Admin / Manager-only routes ── */}
-          <Route element={<ProtectedRoute allowedRoles={['hr', 'admin', 'manager']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['hr-manager']} />}>
             <Route path="/hr-dashboard" element={<HRDashboard />} />
             <Route path="/dashboard/hr" element={<HRDashboard />} />
             <Route path="/employees" element={<EmployeeManagement />} />

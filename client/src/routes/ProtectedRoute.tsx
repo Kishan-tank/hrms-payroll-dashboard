@@ -30,7 +30,7 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
       if (!user.role || !allowedRoles.includes(user.role)) {
         // Wrong role → redirect to the correct dashboard
         const fallback =
-          user.role === 'employee' ? '/dashboard' : '/hr-dashboard';
+          user.role === 'employee' ? '/employee-dashboard' : '/hr-dashboard';
         return <Navigate to={fallback} replace />;
       }
     }

@@ -22,10 +22,11 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (data: { email: string; password: string }) => api.post('/auth/login', data),
-  register: (data: { fullName: string; email: string; password: string }) => api.post('/auth/register', {
+  register: (data: { fullName: string; email: string; password: string; role?: string }) => api.post('/auth/register', {
     name: data.fullName,
     email: data.email,
     password: data.password,
+    role: data.role === 'HR Manager' ? 'hr' : 'employee',
   }),
   logout: () => { localStorage.removeItem('token'); localStorage.removeItem('user'); },
 };

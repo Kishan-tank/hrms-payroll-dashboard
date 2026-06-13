@@ -6,8 +6,8 @@ import { authAPI } from '../services/api';
 
 interface AuthContextValue {
   user: User | null;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
-  loginAs: (role: 'employee' | 'hr') => void;
+  login: (credentials: { email: string; password: string }, selectedRole: 'employee' | 'hr-manager') => Promise<void>;
+  loginAs: (role: 'employee' | 'hr-manager') => void;
   logout: () => void;
   isLoading: boolean;
   error: string | null;
@@ -28,10 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Redirect based on role after any successful login */
   const redirectByRole = useCallback(
     (u: User) => {
-      if (u.role === 'hr' || u.role === 'admin' || u.role === 'manager') {
+      if (u.role === 'hr-manager') {
         navigate('/hr-dashboard');
       } else {
-        navigate('/dashboard');
+        navigate('/employee-dashboard');
       }
     },
     [navigate],
@@ -39,12 +39,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Real API login */
   const login = useCallback(
-    async (credentials: { email: string; password: string }) => {
+    async (credentials: { email: string; password: string }, selectedRole: 'employee' | 'hr-manager') => {
       setIsLoading(true);
       setError(null);
       try {
         const res = await authAPI.login(credentials);
         const { token, user: u } = res.data as { token: string; user: User };
+        const value = String(u.role || '').toLowerCase().replace(/\s+/g, "-");
+        const actualRole = value.includes("hr") ? "hr-manager" : "employee";
+
+        if (actualRole !== selectedRole) {
+          throw new Error(
+            actualRole === "hr-manager"
+              ? "This account is registered as HR Manager. Please select HR Manager to continue."
+              : "This account is registered as Employee. Please select Employee to continue."
+          );
+        }
+        
+        u.role = actualRole;
+        
+        // Save for mock consistency
+        localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(u));
         setUser(u);
@@ -66,14 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * without a real backend running.
    */
   const loginAs = useCallback(
-    (role: 'employee' | 'hr') => {
+    (role: 'employee' | 'hr-manager') => {
       const mockUser: User =
-        role === 'hr'
+        role === 'hr-manager'
           ? {
               id: 'hr-001',
               name: 'Anil Kumar',
               email: 'anil@company.com',
-              role: 'hr',
+              role: 'hr-manager',
               designation: 'HR Manager',
             }
           : {
