@@ -4,6 +4,7 @@ import User from "../models/user.js";
 import Employee from "../models/employee.js";
 import Attendance from "../models/attendance.js";
 import Leave from "../models/leave.js";
+import Payroll from "../models/payroll.js";
 import bcrypt from "bcrypt";
 
 dotenv.config();
@@ -17,6 +18,7 @@ const seedDatabase = async () => {
     await Employee.deleteMany({});
     await Attendance.deleteMany({});
     await Leave.deleteMany({});
+    await Payroll.deleteMany({});
 
     console.log("Creating Users and Employees...");
     const hashedPassword = await bcrypt.hash("password123", 10);
@@ -69,6 +71,13 @@ const seedDatabase = async () => {
     await Leave.create([
       { employeeId: employees[1]._id, type: "Sick Leave", fromDate: today, toDate: today, days: 1, status: "Approved" },
       { employeeId: employees[2]._id, type: "Earned Leave", fromDate: "2026-06-18", toDate: "2026-06-20", days: 3, status: "Pending" }
+    ]);
+
+    console.log("Creating Payroll records...");
+    await Payroll.create([
+      { employeeId: employees[0]._id, month: "May", year: 2026, basicPay: employees[0].basicPay, deductions: 5000, netPay: employees[0].basicPay - 5000, status: "Paid", paidAt: new Date("2026-05-31") },
+      { employeeId: employees[1]._id, month: "May", year: 2026, basicPay: employees[1].basicPay, deductions: 2000, netPay: employees[1].basicPay - 2000, status: "Paid", paidAt: new Date("2026-05-31") },
+      { employeeId: employees[2]._id, month: "June", year: 2026, basicPay: employees[2].basicPay, deductions: 3000, netPay: employees[2].basicPay - 3000, status: "Pending" }
     ]);
 
     console.log("\n✅ Database seeded successfully!");
