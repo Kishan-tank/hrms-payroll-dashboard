@@ -10,14 +10,17 @@ export interface RegisterRequest {
   email: string;
   password: string;
   confirmPassword: string;
+  role?: string;
 }
+
+export type UserRole = "employee" | "hr-manager";
 
 export interface User {
   id: string;
   name: string;
   fullName?: string;
   email: string;
-  role: 'admin' | 'manager' | 'employee' | 'hr';
+  role: UserRole | string;
   department?: string;
   designation?: string;
 }
