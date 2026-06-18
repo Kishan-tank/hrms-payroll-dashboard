@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '../types';
 import { authAPI } from '../services/api';
+import { useTheme } from './ThemeContext';
 
 interface AuthContextValue {
   user: User | null;
@@ -25,16 +26,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const { setTheme } = useTheme();
+
   /** Redirect based on role after any successful login */
   const redirectByRole = useCallback(
     (u: User) => {
+      if (u.role === 'employee') {
+        setTheme('dark');
+      }
       if (u.role === 'hr-manager') {
         navigate('/hr-dashboard');
       } else {
         navigate('/employee-dashboard');
       }
     },
-    [navigate],
+    [navigate, setTheme],
   );
 
   /** Real API login */
