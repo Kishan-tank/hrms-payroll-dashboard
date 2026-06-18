@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { employeeService } from '../services/hrmsApi';
 import type { ApiEmployee, AddEmployeePayload } from '../services/hrmsApi';
+import EmployeeDrawer from '../components/employees/EmployeeDrawer';
+import EmptyState from '../components/common/EmptyState';
 
 const departments = ['All', 'Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations'];
 const statuses = ['All', 'Active', 'On Leave', 'Inactive'];
@@ -31,7 +33,7 @@ function Icon({ name }: { name: 'search' | 'filter' | 'plus' | 'edit' | 'trash' 
   if (name === 'edit') return <svg {...common}><path d="M12 20h9" /><path d="m16.5 3.5 4 4L7 21H3v-4z" /></svg>;
   if (name === 'trash') return <svg {...common}><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 11v6M14 11v6" /></svg>;
   if (name === 'chevronLeft') return <svg {...common}><path d="m15 18-6-6 6-6" /></svg>;
-  if (name === 'spinner') return <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>;
+  if (name === 'spinner') return <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>;
   return <svg {...common}><path d="m9 18 6-6-6-6" /></svg>;
 }
 
@@ -59,6 +61,9 @@ export default function EmployeeManagement() {
   // delete confirm
   const [deleteTarget, setDeleteTarget] = useState<ApiEmployee | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // drawer
+  const [selectedEmployee, setSelectedEmployee] = useState<ApiEmployee | null>(null);
 
   // ── fetch ─────────────────────────────────────────────────────────────────
   const fetchEmployees = useCallback(async () => {
@@ -199,9 +204,23 @@ export default function EmployeeManagement() {
                   <span className="inline-flex items-center gap-2"><Icon name="spinner" /> Loading employees...</span>
                 </td></tr>
               ) : employees.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">No employees found.</td></tr>
+                <tr>
+                  <td colSpan={8} className="p-4">
+                    <EmptyState
+                      icon={<Icon name="search" />}
+                      title="No Employees Found"
+                      description="Try adjusting your filters or add a new employee."
+                      actionLabel="Add Employee"
+                      onAction={openAdd}
+                    />
+                  </td>
+                </tr>
               ) : employees.map((emp) => (
-                <tr key={emp._id} className="border-b border-slate-100 transition hover:bg-slate-50 last:border-b-0">
+                <tr
+                  key={emp._id}
+                  onClick={() => setSelectedEmployee(emp)}
+                  className="cursor-pointer border-b border-slate-100 transition hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/[0.03] last:border-b-0"
+                >
                   <td className="px-4 py-3 font-mono text-sm text-blue-600">{emp.employeeId}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -216,8 +235,8 @@ export default function EmployeeManagement() {
                   <td className="px-4 py-3 text-sm font-bold text-slate-950">₹{emp.basicPay.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button type="button" onClick={() => openEdit(emp)} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100" title="Edit"><Icon name="edit" /></button>
-                      <button type="button" onClick={() => setDeleteTarget(emp)} className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 hover:bg-red-50" title="Deactivate"><Icon name="trash" /></button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); openEdit(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" title="Edit"><Icon name="edit" /></button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTarget(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" title="Deactivate"><Icon name="trash" /></button>
                     </div>
                   </td>
                 </tr>
@@ -240,6 +259,13 @@ export default function EmployeeManagement() {
           </div>
         </div>
       </div>
+
+      {/* ── Employee Drawer ── */}
+      <EmployeeDrawer
+        open={selectedEmployee !== null}
+        employee={selectedEmployee}
+        onClose={() => setSelectedEmployee(null)}
+      />
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (

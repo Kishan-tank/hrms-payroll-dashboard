@@ -1,14 +1,13 @@
-import type { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import FloatingAIAssistant from '../components/common/FloatingAIAssistant';
 import { useAuthContext } from '../context/AuthContext';
 
 interface DashboardLayoutProps {
   children: ReactNode;
   title: string;
-  /** Fallback name shown if no authenticated user is found */
   userName?: string;
-  /** Fallback role label shown if no authenticated user is found */
   userRole?: string;
 }
 
@@ -20,25 +19,25 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const { user } = useAuthContext();
 
-  // Prefer values from the auth context; fall back to props for pages that
-  // pass them explicitly (backwards-compatible).
   const displayName = user?.name ?? userName ?? 'User';
-  const displayRole =
-    user
-      ? user.role === 'hr' || user.role === 'admin' || user.role === 'manager'
-        ? 'HR Manager'
-        : 'Employee'
-      : (userRole ?? 'Employee');
+  const normalizedRole = user?.role?.toLowerCase() || '';
+  const displayRole = user
+    ? ['hr-manager', 'hr manager', 'hr', 'manager'].includes(normalizedRole)
+      ? 'HR Manager'
+      : 'Employee'
+    : (userRole ?? 'Employee');
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-[#020817] dark:text-slate-50">
       <Sidebar />
 
-      <div className="min-h-screen pb-24 lg:ml-64 lg:pb-0">
+      <div className="flex-1 flex flex-col min-w-0 pb-24 lg:pb-0">
         <Navbar title={title} userName={displayName} userRole={displayRole} />
-        <main className="px-4 py-6 sm:px-6">
-          <div>{children}</div>
+        <main className="flex-1 px-4 py-5 sm:px-5">
+          {children}
         </main>
+        
+        <FloatingAIAssistant />
       </div>
     </div>
   );
