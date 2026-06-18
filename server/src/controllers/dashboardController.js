@@ -1,16 +1,37 @@
 import Employee from "../models/employee.js";
 import Payroll from "../models/payroll.js";
-// Assuming Leave model will be created by the team member
-// import Leave from "../models/leave.js";
+import Leave from "../models/leave.js";
+import Attendance from "../models/attendance.js";
+
+function timeAgo(date) {
+  if (!date) return "Just now";
+  const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + "y ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + "mo ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + "d ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + "h ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + "m ago";
+  return "Just now";
+}
 
 export const getHrSummary = async (req, res) => {
   try {
     // 1. Total Employees
     const totalEmployees = await Employee.countDocuments({ status: "Active" });
 
-    // 2. Attendance Rate (Mocked for now since Attendance model isn't built yet)
-    // Normally we'd query the Attendance collection for today's records
-    const attendanceRate = "94.2%";
+    // 2. Attendance Rate
+    const today = new Date().toISOString().split('T')[0];
+    const todayAttendance = await Attendance.find({ date: today });
+    let attendanceRate = "0%";
+    if (totalEmployees > 0 && todayAttendance.length > 0) {
+      const presentCount = todayAttendance.filter(a => ["Present", "Late"].includes(a.status)).length;
+      attendanceRate = `${Math.round((presentCount / totalEmployees) * 100)}%`;
+    }
 
     // 3. Payroll Status (for current month)
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
@@ -23,9 +44,8 @@ export const getHrSummary = async (req, res) => {
       payrollStatus = `${Math.round((paidRecords / payrollRecords) * 100)}%`;
     }
 
-    // 4. Pending Approvals (Mocked for now since Leave model isn't built yet)
-    // Normally: await Leave.countDocuments({ status: "Pending" })
-    const pendingApprovals = 14;
+    // 4. Pending Approvals
+    const pendingApprovals = await Leave.countDocuments({ status: "Pending" });
 
     res.status(200).json({
       success: true,
@@ -43,16 +63,100 @@ export const getHrSummary = async (req, res) => {
 
 export const getRecentActivity = async (req, res) => {
   try {
-    // Mock data until all models (Leave, Attendance) are fully functional
-    const activities = [
-      { action: 'Leave Approved', name: 'John Doe', dept: 'Engineering', time: '5m ago' },
-      { action: 'Employee Added', name: 'Priya Nair', dept: 'Marketing', time: '1h ago' },
-      { action: 'Payroll Processed', name: 'Finance Team', dept: 'Finance', time: '3h ago' },
-      { action: 'Attendance Alert', name: 'Rahul Mehta', dept: 'Sales', time: '4h ago' }
-    ];
+    const activities = [];
 
-    res.status(200).json({ success: true, activities });
+    // Leaves
+    const recentLeaves = await Leave.find().sort({ updatedAt: -1 }).limit(5).populate('employeeId');
+    for (const leave of recentLeaves) {
+      if (leave.employeeId) {
+        activities.push({
+          action: `Leave ${leave.status}`,
+          name: leave.employeeId.name,
+          dept: leave.employeeId.department,
+          time: leave.updatedAt
+        });
+      }
+    }
+
+    // Employees
+    const recentEmployees = await Employee.find().sort({ createdAt: -1 }).limit(5);
+    for (const emp of recentEmployees) {
+      activities.push({
+        action: 'Employee Added',
+        name: emp.name,
+        dept: emp.department,
+        time: emp.createdAt
+      });
+    }
+
+    // Payroll
+    const recentPayroll = await Payroll.find({ status: "Paid" }).sort({ paidAt: -1 }).limit(5).populate('employeeId');
+    for (const pay of recentPayroll) {
+      if (pay.employeeId) {
+        activities.push({
+          action: 'Payroll Processed',
+          name: pay.employeeId.name,
+          dept: pay.employeeId.department,
+          time: pay.paidAt || pay.updatedAt
+        });
+      }
+    }
+
+    activities.sort((a, b) => new Date(b.time) - new Date(a.time));
+    const topActivities = activities.slice(0, 5).map(act => ({
+      ...act,
+      time: timeAgo(act.time)
+    }));
+
+    res.status(200).json({ success: true, activities: topActivities });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch recent activity", error: error.message });
+  }
+};
+
+export const getEmployeeSummary = async (req, res) => {
+  try {
+    // We assume req.user is set by auth middleware
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const employee = await Employee.findOne({ userId });
+    if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found" });
+
+    // Workspace Snapshot: Today's check-in status
+    const today = new Date().toISOString().split('T')[0];
+    const todayAttendance = await Attendance.findOne({ employeeId: employee._id, date: today });
+
+    // Payroll & Leave summary
+    const totalLeaves = await Leave.aggregate([
+      { $match: { employeeId: employee._id, status: "Approved" } },
+      { $group: { _id: null, total: { $sum: "$days" } } }
+    ]);
+    const leavesTaken = totalLeaves.length > 0 ? totalLeaves[0].total : 0;
+    const leaveBalance = Math.max(0, 24 - leavesTaken); // Assume 24 total leaves per year
+
+    const latestPayroll = await Payroll.findOne({ employeeId: employee._id, status: "Paid" }).sort({ paidAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      summary: {
+        employee: {
+          name: employee.name,
+          role: employee.role,
+          department: employee.department
+        },
+        workspace: {
+          attendanceStatus: todayAttendance ? todayAttendance.status : "Not Checked In",
+          checkInTime: todayAttendance?.checkIn || null
+        },
+        payrollLeave: {
+          leavesTaken,
+          leaveBalance,
+          latestNetPay: latestPayroll?.netPay || 0
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch employee summary", error: error.message });
   }
 };
