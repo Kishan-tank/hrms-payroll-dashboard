@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { ApiEmployee } from '../../services/hrmsApi';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface EmployeeDrawerProps {
   open: boolean;
@@ -20,6 +21,9 @@ function CloseIcon() {
 
 export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDrawerProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const drawerRef = useRef<HTMLDivElement>(null);
+  
+  useFocusTrap(open, onClose, drawerRef);
 
   if (!employee) return null;
 
@@ -39,11 +43,16 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
 
           {/* Drawer */}
           <motion.div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-drawer-title"
+            tabIndex={-1}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 z-[110] flex w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-950 sm:w-[500px] lg:w-[600px] border-l border-slate-200 dark:border-white/10"
+            className="fixed inset-y-0 right-0 z-[110] flex w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-950 sm:w-[500px] lg:w-[600px] border-l border-slate-200 dark:border-white/10 outline-none"
           >
             {/* Header / Cover */}
             <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 px-6 pb-6 pt-12 text-white">
@@ -59,7 +68,7 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
                   {employee.name.charAt(0)}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-extrabold">{employee.name}</h2>
+                  <h2 id="employee-drawer-title" className="text-2xl font-extrabold">{employee.name}</h2>
                   <p className="font-medium text-blue-100">{employee.role} · {employee.department}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">

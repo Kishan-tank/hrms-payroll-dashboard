@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthContext } from '../../context/AuthContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 function SearchIcon() {
   return (
@@ -37,6 +38,9 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const paletteRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(open, onClose, paletteRef);
 
   const HR_COMMANDS: CommandItem[] = [
     { id: 'nav-hr-dash', label: 'HR Dashboard', cat: 'Navigation', type: 'nav', path: '/hr-dashboard' },
@@ -142,14 +146,20 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
           onClick={onClose}
         >
           <motion.div
+            ref={paletteRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cmd-palette-title"
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="w-full max-w-2xl overflow-hidden rounded-2xl shadow-[0_32px_80px_rgba(0,0,0,0.6)]"
+            className="w-full max-w-2xl overflow-hidden rounded-2xl shadow-[0_32px_80px_rgba(0,0,0,0.6)] outline-none"
             style={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.1)' }}
             onClick={(e) => e.stopPropagation()}
           >
+            <h2 id="cmd-palette-title" className="sr-only">Command Palette</h2>
             {/* Input */}
             <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
               <span className="text-slate-400"><SearchIcon /></span>

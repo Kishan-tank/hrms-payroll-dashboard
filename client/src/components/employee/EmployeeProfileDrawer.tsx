@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Clock, CalendarDays, DollarSign, FileText, ChevronRight, MapPin, Mail, Phone, Briefcase } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface EmployeeProfileDrawerProps {
   isOpen: boolean;
@@ -19,6 +20,9 @@ const TABS = [
 export default function EmployeeProfileDrawer({ isOpen, onClose }: EmployeeProfileDrawerProps) {
   const [activeTab, setActiveTab] = useState('personal');
   const { user } = useAuthContext();
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(isOpen, onClose, drawerRef);
 
   const rawDisplayName = user?.name ?? 'Employee';
   const displayName = rawDisplayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -48,11 +52,16 @@ export default function EmployeeProfileDrawer({ isOpen, onClose }: EmployeeProfi
 
           {/* Drawer Panel */}
           <motion.div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-drawer-title"
+            tabIndex={-1}
             initial={{ x: '100%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[480px] flex-col border-l border-white/10 bg-[#0B1121] shadow-[0_0_80px_rgba(0,0,0,0.8)]"
+            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[480px] flex-col border-l border-white/10 bg-[#0B1121] shadow-[0_0_80px_rgba(0,0,0,0.8)] outline-none"
           >
             {/* Header */}
             <div className="relative border-b border-white/10 bg-gradient-to-b from-blue-600/20 to-transparent p-6 pb-0">
@@ -69,7 +78,7 @@ export default function EmployeeProfileDrawer({ isOpen, onClose }: EmployeeProfi
                   <div className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-[#0B1121] bg-emerald-500" />
                 </div>
                 <div>
-                  <h2 className="text-[24px] font-black tracking-tight text-white">{displayName}</h2>
+                  <h2 id="profile-drawer-title" className="text-[24px] font-black tracking-tight text-white">{displayName}</h2>
                   <p className="text-[14px] font-bold text-blue-400">{displayRole}</p>
                   <div className="mt-1 flex items-center gap-2 text-[12px] font-semibold text-slate-400">
                     <span className="flex items-center gap-1"><MapPin size={12} /> Office</span>
