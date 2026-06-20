@@ -52,6 +52,34 @@ export default function PayrollPage() {
   async function fetchData() {
     setLoading(true);
     setError(null);
+
+    // MOCK DATA FOR EMPLOYEE VIEW UNTIL BACKEND IS READY
+    if (isEmployee) {
+      setTimeout(() => {
+        setRecords([
+          {
+            _id: `mock-pr-${filterMonth}-${filterYear}`,
+            employeeId: { name: user?.name, employeeId: currentEmployeeId, department: user?.department || 'Engineering' } as any,
+            basicPay: 75000,
+            deductions: 3500,
+            netPay: 71500,
+            status: 'Paid',
+            month: filterMonth,
+            year: filterYear,
+            processedAt: new Date().toISOString(),
+          }
+        ]);
+        setSummary({
+          totalAmount: 75000,
+          paidCount: 1,
+          processingCount: 0,
+          pendingCount: 0
+        });
+        setLoading(false);
+      }, 600);
+      return;
+    }
+
     try {
       const [recs, sum] = await Promise.all([
         payrollService.getRecords({ month: filterMonth, year: filterYear }),
