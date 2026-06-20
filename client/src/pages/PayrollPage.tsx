@@ -115,6 +115,141 @@ export default function PayrollPage() {
   };
   const currentEmployeeId = getCurrentEmployeeId();
 
+  function handleDownloadPayslip(rec: PayrollRecord) {
+    const employeeName = rec.employeeId?.name || user?.name || 'Employee';
+    const empId = rec.employeeId?.employeeId || currentEmployeeId || '—';
+    const department = rec.employeeId?.department || user?.department || '—';
+    const payDate = rec.processedAt ? new Date(rec.processedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+    const fmtNum = (n: number | undefined) => n !== undefined ? `₹${n.toLocaleString('en-IN')}` : '₹0';
+    const taxDeduction = Math.round((rec.deductions ?? 0) * 0.6);
+    const pfDeduction  = Math.round((rec.deductions ?? 0) * 0.3);
+    const otherDeduction = (rec.deductions ?? 0) - taxDeduction - pfDeduction;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Payslip — ${rec.month} ${rec.year}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; padding: 40px; font-size: 13px; }
+    .slip { max-width: 760px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+    /* Header */
+    .header { background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%); color: #fff; padding: 28px 32px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .company-name { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .company-sub  { font-size: 11px; opacity: 0.75; margin-top: 3px; }
+    .slip-title   { text-align: right; }
+    .slip-title h2 { font-size: 16px; font-weight: 700; }
+    .slip-title p  { font-size: 11px; opacity: 0.8; margin-top: 4px; }
+    /* Employee Info */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-bottom: 1px solid #e2e8f0; }
+    .info-cell { padding: 18px 24px; border-right: 1px solid #e2e8f0; }
+    .info-cell:last-child, .info-cell:nth-child(2) { border-right: none; }
+    .info-cell:nth-child(n+3) { border-top: 1px solid #e2e8f0; }
+    .info-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 4px; font-weight: 600; }
+    .info-value { font-size: 14px; font-weight: 600; color: #0f172a; }
+    /* Earnings / Deductions */
+    .section { padding: 24px 24px 0; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; }
+    table th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; background: #f8fafc; }
+    table th:last-child { text-align: right; }
+    table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #334155; }
+    table td:last-child { text-align: right; font-weight: 600; color: #0f172a; }
+    .deduct td:last-child { color: #dc2626; }
+    .total-row td { font-weight: 700; font-size: 14px; color: #0f172a; background: #f8fafc; border-top: 2px solid #e2e8f0; border-bottom: none; }
+    /* Net Pay Banner */
+    .net-pay { margin: 24px; background: linear-gradient(135deg, #1e40af, #7c3aed); border-radius: 8px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; color: #fff; }
+    .net-pay-label { font-size: 12px; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.1em; }
+    .net-pay-amount { font-size: 28px; font-weight: 800; }
+    /* Status Badge */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge-paid { background: #dcfce7; color: #16a34a; }
+    .badge-pending { background: #fef3c7; color: #d97706; }
+    .badge-processing { background: #ccfbf1; color: #0d9488; }
+    /* Footer */
+    .footer { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8; }
+    @media print {
+      body { padding: 0; }
+      .slip { border: none; border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="slip">
+  <div class="header">
+    <div>
+      <div class="company-name">HRMSPro</div>
+      <div class="company-sub">Human Resource Management System</div>
+    </div>
+    <div class="slip-title">
+      <h2>Payslip</h2>
+      <p>${rec.month} ${rec.year}</p>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-cell"><div class="info-label">Employee Name</div><div class="info-value">${employeeName}</div></div>
+    <div class="info-cell"><div class="info-label">Pay Date</div><div class="info-value">${payDate}</div></div>
+    <div class="info-cell"><div class="info-label">Employee ID</div><div class="info-value">${empId}</div></div>
+    <div class="info-cell"><div class="info-label">Department</div><div class="info-value">${department}</div></div>
+    <div class="info-cell"><div class="info-label">Pay Period</div><div class="info-value">${rec.month} ${rec.year}</div></div>
+    <div class="info-cell"><div class="info-label">Status</div><div class="info-value"><span class="badge badge-${rec.status.toLowerCase()}">${rec.status}</span></div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Earnings</div>
+    <table>
+      <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+      <tbody>
+        <tr><td>Basic Pay</td><td>${fmtNum(rec.basicPay)}</td></tr>
+      </tbody>
+      <tfoot><tr class="total-row"><td>Total Earnings</td><td>${fmtNum(rec.basicPay)}</td></tr></tfoot>
+    </table>
+  </div>
+
+  <div class="section" style="margin-top:16px">
+    <div class="section-title">Deductions</div>
+    <table>
+      <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+      <tbody class="deduct">
+        <tr><td>Income Tax (TDS)</td><td>${fmtNum(taxDeduction)}</td></tr>
+        <tr><td>Provident Fund (PF)</td><td>${fmtNum(pfDeduction)}</td></tr>
+        <tr><td>Other Deductions</td><td>${fmtNum(otherDeduction)}</td></tr>
+      </tbody>
+      <tfoot><tr class="total-row deduct"><td>Total Deductions</td><td style="color:#dc2626">${fmtNum(rec.deductions)}</td></tr></tfoot>
+    </table>
+  </div>
+
+  <div class="net-pay">
+    <div>
+      <div class="net-pay-label">Net Pay (Take Home)</div>
+      <div style="font-size:12px;opacity:0.75;margin-top:4px">${rec.month} ${rec.year} — Credited on ${payDate}</div>
+    </div>
+    <div class="net-pay-amount">${fmtNum(rec.netPay)}</div>
+  </div>
+
+  <div class="footer">This is a system-generated payslip and does not require a signature. &nbsp;|&nbsp; HRMSPro &copy; ${new Date().getFullYear()}</div>
+</div>
+</body>
+</html>`;
+
+    // Open in hidden iframe and trigger print
+    let iframe = document.getElementById('payslip-print-frame') as HTMLIFrameElement | null;
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'payslip-print-frame';
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
+      document.body.appendChild(iframe);
+    }
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    setTimeout(() => { iframe!.contentWindow?.focus(); iframe!.contentWindow?.print(); }, 300);
+  }
+
   // Employee Specific Data
   const myRecords = records.filter(
     (r) =>
@@ -283,7 +418,7 @@ export default function PayrollPage() {
                                 </button>
                                 <button 
                                   type="button" 
-                                  onClick={() => alert('PDF generation coming soon')}
+                                  onClick={() => handleDownloadPayslip(rec)}
                                   className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
                                 >
                                   Download
