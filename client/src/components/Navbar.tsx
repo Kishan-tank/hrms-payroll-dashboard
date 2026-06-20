@@ -47,7 +47,7 @@ function ChevronIcon() {
 
 
 export default function Navbar({ title, userName, userRole }: NavbarProps) {
-  const { user } = useAuthContext();
+  const { user, logout } = useAuthContext();
   const navigate = useNavigate();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -159,7 +159,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
                   </button>
                 ))}
                 <div className="mt-1 border-t border-slate-100 pt-1 dark:border-white/10">
-                  <button type="button" onClick={() => {}} className="w-full px-4 py-2.5 text-left text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300">
+                  <button type="button" onClick={logout} className="w-full px-4 py-2.5 text-left text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300">
                     Logout
                   </button>
                 </div>
