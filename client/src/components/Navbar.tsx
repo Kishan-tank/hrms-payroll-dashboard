@@ -154,9 +154,10 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
                   <p className="text-xs text-slate-500 dark:text-slate-400">{displayRole}</p>
                 </div>
                 {[
-                  ['My Profile', '/profile'],
-                  ['Documents',  '/documents'],
-                  ['Settings',   '/settings'],
+                  ['My Profile',   '/profile'],
+                  ['Documents',    '/documents'],
+                  ['Help Center',  '/help'],
+                  ['Settings',     '/settings'],
                 ].map(([label, path]) => (
                   <button key={label} type="button" onClick={() => navigate(path)}
                     className="w-full px-4 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">
