@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { dashboardService } from '../services/hrmsApi';
 import type { HrSummary, Activity } from '../services/hrmsApi';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 import DashboardHero from '../components/dashboard/DashboardHero';
 import KPIGrid from '../components/dashboard/KPIGrid';
@@ -17,12 +18,17 @@ import EmployeeSpotlight from '../components/dashboard/EmployeeSpotlight';
 import RecentActivityTimeline from '../components/dashboard/RecentActivityTimeline';
 import ApprovalQueue from '../components/dashboard/ApprovalQueue';
 
-const fade: any = {
-  hidden:  { opacity: 0, y: 20 },
-  visible: (d: number) => ({ opacity: 1, y: 0, transition: { delay: d, duration: 0.5, ease: 'easeOut' } }),
-};
-
 export default function HRDashboard() {
+  const reducedMotion = useReducedMotion();
+  const fade: any = {
+    hidden: { opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 20 },
+    visible: (d: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: reducedMotion ? { duration: 0 } : { delay: d, duration: 0.5, ease: 'easeOut' },
+    }),
+  };
+
   const [summary,       setSummary]       = useState<HrSummary | null>(null);
   const [activities,    setActivities]    = useState<Activity[]>([]);
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { dashboardService, EmployeeSummary } from '../services/hrmsApi';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 import EmployeeHero from '../components/employee/EmployeeHero';
 import WorkspaceSnapshot from '../components/employee/WorkspaceSnapshot';
@@ -13,12 +14,17 @@ import ActivityAndEvents from '../components/employee/ActivityAndEvents';
 import MyGoals from '../components/employee/MyGoals';
 import EmployeeProfileDrawer from '../components/employee/EmployeeProfileDrawer';
 
-const fade: any = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (d: number) => ({ opacity: 1, y: 0, transition: { delay: d, duration: 0.5, ease: 'easeOut' } }),
-};
-
 export default function EmployeeDashboard() {
+  const reducedMotion = useReducedMotion();
+  const fade: any = {
+    hidden: { opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 20 },
+    visible: (d: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: reducedMotion ? { duration: 0 } : { delay: d, duration: 0.5, ease: 'easeOut' },
+    }),
+  };
+
   const [loading, setLoading] = useState(true);
   const [retryKey, setRetryKey] = useState(0);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);

@@ -191,6 +191,7 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={onToggleCollapse}
+            aria-label="Toggle sidebar"
             className={`hidden lg:flex h-10 items-center text-sm font-semibold transition-all duration-300 hover:bg-slate-50 hover:text-slate-900 border border-transparent dark:hover:bg-white/[0.04] dark:text-slate-400 dark:hover:text-slate-200 ${collapsed ? 'justify-center w-12 mx-auto px-0 rounded-xl' : 'w-full gap-3 rounded-xl px-3 hover:translate-x-1'}`}
             title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
@@ -204,6 +205,7 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={logout}
+            aria-label="Logout"
             className={`flex h-10 items-center text-sm font-semibold transition-all duration-300 hover:bg-red-50 hover:border-red-100 hover:text-red-600 border border-transparent dark:hover:bg-red-500/10 dark:hover:border-red-500/20 dark:text-slate-400 dark:hover:text-red-400 ${collapsed ? 'justify-center w-12 mx-auto px-0 rounded-xl' : 'w-full gap-3 rounded-xl px-3 hover:translate-x-1'}`}
             title={collapsed ? 'Logout' : undefined}
           >
@@ -222,6 +224,7 @@ export default function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              aria-label={item.label}
               className={({ isActive }) =>
                 `flex flex-col items-center gap-1 p-2 transition-all duration-300 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'
                 }`
