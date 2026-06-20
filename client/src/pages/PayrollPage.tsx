@@ -82,8 +82,18 @@ export default function PayrollPage() {
     }
   }
 
+  const getCurrentEmployeeId = () => {
+    return (user as any)?.employeeId || user?.id || (user as any)?._id || "";
+  };
+  const currentEmployeeId = getCurrentEmployeeId();
+
   // Employee Specific Data
-  const myRecords = records.filter(r => r.employeeId?.name === user?.name || r.employeeId?.employeeId === user?.id);
+  const myRecords = records.filter(
+    (r) =>
+      r.employeeId?.employeeId &&
+      currentEmployeeId &&
+      r.employeeId.employeeId === currentEmployeeId
+  );
   const latestMyRecord = myRecords.length > 0 ? myRecords[0] : null;
 
   const hrSummaryCards = summary
