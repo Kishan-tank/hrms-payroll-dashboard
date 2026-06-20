@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import DashboardLayout from '../layouts/DashboardLayout';
 
 const initialLeaveRequests = [
@@ -19,6 +20,7 @@ const statusStyle: Record<string, { light: string; dark: string; dot: string }> 
 
 export default function LeavePage() {
   const { user } = useAuthContext();
+  const toast = useToast();
   const displayName = user?.name ?? 'HR Manager';
   const isEmployee = user?.role === 'employee';
 
@@ -77,6 +79,8 @@ export default function LeavePage() {
     setRequests((prev) =>
       prev.map((req) => (req.id === id ? { ...req, status: newStatus } : req))
     );
+    if (newStatus === 'Approved') toast.success('Leave request approved.');
+    if (newStatus === 'Rejected') toast.error('Leave request rejected.');
   };
 
   const handleApplyLeave = (e: React.FormEvent) => {
@@ -84,7 +88,7 @@ export default function LeavePage() {
     if (!fromDate || !toDate) return;
     
     if (!currentEmployeeId) {
-      alert("Unable to identify employee session. Please login again.");
+      toast.error('Unable to identify employee session. Please login again.');
       return;
     }
     
@@ -112,6 +116,7 @@ export default function LeavePage() {
     setFromDate('');
     setToDate('');
     setReason('');
+    toast.success('Leave application submitted successfully.');
   };
 
   return (
@@ -135,10 +140,9 @@ export default function LeavePage() {
           {!isEmployee && (
             <button
               type="button"
+              onClick={() => toast.info('Create Policy is coming soon.')}
               className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
-              style={{
-                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-              }}
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
             >
               Create Policy
             </button>

@@ -3,6 +3,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { payrollService } from '../services/hrmsApi';
 import type { PayrollRecord, PayrollSummary } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const statusClass: Record<string, string> = {
   Paid: 'bg-blue-50 text-blue-600',
@@ -37,6 +38,7 @@ function Skeleton({ className = '' }: { className?: string }) {
 
 export default function PayrollPage() {
   const { user } = useAuthContext();
+  const toast = useToast();
   const isEmployee = user?.role === 'employee';
 
   const [records, setRecords] = useState<PayrollRecord[]>([]);
@@ -248,6 +250,7 @@ export default function PayrollPage() {
     doc.write(html);
     doc.close();
     setTimeout(() => { iframe!.contentWindow?.focus(); iframe!.contentWindow?.print(); }, 300);
+    toast.success(`Payslip for ${rec.month} ${rec.year} sent to print.`);
   }
 
   // Employee Specific Data
