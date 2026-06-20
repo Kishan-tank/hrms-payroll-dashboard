@@ -13,6 +13,7 @@ import ROICalculatorSection from '../components/landing/ROICalculatorSection';
 import FAQSection from '../components/landing/FAQSection';
 import CTASection from '../components/landing/CTASection';
 import FooterSection from '../components/landing/FooterSection';
+import LandingScrollProgress from '../components/landing/LandingScrollProgress';
 
 export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -54,21 +55,55 @@ export default function Home() {
 
       {/* ── Page Content ── */}
       <div className="relative z-10">
-        <AnimatedBackground>
-          <LandingNavbar />
-          <HeroSection />
-        </AnimatedBackground>
+        <LandingScrollProgress />
+        
+        <div data-section="Hero">
+          <AnimatedBackground>
+            <LandingNavbar />
+            <HeroSection />
+          </AnimatedBackground>
+        </div>
 
-        <TrustedSection />
-        <ProductShowcase />
-        <RoleBasedExperienceSection />
-        <FeaturesSection />
-        <AnalyticsSection />
-        <TestimonialsSection />
-        <PricingSection />
-        <ROICalculatorSection />
-        <FAQSection />
-        <CTASection />
+        <div data-section="Trusted By">
+          <TrustedSection />
+        </div>
+        
+        <div data-section="Product">
+          <ProductShowcase />
+        </div>
+        
+        <div data-section="Experience">
+          <RoleBasedExperienceSection />
+        </div>
+        
+        <div data-section="Features">
+          <FeaturesSection />
+        </div>
+        
+        <div data-section="Analytics">
+          <AnalyticsSection />
+        </div>
+        
+        <div data-section="Customer Stories">
+          <TestimonialsSection />
+        </div>
+        
+        <div data-section="Pricing">
+          <PricingSection />
+        </div>
+        
+        <div data-section="ROI Calculator">
+          <ROICalculatorSection />
+        </div>
+        
+        <div data-section="FAQ">
+          <FAQSection />
+        </div>
+        
+        <div data-section="Get Started">
+          <CTASection />
+        </div>
+        
         <FooterSection />
       </div>
       

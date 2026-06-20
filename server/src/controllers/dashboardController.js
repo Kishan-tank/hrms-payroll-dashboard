@@ -2,6 +2,7 @@ import Employee from "../models/employee.js";
 import Payroll from "../models/payroll.js";
 import Leave from "../models/leave.js";
 import Attendance from "../models/attendance.js";
+import User from "../models/user.js";
 
 function timeAgo(date) {
   if (!date) return "Just now";
@@ -116,24 +117,43 @@ export const getRecentActivity = async (req, res) => {
 
 export const getEmployeeSummary = async (req, res) => {
   try {
-    // We assume req.user is set by auth middleware
-    const userId = req.user?._id || req.user?.id;
+    // req.user is set by verifyToken middleware
+    const userId = req.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const employee = await Employee.findOne({ userId });
-    if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found" });
+    // Try to find a linked Employee document first
+    let employee = await Employee.findOne({ userId });
 
-    // Workspace Snapshot: Today's check-in status
+    // If no Employee record is linked to this user account,
+    // fall back to the User record so the dashboard always loads.
+    if (!employee) {
+      const user = await User.findById(userId).select("name email role department designation");
+      if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+      return res.status(200).json({
+        success: true,
+        summary: {
+          employee: {
+            name: user.name,
+            role: user.designation || user.role || "Employee",
+            department: user.department || "General"
+          },
+          workspace: { attendanceStatus: "Not Checked In", checkInTime: null },
+          payrollLeave: { leavesTaken: 0, leaveBalance: 24, latestNetPay: 0 }
+        }
+      });
+    }
+
+    // Employee record found — fetch real attendance, leave, payroll data
     const today = new Date().toISOString().split('T')[0];
     const todayAttendance = await Attendance.findOne({ employeeId: employee._id, date: today });
 
-    // Payroll & Leave summary
     const totalLeaves = await Leave.aggregate([
       { $match: { employeeId: employee._id, status: "Approved" } },
       { $group: { _id: null, total: { $sum: "$days" } } }
     ]);
     const leavesTaken = totalLeaves.length > 0 ? totalLeaves[0].total : 0;
-    const leaveBalance = Math.max(0, 24 - leavesTaken); // Assume 24 total leaves per year
+    const leaveBalance = Math.max(0, 24 - leavesTaken);
 
     const latestPayroll = await Payroll.findOne({ employeeId: employee._id, status: "Paid" }).sort({ paidAt: -1 });
 
