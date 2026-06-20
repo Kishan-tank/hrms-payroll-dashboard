@@ -107,6 +107,23 @@ export interface Activity {
   time: string;
 }
 
+export interface EmployeeSummary {
+  employee: {
+    name: string;
+    role: string;
+    department: string;
+  };
+  workspace: {
+    attendanceStatus: string;
+    checkInTime: string | null;
+  };
+  payrollLeave: {
+    leavesTaken: number;
+    leaveBalance: number;
+    latestNetPay: number;
+  };
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export const authService = {
@@ -183,6 +200,9 @@ export const dashboardService = {
 
   getRecentActivity: () =>
     request<{ success: boolean; activities: Activity[] }>('GET', '/dashboard/recent-activity'),
+
+  getEmployeeSummary: () =>
+    request<{ success: boolean; summary: EmployeeSummary }>('GET', '/dashboard/employee-summary'),
 };
 
 // ─── Reports ─────────────────────────────────────────────────────────────────

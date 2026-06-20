@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
+import type { EmployeeSummary } from '../../services/hrmsApi';
 
 // ─── Circular Progress Ring ───────────────────────────────────────────────────
 function CircularProgress({
@@ -84,11 +85,18 @@ const profileDetails = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function EmployeeHero({ onViewProfile }: { onViewProfile?: () => void }) {
+export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile?: () => void; summary?: EmployeeSummary | null }) {
   const { user } = useAuthContext();
   const now = useLiveTime();
   const firstName = (user?.name ?? 'Employee').split(' ')[0];
   const initial = firstName.charAt(0).toUpperCase();
+
+  const currentStatusCards = statusCards.map(card => {
+    if (card.label === 'Leave Remaining' && summary) {
+      return { ...card, value: `${summary.payrollLeave.leaveBalance} Days` };
+    }
+    return card;
+  });
 
   return (
     <div
@@ -157,7 +165,7 @@ export default function EmployeeHero({ onViewProfile }: { onViewProfile?: () => 
             initial="hidden" animate="show"
             variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }}
           >
-            {statusCards.map((card, i) => (
+            {currentStatusCards.map((card, i) => (
               <motion.div key={i}
                 variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } } }}
                 className={`group flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 cursor-default
