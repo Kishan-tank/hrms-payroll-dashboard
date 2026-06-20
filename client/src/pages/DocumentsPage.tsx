@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FileText, FileImage, FileArchive, File, Download } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useToast } from '../context/ToastContext';
+import EmptyState from '../components/common/EmptyState';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -151,11 +152,17 @@ export default function DocumentsPage() {
 
         {/* ── Document Groups ── */}
         {Object.keys(grouped).length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 px-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 dark:bg-white/5 text-3xl">📄</div>
-            <h3 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">No documents found</h3>
-            <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">Try adjusting your search or category filter.</p>
-          </div>
+          <EmptyState
+            icon={
+              <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            }
+            title="No documents found"
+            description="No documents match your search or category filter. Try different keywords or select a different category."
+            actionLabel="Clear filters"
+            onAction={() => { setSearch(''); setActiveCategory('All'); }}
+          />
         ) : (
           <div className="space-y-5">
             {Object.entries(grouped).map(([category, docs]) => (

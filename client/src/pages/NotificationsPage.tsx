@@ -3,6 +3,7 @@ import { UserPlus, CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNotifications, formatTimestamp } from '../context/NotificationContext';
 import type { NotificationType } from '../context/NotificationContext';
+import EmptyState from '../components/common/EmptyState';
 
 // ─── Icon helper ─────────────────────────────────────────────────────────────
 
@@ -139,17 +140,15 @@ export default function NotificationsPage() {
 
         {/* ── Notification List ── */}
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 px-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 dark:bg-white/5 text-3xl">
-              🎉
-            </div>
-            <h3 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">
-              Nothing here
-            </h3>
-            <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
-              No notifications match your current filters.
-            </p>
-          </div>
+          <EmptyState
+            icon={
+              <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            }
+            title="No notifications"
+            description="No notifications match your current filters. Try adjusting the read status or type filter."
+          />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
