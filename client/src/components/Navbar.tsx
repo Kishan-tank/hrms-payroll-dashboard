@@ -155,6 +155,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
                 </div>
                 {[
                   ['My Profile', '/profile'],
+                  ['Documents',  '/documents'],
                   ['Settings',   '/settings'],
                 ].map(([label, path]) => (
                   <button key={label} type="button" onClick={() => navigate(path)}

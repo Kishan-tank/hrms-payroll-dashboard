@@ -18,6 +18,7 @@ import SettingsPage from '../pages/SettingsPage';
 import ProfilePage from '../pages/ProfilePage';
 import NotFoundPage from '../pages/NotFoundPage';
 import NotificationsPage from '../pages/NotificationsPage';
+import DocumentsPage from '../pages/DocumentsPage';
 
 export default function AppRouter() {
   return (
@@ -42,6 +43,7 @@ export default function AppRouter() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/leave" element={<LeavePage />} />
             <Route path="/payroll" element={<PayrollPage />} />
