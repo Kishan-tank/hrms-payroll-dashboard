@@ -40,7 +40,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const listRef = useRef<HTMLDivElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
 
-  useFocusTrap(open, onClose, paletteRef);
+  useFocusTrap(open, onClose, paletteRef, { initialFocusRef: inputRef });
 
   const HR_COMMANDS: CommandItem[] = [
     { id: 'nav-hr-dash', label: 'HR Dashboard', cat: 'Navigation', type: 'nav', path: '/hr-dashboard' },
@@ -93,7 +93,6 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     if (open) {
       setQuery('');
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 10);
     }
   }, [open]);
 

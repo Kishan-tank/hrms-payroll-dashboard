@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react';
 
-export function useFocusTrap(isOpen: boolean, onClose: () => void, containerRef: React.RefObject<HTMLElement | null>) {
+export interface FocusTrapOptions {
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
+}
+
+export function useFocusTrap(isOpen: boolean, onClose: () => void, containerRef: React.RefObject<HTMLElement | null>, options?: FocusTrapOptions) {
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -16,6 +20,12 @@ export function useFocusTrap(isOpen: boolean, onClose: () => void, containerRef:
 
     const timer = setTimeout(() => {
       if (!containerRef.current) return;
+      
+      if (options?.initialFocusRef?.current) {
+        options.initialFocusRef.current.focus();
+        return;
+      }
+
       const active = document.activeElement;
       
       // If something inside is already focused, don't override
