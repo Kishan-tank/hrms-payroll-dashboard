@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import CommandPalette from './common/CommandPalette';
 
 function useLiveTime() {
@@ -49,6 +50,7 @@ function ChevronIcon() {
 export default function Navbar({ title, userName, userRole }: NavbarProps) {
   const { user, logout } = useAuthContext();
   const navigate = useNavigate();
+  const { unreadCount } = useNotifications();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -121,7 +123,11 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
               aria-label="Notifications"
             >
               <BellIcon />
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white shadow-[0_0_8px_rgba(59,130,246,0.6)] ring-2 ring-white dark:ring-slate-950">3</span>
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white shadow-[0_0_8px_rgba(59,130,246,0.6)] ring-2 ring-white dark:ring-slate-950">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
 
             <NotificationDropdown open={showNotifications} onClose={() => setShowNotifications(false)} />

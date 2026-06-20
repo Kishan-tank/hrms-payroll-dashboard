@@ -1,49 +1,34 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, CalendarCheck, IndianRupee, Clock, FileText, Bell } from 'lucide-react';
+import { useNotifications, formatTimestamp } from '../../context/NotificationContext';
+import type { NotificationType } from '../../context/NotificationContext';
 
-export interface NotificationItem {
-  id: string;
-  type: 'employee' | 'leave' | 'payroll' | 'attendance' | 'policy';
-  text: string;
-  time: string;
-  unread: boolean;
-}
-
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  { id: '1', type: 'leave', text: 'Leave Approved: Annual Vacation', time: '12m ago', unread: true },
-  { id: '2', type: 'payroll', text: 'Payslip Generated for August', time: '1h ago', unread: true },
-  { id: '3', type: 'employee', text: 'Training Assigned: Security 101', time: '2h ago', unread: true },
-  { id: '4', type: 'policy', text: 'Goal Completed: Q3 Deliverables', time: '5h ago', unread: false },
-  { id: '5', type: 'employee', text: 'Profile Updated Successfully', time: '1d ago', unread: false },
-];
-
-function getIconForType(type: string) {
+function getIconForType(type: NotificationType) {
   switch (type) {
-    case 'employee': return <UserPlus className="h-5 w-5 text-blue-500" />;
-    case 'leave': return <CalendarCheck className="h-5 w-5 text-emerald-500" />;
-    case 'payroll': return <IndianRupee className="h-5 w-5 text-violet-500" />;
+    case 'employee':   return <UserPlus className="h-5 w-5 text-blue-500" />;
+    case 'leave':      return <CalendarCheck className="h-5 w-5 text-emerald-500" />;
+    case 'payroll':    return <IndianRupee className="h-5 w-5 text-violet-500" />;
     case 'attendance': return <Clock className="h-5 w-5 text-amber-500" />;
-    case 'policy': return <FileText className="h-5 w-5 text-pink-500" />;
-    default: return <Bell className="h-5 w-5 text-slate-500" />;
+    case 'policy':     return <FileText className="h-5 w-5 text-pink-500" />;
+    default:           return <Bell className="h-5 w-5 text-slate-500" />;
   }
 }
 
 export default function NotificationDropdown({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const navigate = useNavigate();
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const displayed = notifications
+    .filter((n) => (filter === 'all' ? true : !n.read))
+    .slice(0, 6); // show top 6 in dropdown
 
-  const displayed = notifications.filter(n => filter === 'all' ? true : n.unread);
-
-  const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
-  };
-
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
-  };
+  function handleViewAll() {
+    onClose();
+    navigate('/notifications');
+  }
 
   return (
     <AnimatePresence>
@@ -63,7 +48,7 @@ export default function NotificationDropdown({ open, onClose }: { open: boolean;
               {unreadCount > 0 && (
                 <button
                   type="button"
-                  onClick={markAllRead}
+                  onClick={markAllAsRead}
                   className="text-[11px] font-bold uppercase tracking-wider text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition"
                 >
                   Mark all as read
@@ -110,18 +95,21 @@ export default function NotificationDropdown({ open, onClose }: { open: boolean;
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       onClick={() => markAsRead(item.id)}
-                      className={`group relative flex w-full gap-4 px-5 py-3.5 text-left transition-all duration-300 hover:bg-slate-50 hover:-translate-y-0.5 hover:shadow-lg dark:hover:bg-white/[0.04] ${item.unread ? 'bg-blue-50/50 dark:bg-blue-500/10' : ''}`}
+                      className={`group relative flex w-full gap-4 px-5 py-3.5 text-left transition-all duration-300 hover:bg-slate-50 hover:-translate-y-0.5 hover:shadow-lg dark:hover:bg-white/[0.04] ${!item.read ? 'bg-blue-50/50 dark:bg-blue-500/10' : ''}`}
                     >
                       <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10 text-[16px] shadow-sm">
                         {getIconForType(item.type)}
                       </span>
                       <span className="flex-1 min-w-0 pr-4">
-                        <span className={`block text-[14px] leading-relaxed ${item.unread ? 'font-extrabold text-slate-900 dark:text-white' : 'font-semibold text-slate-600 dark:text-slate-300'}`}>
-                          {item.text}
+                        <span className={`block text-[13px] font-bold leading-snug ${!item.read ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+                          {item.title}
                         </span>
-                        <span className="mt-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-500">{item.time}</span>
+                        <span className="mt-0.5 block text-[12px] leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-1">
+                          {item.message}
+                        </span>
+                        <span className="mt-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{formatTimestamp(item.timestamp)}</span>
                       </span>
-                      {item.unread && (
+                      {!item.read && (
                         <span className="absolute right-5 top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
                       )}
                     </motion.button>
@@ -130,9 +118,13 @@ export default function NotificationDropdown({ open, onClose }: { open: boolean;
               )}
             </div>
 
-            {/* Footer */}
+            {/* Footer — View All */}
             <div className="border-t border-slate-100 dark:border-white/5 p-3 text-center bg-slate-50/50 dark:bg-[#0B1121]/50 rounded-b-[24px]">
-              <button className="text-[12px] font-extrabold uppercase tracking-wider text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+              <button
+                type="button"
+                onClick={handleViewAll}
+                className="text-[12px] font-extrabold uppercase tracking-wider text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+              >
                 View all notifications →
               </button>
             </div>
