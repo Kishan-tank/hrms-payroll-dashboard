@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { attendanceService, ApiAttendance } from '../services/hrmsApi';
-import { useAuth } from '../hooks/useAuth';
-
 // Status badge colors — dual-theme safe
 const statusStyle: Record<string, { light: string; dark: string; dot: string }> = {
   Present: { light: 'bg-emerald-50 text-emerald-600 border border-emerald-200', dark: 'dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400', dot: 'bg-emerald-500 dark:bg-emerald-400' },
@@ -12,8 +12,9 @@ const statusStyle: Record<string, { light: string; dark: string; dot: string }> 
 };
 
 export default function AttendancePage() {
-  const { user } = useAuth();
-  const displayName = user?.name || 'HR Manager';
+  const { user } = useAuthContext();
+  const toast = useToast();
+  const displayName = user?.name ?? 'HR Manager';
 
   const [records, setRecords] = useState<ApiAttendance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,45 +44,51 @@ export default function AttendancePage() {
   const handleCheckIn = async () => {
     try {
       await attendanceService.checkIn();
+      toast.success('Successfully checked in!');
       void fetchAttendance();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to check in');
     }
   };
 
   const handleCheckOut = async () => {
     try {
       await attendanceService.checkOut();
+      toast.success('Successfully checked out!');
       void fetchAttendance();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to check out');
     }
   };
 
   const calculateHours = (checkIn?: string, checkOut?: string) => {
     if (!checkIn || !checkOut) return '-';
-    return '8h 00m'; // Dummy computation
+    return '8h 00m'; // Dummy computation for now
   };
 
   const presentCount = records.filter(r => r.status === 'Present').length;
   const absentCount = records.filter(r => r.status === 'Absent').length;
 
   const kpiCards = [
-    ['Present', presentCount, '#22C55E', 'PR'],
-    ['Absent', absentCount, '#EF4444', 'AB'],
-    ['Late', 0, '#F59E0B', 'LT'],
-    ['On Leave', 0, '#8B5CF6', 'LV'],
+    { label: 'Present',  value: presentCount, abbr: 'PR', classes: 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20' },
+    { label: 'Late',     value: 0,   abbr: 'LT', classes: 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20' },
+    { label: 'Absent',   value: absentCount,   abbr: 'AB', classes: 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20' },
+    { label: 'On Leave', value: 0,  abbr: 'LV', classes: 'text-violet-500 bg-violet-50 dark:text-violet-400 dark:bg-violet-500/20' },
   ];
 
+  const totalEmployees = records.length;
+
   return (
-    <DashboardLayout title="Attendance" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
-      {/* Ambient glows */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    <DashboardLayout title="Attendance">
+      {/* Ambient glows — only visible in dark mode */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden hidden dark:block">
         <div className="absolute -right-[15%] -top-[10%] h-[55vw] w-[55vw] rounded-full bg-blue-600/8 blur-[140px]" />
         <div className="absolute left-[25%] top-[35%] h-[35vw] w-[35vw] rounded-full bg-indigo-600/5 blur-[100px]" />
       </div>
 
       <div className="relative z-10 space-y-5">
+
+        {/* ── Page header ── */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Attendance</h1>
@@ -90,13 +97,27 @@ export default function AttendancePage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <button onClick={handleCheckIn} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-300 dark:hover:bg-white/[0.06]" type="button">Check In</button>
-            <button onClick={handleCheckOut} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} type="button">Check Out</button>
+            <button
+              type="button"
+              onClick={handleCheckIn}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition-all duration-200 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.04] dark:hover:text-white"
+            >
+              Check In
+            </button>
+            <button
+              type="button"
+              onClick={handleCheckOut}
+              className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+            >
+              Check Out
+            </button>
           </div>
         </div>
 
         {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl dark:bg-red-500/10 dark:text-red-400">{error}</div>}
 
+        {/* ── KPI Summary Cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {kpiCards.map(([label, value, color, abbr]) => (
             <div
@@ -104,8 +125,16 @@ export default function AttendancePage() {
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20"
             >
               <div className="mb-4 flex items-center justify-between">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${color}18`, color: String(color) }}>{abbr}</span>
-                <span className="text-xs font-bold text-slate-400">{records.length ? Math.round((Number(value) / records.length) * 100) : 0}%</span>
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${classes}`}
+                >
+                  {abbr}
+                </span>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide ${classes}`}
+                >
+                  {totalEmployees > 0 ? Math.round((value / totalEmployees) * 100) : 0}%
+                </span>
               </div>
               <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{value}</p>
               <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
@@ -113,13 +142,21 @@ export default function AttendancePage() {
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
+        {/* ── Data Table ── */}
+        <div
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl"
+        >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px]">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.02]">
                   {['Employee', 'Department', 'Check In', 'Check Out', 'Hours', 'Status'].map((col) => (
-                    <th key={col} className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{col}</th>
+                    <th
+                      key={col}
+                      className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400"
+                    >
+                      {col}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -128,34 +165,39 @@ export default function AttendancePage() {
                    <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
                 ) : records.length === 0 ? (
                    <tr><td colSpan={6} className="p-4 text-center text-slate-500">No records found.</td></tr>
-                ) : records.map((record, index) => {
-                  const empName = record.employeeId?.name || (record as any).name || 'Unknown';
-                  const empDept = record.employeeId?.department || (record as any).department || 'Engineering';
-                  const empId = record.employeeId?.employeeId || record.employeeId?._id || (record as any).id || '-';
-                  const st = record.status || 'Present';
-                  const style = statusStyle[st] || statusStyle.Present;
-
-                  return (
-                  <tr key={record._id || index} className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.04] ${index < records.length - 1 ? 'border-b border-slate-100 dark:border-white/[0.05]' : ''}`}>
+                ) : records.map((record, index) => (
+                  <tr
+                    key={record._id}
+                    className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${
+                      index < records.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''
+                    }`}
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}>
-                          {empName.charAt(0)}
+                        <span
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+                          style={{
+                            background: 'linear-gradient(135deg, #3b82f6, #4f46e5)',
+                          }}
+                        >
+                          {record.employeeId?.name?.charAt(0) || '?'}
                         </span>
                         <span>
-                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{empName}</span>
-                          <span className="block text-xs text-slate-500">{empId}</span>
+                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{record.employeeId?.name || 'Unknown'}</span>
+                          <span className="block text-xs text-slate-500">{record.employeeId?.employeeId || record.employeeId?._id}</span>
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{empDept}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-300">{record.checkIn || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{record.employeeId?.department || '-'}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-300">{record.checkIn || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{record.checkOut || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{calculateHours(record.checkIn, record.checkOut)}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${style.light} ${style.dark}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                        {st}
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle[record.status]?.light || ''} ${statusStyle[record.status]?.dark || ''}`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusStyle[record.status]?.dot || 'bg-slate-400'}`} />
+                        {record.status}
                       </span>
                     </td>
                   </tr>

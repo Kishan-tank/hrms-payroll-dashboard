@@ -124,6 +124,23 @@ export interface Activity {
   time: string;
 }
 
+export interface EmployeeSummary {
+  employee: {
+    name: string;
+    role: string;
+    department: string;
+  };
+  workspace: {
+    attendanceStatus: string;
+    checkInTime: string | null;
+  };
+  payrollLeave: {
+    leavesTaken: number;
+    leaveBalance: number;
+    latestNetPay: number;
+  };
+}
+
 export interface ApiAttendance {
   _id: string;
   employeeId: { _id: string; name: string; employeeId: string; department: string };
@@ -255,4 +272,6 @@ export const leaveService = {
   getAll: () => request<{ success: boolean; leaves: ApiLeave[] }>('GET', '/leave'),
   apply: (payload: { employeeId: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
     request<{ success: boolean; message: string; leave: ApiLeave }>('POST', '/leave', payload),
+  updateStatus: (id: string, status: 'Approved' | 'Rejected') =>
+    request<{ success: boolean; leave: ApiLeave }>('PUT', `/leave/${id}/status`, { status }),
 };

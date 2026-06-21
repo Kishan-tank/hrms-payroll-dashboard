@@ -1,5 +1,5 @@
 import express from "express";
-import { getAttendance, checkIn, checkOut } from "../controllers/attendanceController.js";
+import { getAttendance } from "../controllers/attendanceController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -8,7 +8,5 @@ const router = express.Router();
 router.use(verifyToken); 
 
 router.get("/", getAttendance);
-router.post("/check-in", checkIn);
-router.post("/check-out", checkOut);
 
 export default router;

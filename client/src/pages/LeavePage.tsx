@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { leaveService, ApiLeave } from '../services/hrmsApi';
-import { useAuth } from '../hooks/useAuth';
-import { useToast } from '../context/ToastContext';
-
 // Status badge colors — dual-theme safe
 const statusStyle: Record<string, { light: string; dark: string; dot: string }> = {
   Pending:  { light: 'bg-amber-50 text-amber-600 border border-amber-200',     dark: 'dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400',     dot: 'bg-amber-500 dark:bg-amber-400' },
@@ -12,16 +11,35 @@ const statusStyle: Record<string, { light: string; dark: string; dot: string }> 
 };
 
 export default function LeavePage() {
-  const { user } = useAuth();
-  const { success, info } = useToast();
-  
-  const isEmployee = user?.role === 'Employee';
-  const displayName = user?.name || 'HR Manager';
+  const { user } = useAuthContext();
+  const toast = useToast();
+  const displayName = user?.name ?? 'HR Manager';
+  const isEmployee = user?.role === 'employee';
 
-  const [leaveRequests, setLeaveRequests] = useState<ApiLeave[]>([]);
+  const getCurrentEmployeeId = () => {
+    return (user as any)?.employeeId || user?.id || (user as any)?._id || "";
+  };
+  const currentEmployeeId = getCurrentEmployeeId();
+
+  const [requests, setRequests] = useState<ApiLeave[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
+
+  const fetchLeaves = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await leaveService.getAll();
+      setRequests(res.leaves);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to fetch leaves');
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    void fetchLeaves();
+  }, [fetchLeaves]);
+
   const [filter, setFilter] = useState('All');
   
   // Employee Form State
@@ -31,40 +49,68 @@ export default function LeavePage() {
   const [reason, setReason] = useState('');
   
   const filters = ['All', 'Pending', 'Approved', 'Rejected'];
-
-  const fetchLeaves = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await leaveService.getAll();
-      let leaves = res.leaves || [];
-      if (isEmployee) {
-        // Optimistic filtering if API returns all
-        leaves = leaves.filter(l => l.employeeId?._id === (user as any)?._id || l.employeeId?.name === user?.name);
-      }
-      setLeaveRequests(leaves);
-      setError('');
-    } catch (err: any) {
-      // Mock data fallback if API fails
-      setLeaveRequests([
-        { _id: 'LR-001', employeeId: { name: 'John Doe', department: 'Engineering' }, type: 'Casual Leave', days: 2, fromDate: '2026-06-12', toDate: '2026-06-13', status: 'Pending' },
-        { _id: 'LR-002', employeeId: { name: 'Priya Nair', department: 'Marketing' }, type: 'Sick Leave', days: 1, fromDate: '2026-06-10', toDate: '2026-06-10', status: 'Approved' },
-        { _id: 'LR-003', employeeId: { name: 'Rahul Mehta', department: 'Sales' }, type: 'Earned Leave', days: 3, fromDate: '2026-06-18', toDate: '2026-06-20', status: 'Pending' },
-      ] as any[]);
-    } finally {
-      setLoading(false);
-    }
-  }, [isEmployee, user]);
-
-  useEffect(() => {
-    void fetchLeaves();
-  }, [fetchLeaves]);
-
-  const filtered = useMemo(() => (filter === 'All' ? leaveRequests : leaveRequests.filter((item) => item.status === filter)), [filter, leaveRequests]);
   
-  const counts = {
-    Pending: leaveRequests.filter((item) => item.status === 'Pending').length,
-    Approved: leaveRequests.filter((item) => item.status === 'Approved').length,
-    Rejected: leaveRequests.filter((item) => item.status === 'Rejected').length,
+  // Base requests based on role
+  const roleRequests = useMemo(() => {
+    if (isEmployee) {
+      return requests.filter(
+        (request) =>
+          request.employeeId &&
+          currentEmployeeId &&
+          request.employeeId._id === currentEmployeeId
+      );
+    }
+    return requests;
+  }, [requests, isEmployee, currentEmployeeId]);
+
+  const filtered = useMemo(() => {
+    return filter === 'All' ? roleRequests : roleRequests.filter((item) => item.status === filter);
+  }, [filter, roleRequests]);
+
+  const counts = useMemo(() => ({
+    Pending: roleRequests.filter((item) => item.status === 'Pending').length,
+    Approved: roleRequests.filter((item) => item.status === 'Approved').length,
+    Rejected: roleRequests.filter((item) => item.status === 'Rejected').length,
+  }), [roleRequests]);
+
+  const totalRequests = roleRequests.length;
+
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    try {
+      if (newStatus !== 'Approved' && newStatus !== 'Rejected') return;
+      await leaveService.updateStatus(id, newStatus);
+      toast.success(`Leave request ${newStatus.toLowerCase()}.`);
+      void fetchLeaves();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update leave status');
+    }
+  };
+
+  const handleApplyLeave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fromDate || !toDate) return;
+    
+    if (!currentEmployeeId) {
+      toast.error('Unable to identify employee session. Please login again.');
+      return;
+    }
+    
+    // Calculate naive days
+    const fDate = new Date(fromDate);
+    const tDate = new Date(toDate);
+    const diffTime = Math.abs(tDate.getTime() - fDate.getTime());
+    const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    try {
+      await leaveService.apply({ employeeId: currentEmployeeId, type: leaveType, fromDate, toDate, days, reason });
+      setFromDate('');
+      setToDate('');
+      setReason('');
+      toast.success('Leave application submitted successfully.');
+      void fetchLeaves();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to apply leave');
+    }
   };
   
   const totalRequests = leaveRequests.length;
@@ -96,14 +142,16 @@ export default function LeavePage() {
   };
 
   return (
-    <DashboardLayout title="Leave Management" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
-      {/* Ambient glows */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    <DashboardLayout title="Leave Management">
+      {/* Ambient glows — only visible in dark mode */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden hidden dark:block">
         <div className="absolute -right-[15%] -top-[10%] h-[55vw] w-[55vw] rounded-full bg-blue-600/8 blur-[140px]" />
         <div className="absolute left-[25%] top-[35%] h-[35vw] w-[35vw] rounded-full bg-indigo-600/5 blur-[100px]" />
       </div>
 
       <div className="relative z-10 space-y-5">
+
+        {/* ── Page header ── */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Leave Management</h1>
@@ -123,8 +171,7 @@ export default function LeavePage() {
           )}
         </div>
 
-        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl dark:bg-red-500/10 dark:text-red-400">{error}</div>}
-
+        {/* ── KPI Summary Cards ── */}
         <div className="grid gap-4 md:grid-cols-3">
           {[
             ['Pending',  counts.Pending,  'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20', isEmployee ? 'Your pending requests' : 'Needs approval', 'PE'],
@@ -240,58 +287,100 @@ export default function LeavePage() {
           })}
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
+        {/* ── Requests Table ── */}
+        <div
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl"
+        >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.02]">
-                  {['Employee', 'Leave Type', 'Duration', 'Dates', 'Status', 'Actions'].map((col) => (
-                    <th key={col} className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{col}</th>
+                  {['Employee', 'Leave Type', 'Duration', 'Dates', 'Reason', 'Status', 'Actions'].map((col) => (
+                    <th
+                      key={col}
+                      className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400"
+                    >
+                      {col}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                      Loading...
+                    </td>
+                  </tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="p-4 text-center text-slate-500">No leave requests found.</td></tr>
-                ) : filtered.map((request, index) => {
-                  const empName = request.employeeId?.name || (request as any).name || 'Unknown';
-                  const empDept = request.employeeId?.department || (request as any).department || 'Engineering';
-                  const fromStr = request.fromDate?.split('T')[0] || (request as any).from;
-                  const toStr = request.toDate?.split('T')[0] || (request as any).to;
-                  const st = request.status || 'Pending';
-                  const style = statusStyle[st] || statusStyle.Pending;
-
-                  return (
-                  <tr key={request._id || index} className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.04] ${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/[0.05]' : ''}`}>
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                      No leave requests found for this filter.
+                    </td>
+                  </tr>
+                ) : filtered.map((request, index) => (
+                  <tr
+                    key={request._id}
+                    className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${
+                      index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''
+                    }`}
+                  >
+                    {/* Employee name + Dept */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}>
-                          {empName.charAt(0)}
+                        <span
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+                          style={{
+                            background: 'linear-gradient(135deg, #3b82f6, #4f46e5)',
+                          }}
+                        >
+                          {request.employeeId?.name?.charAt(0) || '?'}
                         </span>
                         <span>
-                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{empName}</span>
-                          <span className="block text-xs text-slate-500">{empDept}</span>
+                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{request.employeeId?.name || 'Unknown'}</span>
+                          <span className="block text-xs text-slate-500">{request.employeeId?.department || '-'}</span>
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{request.type}</td>
-                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{request.days}d</td>
-                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{fromStr} <span className="text-slate-400 px-1">→</span> {toStr}</td>
+
+                    {/* Duration */}
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{request.days}d</td>
+
+                    {/* Dates */}
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                      {request.fromDate?.split('T')[0]} <span className="text-slate-400 dark:text-slate-600 px-1">→</span> {request.toDate?.split('T')[0]}
+                    </td>
+
+                    {/* Reason */}
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 max-w-[150px] truncate" title={request.reason}>
+                      {request.reason || '—'}
+                    </td>
+
+                    {/* Status badge */}
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${style.light} ${style.dark}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                        {st}
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle[request.status]?.light || ''} ${statusStyle[request.status]?.dark || ''}`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusStyle[request.status]?.dot || 'bg-slate-400'}`} />
+                        {request.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       {!isEmployee && st === 'Pending' ? (
                         <div className="flex gap-2">
-                          <button type="button" onClick={() => handleUpdateStatus(request._id as string, 'Approved')} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(request._id, 'Approved')}
+                            className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30"
+                          >
                             Approve
                           </button>
-                          <button type="button" onClick={() => handleUpdateStatus(request._id as string, 'Rejected')} className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(request._id, 'Rejected')}
+                            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+                          >
                             Reject
                           </button>
                         </div>
@@ -300,7 +389,7 @@ export default function LeavePage() {
                       )}
                     </td>
                   </tr>
-                )})}
+                ))}
               </tbody>
             </table>
           </div>
