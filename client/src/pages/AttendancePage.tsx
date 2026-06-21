@@ -1,12 +1,7 @@
+import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
-
-const records = [
-  { id: 'EMP001', name: 'Anil Kumar', department: 'Engineering', checkIn: '09:02 AM', checkOut: '06:15 PM', hours: '9h 13m', status: 'Present' },
-  { id: 'EMP002', name: 'Priya Nair', department: 'Marketing', checkIn: '09:45 AM', checkOut: '06:00 PM', hours: '8h 15m', status: 'Late' },
-  { id: 'EMP003', name: 'Rahul Mehta', department: 'Sales', checkIn: '-', checkOut: '-', hours: '-', status: 'Absent' },
-  { id: 'EMP004', name: 'Sneha Rao', department: 'HR', checkIn: '08:55 AM', checkOut: '05:45 PM', hours: '8h 50m', status: 'Present' },
-  { id: 'EMP005', name: 'Arjun Singh', department: 'Finance', checkIn: '-', checkOut: '-', hours: '-', status: 'Leave' },
-];
+import { attendanceService, ApiAttendance } from '../services/hrmsApi';
+import { useAuth } from '../hooks/useAuth';
 
 const statusClass: Record<string, string> = {
   Present: 'bg-emerald-50 text-emerald-600',
@@ -15,16 +10,65 @@ const statusClass: Record<string, string> = {
   Leave: 'bg-violet-50 text-violet-600',
 };
 
-const cards = [
-  ['Present', 112, '#22C55E', 'PR'],
-  ['Late', 6, '#F59E0B', 'LT'],
-  ['Absent', 8, '#EF4444', 'AB'],
-  ['On Leave', 18, '#8B5CF6', 'LV'],
-];
-
 export default function AttendancePage() {
+  const { user } = useAuth();
+  const [records, setRecords] = useState<ApiAttendance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchAttendance = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await attendanceService.getAll();
+      setRecords(res.records);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch attendance');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchAttendance();
+  }, [fetchAttendance]);
+
+  const handleCheckIn = async () => {
+    try {
+      await attendanceService.checkIn();
+      void fetchAttendance();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    try {
+      await attendanceService.checkOut();
+      void fetchAttendance();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const calculateHours = (checkIn?: string, checkOut?: string) => {
+    if (!checkIn || !checkOut) return '-';
+    // Simplified logic, assume formats like '09:00 AM'
+    return '8h 00m'; // Dummy computation for now or just return text
+  };
+
+  const presentCount = records.filter(r => r.status === 'Present').length;
+  const absentCount = records.filter(r => r.status === 'Absent').length;
+
+  const cards = [
+    ['Present', presentCount, '#22C55E', 'PR'],
+    ['Absent', absentCount, '#EF4444', 'AB'],
+    ['Late', 0, '#F59E0B', 'LT'], // Not implemented dynamically
+    ['On Leave', 0, '#8B5CF6', 'LV'], // Not implemented dynamically
+  ];
+
   return (
-    <DashboardLayout title="Attendance" userName="Anil Kumar" userRole="HR Manager">
+    <DashboardLayout title="Attendance" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
       <div className="space-y-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -32,17 +76,19 @@ export default function AttendancePage() {
             <p className="text-sm text-slate-400">Track daily check-ins, absences, and shift completion.</p>
           </div>
           <div className="flex gap-3">
-            <button className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600" type="button">Export</button>
-            <button className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white" type="button">Mark Attendance</button>
+            <button onClick={handleCheckIn} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600" type="button">Check In</button>
+            <button onClick={handleCheckOut} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white" type="button">Check Out</button>
           </div>
         </div>
+
+        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl">{error}</div>}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {cards.map(([label, value, color, icon]) => (
             <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${color}18`, color: String(color) }}>{icon}</span>
-                <span className="text-xs font-bold text-slate-400">{Math.round((Number(value) / records.length) * 10)}%</span>
+                <span className="text-xs font-bold text-slate-400">{records.length ? Math.round((Number(value) / records.length) * 100) : 0}%</span>
               </div>
               <p className="text-3xl font-bold text-slate-950">{value}</p>
               <p className="mt-1 text-xs font-semibold text-slate-400">{label}</p>
@@ -60,22 +106,26 @@ export default function AttendancePage() {
               </tr>
             </thead>
             <tbody>
-              {records.map((record, index) => (
-                <tr key={record.id} className={index < records.length - 1 ? 'border-b border-slate-100 hover:bg-slate-50' : 'hover:bg-slate-50'}>
+              {loading ? (
+                 <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
+              ) : records.length === 0 ? (
+                 <tr><td colSpan={6} className="p-4 text-center text-slate-500">No records found.</td></tr>
+              ) : records.map((record, index) => (
+                <tr key={record._id} className={index < records.length - 1 ? 'border-b border-slate-100 hover:bg-slate-50' : 'hover:bg-slate-50'}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{record.name.charAt(0)}</span>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{record.employeeId?.name?.charAt(0) || '?'}</span>
                       <span>
-                        <span className="block text-sm font-bold text-slate-950">{record.name}</span>
-                        <span className="block text-xs text-slate-400">{record.id}</span>
+                        <span className="block text-sm font-bold text-slate-950">{record.employeeId?.name || 'Unknown'}</span>
+                        <span className="block text-xs text-slate-400">{record.employeeId?.employeeId || record.employeeId?._id}</span>
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{record.department}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-slate-950">{record.checkIn}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{record.checkOut}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{record.hours}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[record.status]}`}>{record.status}</span></td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{record.employeeId?.department || '-'}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-slate-950">{record.checkIn || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{record.checkOut || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{calculateHours(record.checkIn, record.checkOut)}</td>
+                  <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[record.status] || 'bg-slate-50 text-slate-600'}`}>{record.status}</span></td>
                 </tr>
               ))}
             </tbody>

@@ -1,13 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
-
-const leaveRequests = [
-  { name: 'John Doe', department: 'Engineering', type: 'Casual Leave', days: 2, from: '2026-06-12', to: '2026-06-13', status: 'Pending' },
-  { name: 'Priya Nair', department: 'Marketing', type: 'Sick Leave', days: 1, from: '2026-06-10', to: '2026-06-10', status: 'Approved' },
-  { name: 'Rahul Mehta', department: 'Sales', type: 'Earned Leave', days: 3, from: '2026-06-18', to: '2026-06-20', status: 'Pending' },
-  { name: 'Sneha Rao', department: 'HR', type: 'Work From Home', days: 1, from: '2026-06-09', to: '2026-06-09', status: 'Rejected' },
-  { name: 'Anil Kumar', department: 'Engineering', type: 'Optional Holiday', days: 1, from: '2026-06-21', to: '2026-06-21', status: 'Approved' },
-];
+import { leaveService, ApiLeave } from '../services/hrmsApi';
+import { useAuth } from '../hooks/useAuth';
 
 const statusClass: Record<string, string> = {
   Pending: 'bg-amber-50 text-amber-600',
@@ -16,9 +10,33 @@ const statusClass: Record<string, string> = {
 };
 
 export default function LeavePage() {
+  const { user } = useAuth();
+  const [leaveRequests, setLeaveRequests] = useState<ApiLeave[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  
   const [filter, setFilter] = useState('All');
   const filters = ['All', 'Pending', 'Approved', 'Rejected'];
-  const filtered = useMemo(() => (filter === 'All' ? leaveRequests : leaveRequests.filter((item) => item.status === filter)), [filter]);
+
+  const fetchLeaves = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await leaveService.getAll();
+      setLeaveRequests(res.leaves);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch leaves');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchLeaves();
+  }, [fetchLeaves]);
+
+  const filtered = useMemo(() => (filter === 'All' ? leaveRequests : leaveRequests.filter((item) => item.status === filter)), [filter, leaveRequests]);
+  
   const counts = {
     Pending: leaveRequests.filter((item) => item.status === 'Pending').length,
     Approved: leaveRequests.filter((item) => item.status === 'Approved').length,
@@ -26,7 +44,7 @@ export default function LeavePage() {
   };
 
   return (
-    <DashboardLayout title="Leave Management" userName="Anil Kumar" userRole="HR Manager">
+    <DashboardLayout title="Leave Management" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
       <div className="space-y-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -35,6 +53,8 @@ export default function LeavePage() {
           </div>
           <button className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white" type="button">Create Policy</button>
         </div>
+
+        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl">{error}</div>}
 
         <div className="grid gap-4 md:grid-cols-3">
           {[
@@ -71,21 +91,25 @@ export default function LeavePage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((request, index) => (
-                <tr key={`${request.name}-${request.from}`} className={index < filtered.length - 1 ? 'border-b border-slate-100 hover:bg-slate-50' : 'hover:bg-slate-50'}>
+              {loading ? (
+                <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={6} className="p-4 text-center text-slate-500">No leave requests found.</td></tr>
+              ) : filtered.map((request, index) => (
+                <tr key={request._id} className={index < filtered.length - 1 ? 'border-b border-slate-100 hover:bg-slate-50' : 'hover:bg-slate-50'}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{request.name.charAt(0)}</span>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{request.employeeId?.name?.charAt(0) || '?'}</span>
                       <span>
-                        <span className="block text-sm font-bold text-slate-950">{request.name}</span>
-                        <span className="block text-xs text-slate-400">{request.department}</span>
+                        <span className="block text-sm font-bold text-slate-950">{request.employeeId?.name || 'Unknown'}</span>
+                        <span className="block text-xs text-slate-400">{request.employeeId?.department || '-'}</span>
                       </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm font-semibold text-slate-700">{request.type}</td>
                   <td className="px-4 py-3 text-sm text-slate-500">{request.days}d</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{request.from} - {request.to}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[request.status]}`}>{request.status}</span></td>
+                  <td className="px-4 py-3 text-sm text-slate-500">{request.fromDate?.split('T')[0]} - {request.toDate?.split('T')[0]}</td>
+                  <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[request.status] || 'bg-slate-50 text-slate-600'}`}>{request.status}</span></td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button type="button" className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600">Approve</button>
