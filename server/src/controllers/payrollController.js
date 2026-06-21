@@ -55,12 +55,36 @@ export const runPayroll = async (req, res) => {
 // Get payroll records
 export const getPayrollRecords = async (req, res) => {
   try {
-    const { month, year, status } = req.query;
+    const { month, year, status, employeeId } = req.query;
 
     const query = {};
     if (month) query.month = month;
     if (year) query.year = parseInt(year);
     if (status) query.status = status;
+
+    const userRole = req.user?.role;
+
+    if (userRole === "employee") {
+      const userId = req.user?._id || req.user?.id;
+      const userEmail = req.user?.email;
+      
+      const employee = await Employee.findOne({
+        $or: [{ userId }, { email: userEmail }]
+      });
+
+      if (!employee) {
+        return res.status(404).json({ success: false, message: "Employee profile not found" });
+      }
+
+      // Force the query to only fetch this specific employee's records
+      // This strips and ignores any malicious ?employeeId= query params
+      query.employeeId = employee._id;
+    } else if (["admin", "hr", "hr-manager"].includes(userRole)) {
+      // HR and Admin can query any employee
+      if (employeeId) query.employeeId = employeeId;
+    } else {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
 
     const records = await Payroll.find(query)
       .populate("employeeId", "name employeeId department")

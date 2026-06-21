@@ -107,21 +107,24 @@ export interface Activity {
   time: string;
 }
 
-export interface EmployeeSummary {
-  employee: {
-    name: string;
-    role: string;
-    department: string;
-  };
-  workspace: {
-    attendanceStatus: string;
-    checkInTime: string | null;
-  };
-  payrollLeave: {
-    leavesTaken: number;
-    leaveBalance: number;
-    latestNetPay: number;
-  };
+export interface ApiAttendance {
+  _id: string;
+  employeeId: { _id: string; name: string; employeeId: string; department: string };
+  date: string;
+  checkIn?: string;
+  checkOut?: string;
+  status: string;
+}
+
+export interface ApiLeave {
+  _id: string;
+  employeeId: { _id: string; name: string; department: string };
+  type: string;
+  fromDate: string;
+  toDate: string;
+  days: number;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  reason?: string;
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -219,4 +222,20 @@ export const reportsService = {
 
   getDeptAttendance: () =>
     request<{ success: boolean; attendance: [string, number][] }>('GET', '/reports/dept-attendance'),
+};
+
+// ─── Attendance ──────────────────────────────────────────────────────────────
+
+export const attendanceService = {
+  getAll: () => request<{ success: boolean; records: ApiAttendance[] }>('GET', '/attendance'),
+  checkIn: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-in'),
+  checkOut: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-out'),
+};
+
+// ─── Leave ───────────────────────────────────────────────────────────────────
+
+export const leaveService = {
+  getAll: () => request<{ success: boolean; leaves: ApiLeave[] }>('GET', '/leave'),
+  apply: (payload: { employeeId: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
+    request<{ success: boolean; message: string; leave: ApiLeave }>('POST', '/leave', payload),
 };
