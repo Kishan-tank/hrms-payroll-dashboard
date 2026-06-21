@@ -11,65 +11,61 @@ export const getAttendance = async (req, res) => {
   }
 };
 
-// Check-in
 export const checkIn = async (req, res) => {
   try {
-    const employee = await Employee.findOne({ userId: req.user.id });
-    if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found" });
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized." });
 
-    const date = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
-    const currentTime = now.toLocaleTimeString('en-US', timeOptions);
+    const employee = await Employee.findOne({ userId });
+    if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
-    let record = await Attendance.findOne({ employeeId: employee._id, date });
-    if (record) {
-      if (record.checkIn && record.checkIn !== "-") {
-        return res.status(400).json({ success: false, message: "Already checked in today" });
-      } else {
-        record.checkIn = currentTime;
-        record.status = "Present";
-        await record.save();
-      }
-    } else {
-      record = await Attendance.create({
-        employeeId: employee._id,
-        date,
-        checkIn: currentTime,
-        status: "Present"
-      });
+    const today = new Date().toISOString().split('T')[0];
+    const existing = await Attendance.findOne({ employeeId: employee._id, date: today });
+    
+    if (existing) {
+      return res.status(400).json({ success: false, message: "You have already checked in today." });
     }
-    res.status(200).json({ success: true, message: "Checked in successfully", record });
+
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+    const newRecord = await Attendance.create({
+      employeeId: employee._id,
+      date: today,
+      checkIn: timeString,
+      status: "Present"
+    });
+
+    res.status(201).json({ success: true, message: "Checked in successfully", record: newRecord });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res.status(500).json({ success: false, message: "Failed to check in", error: error.message });
   }
 };
 
-// Check-out
 export const checkOut = async (req, res) => {
   try {
-    const employee = await Employee.findOne({ userId: req.user.id });
-    if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found" });
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized." });
 
-    const date = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
-    const currentTime = now.toLocaleTimeString('en-US', timeOptions);
+    const employee = await Employee.findOne({ userId });
+    if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
-    let record = await Attendance.findOne({ employeeId: employee._id, date });
-    if (!record || !record.checkIn || record.checkIn === "-") {
-      return res.status(400).json({ success: false, message: "Please check in first" });
-    }
+    const today = new Date().toISOString().split('T')[0];
+    const record = await Attendance.findOne({ employeeId: employee._id, date: today });
     
-    if (record.checkOut && record.checkOut !== "-") {
-      return res.status(400).json({ success: false, message: "Already checked out today" });
+    if (!record) {
+      return res.status(400).json({ success: false, message: "You haven't checked in yet today." });
+    }
+    if (record.checkOut) {
+      return res.status(400).json({ success: false, message: "You have already checked out today." });
     }
 
-    record.checkOut = currentTime;
+    const now = new Date();
+    record.checkOut = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     await record.save();
 
     res.status(200).json({ success: true, message: "Checked out successfully", record });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res.status(500).json({ success: false, message: "Failed to check out", error: error.message });
   }
 };

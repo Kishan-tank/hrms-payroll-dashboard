@@ -7,42 +7,34 @@ export const getLeaves = async (req, res) => {
     const leaves = await Leave.find().populate("employeeId", "name department");
     res.status(200).json({ success: true, leaves });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
+    res.status(500).json({ success: false, message: "Failed to fetch leaves.", error: error.message });
   }
 };
 
 // Employee applies for a new leave
 export const applyLeave = async (req, res) => {
   try {
+    const { employeeId, type, fromDate, toDate, days } = req.body;
+
+    // Validation (Jyoti's QA Task #10)
+    if (!employeeId || !type || !fromDate || !toDate || !days) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing required fields. Please provide employeeId, type, fromDate, toDate, and days." 
+      });
+    }
+
+    if (days <= 0) {
+      return res.status(400).json({ success: false, message: "Leave days must be greater than zero." });
+    }
+
     const newLeave = await Leave.create(req.body);
-    res.status(201).json({ success: true, leave: newLeave });
+    res.status(201).json({ success: true, message: "Leave applied successfully.", leave: newLeave });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
+    res.status(500).json({ success: false, message: "Failed to apply leave.", error: error.message });
   }
 };
 
-// Update leave status (Approve / Reject)
-export const updateLeaveStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
 
-    if (!["Approved", "Rejected"].includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status" });
-    }
 
-    const leave = await Leave.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
 
-    if (!leave) {
-      return res.status(404).json({ success: false, message: "Leave not found" });
-    }
-
-    res.status(200).json({ success: true, leave });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
-  }
-};

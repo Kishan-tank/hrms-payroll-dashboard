@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Sparkles, Send, User } from 'lucide-react';
-import { aiService } from '../../services/hrmsApi';
 
 const SUGGESTIONS = [
   'How many leaves remaining?',
@@ -25,32 +24,34 @@ export default function FloatingAIAssistant() {
     }
   }, [messages, isOpen]);
 
-  const handleSend = async (text: string) => {
+  const handleSend = (text: string) => {
     if (!text.trim()) return;
     
     setMessages((prev) => [...prev, { role: 'user', text }]);
     setInput('');
     
-    try {
-      const res = await aiService.ask(text);
-      if (res.success) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'ai', text: res.response },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'ai', text: "I'm sorry, I couldn't process that right now." },
-        ]);
+    // Simulate AI response
+    setTimeout(() => {
+      let aiResponse = 'I am processing your request. This is a mockup response from the HRMS AI.';
+      const lowerText = text.toLowerCase();
+      
+      if (lowerText.includes('payslip')) {
+        aiResponse = 'I have generated your latest payslip for June 2026. You can download it from the Quick Actions section.';
+      } else if (lowerText.includes('attendance')) {
+        aiResponse = 'Your attendance report looks solid. You have maintained a 98% attendance rate this month.';
+      } else if (lowerText.includes('leave')) {
+        aiResponse = 'You currently have 18 days of annual leave remaining for this year.';
+      } else if (lowerText.includes('summary')) {
+        aiResponse = 'Generating your monthly summary... You have completed 12 tasks, maintained 98% attendance, and used 2 leave days this month.';
+      } else if (lowerText.includes('hello') || lowerText.includes('hi')) {
+        aiResponse = 'Hello there! How can I assist you with your HR tasks today?';
       }
-    } catch (err: any) {
-      console.error(err);
+
       setMessages((prev) => [
         ...prev,
-        { role: 'ai', text: "I'm having trouble connecting to the server. Please check your API keys and try again." },
+        { role: 'ai', text: aiResponse },
       ]);
-    }
+    }, 1000);
   };
 
   return (

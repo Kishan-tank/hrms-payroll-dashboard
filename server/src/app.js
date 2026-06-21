@@ -9,7 +9,6 @@ import reportsRoutes from "./routes/reportsRoutes.js";
 import payrollRoutes from "./routes/payrollRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
-import aiRoutes from "./routes/aiRoutes.js";
 const app = express();
 
 app.use(express.json());
@@ -45,6 +44,5 @@ app.use("/api/reports", reportsRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/leave", leaveRoutes);
-app.use("/api/ai", aiRoutes);
 
 export default app;
