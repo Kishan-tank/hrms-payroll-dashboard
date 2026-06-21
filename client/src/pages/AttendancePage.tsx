@@ -58,18 +58,46 @@ export default function AttendancePage() {
   };
 
   const calculateHours = (checkIn?: string, checkOut?: string) => {
-    if (!checkIn || !checkOut) return '-';
-    return '8h 00m'; // Dummy computation for now
+    if (!checkIn || !checkOut || checkIn === '-' || checkOut === '-') return '-';
+    try {
+      const [inTime, inModifier] = checkIn.split(' ');
+      let [inHrs, inMins] = inTime.split(':').map(Number);
+      if (inModifier === 'PM' && inHrs !== 12) inHrs += 12;
+      if (inModifier === 'AM' && inHrs === 12) inHrs = 0;
+
+      const [outTime, outModifier] = checkOut.split(' ');
+      let [outHrs, outMins] = outTime.split(':').map(Number);
+      if (outModifier === 'PM' && outHrs !== 12) outHrs += 12;
+      if (outModifier === 'AM' && outHrs === 12) outHrs = 0;
+
+      const inDate = new Date();
+      inDate.setHours(inHrs, inMins, 0, 0);
+
+      const outDate = new Date();
+      outDate.setHours(outHrs, outMins, 0, 0);
+
+      const diffMs = outDate.getTime() - inDate.getTime();
+      if (diffMs <= 0) return '-';
+      
+      const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `${diffHrs}h ${diffMins.toString().padStart(2, '0')}m`;
+    } catch (e) {
+      return '-';
+    }
   };
 
   const presentCount = records.filter(r => r.status === 'Present').length;
+  const lateCount = records.filter(r => r.status === 'Late').length;
   const absentCount = records.filter(r => r.status === 'Absent').length;
+  const leaveCount = records.filter(r => r.status === 'Leave').length;
 
   const kpiCards = [
     { label: 'Present',  value: presentCount, abbr: 'PR', classes: 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20' },
-    { label: 'Late',     value: 0,   abbr: 'LT', classes: 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20' },
+    { label: 'Late',     value: lateCount,   abbr: 'LT', classes: 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20' },
     { label: 'Absent',   value: absentCount,   abbr: 'AB', classes: 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20' },
-    { label: 'On Leave', value: 0,  abbr: 'LV', classes: 'text-violet-500 bg-violet-50 dark:text-violet-400 dark:bg-violet-500/20' },
+    { label: 'On Leave', value: leaveCount,  abbr: 'LV', classes: 'text-violet-500 bg-violet-50 dark:text-violet-400 dark:bg-violet-500/20' },
   ];
 
   const totalEmployees = records.length;
