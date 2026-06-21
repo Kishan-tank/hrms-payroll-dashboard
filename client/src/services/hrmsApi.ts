@@ -258,3 +258,10 @@ export const leaveService = {
   updateStatus: (id: string, status: 'Approved' | 'Rejected') =>
     request<{ success: boolean; leave: ApiLeave }>('PUT', `/leave/${id}/status`, { status }),
 };
+
+// ─── AI Assistant ────────────────────────────────────────────────────────────
+
+export const aiService = {
+  ask: (prompt: string) => request<{ success: boolean; response: string }>('POST', '/ai/ask', { prompt }),
+};
+
