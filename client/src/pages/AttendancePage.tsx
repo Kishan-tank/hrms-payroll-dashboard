@@ -247,7 +247,16 @@ export default function AttendancePage() {
           loading={loading}
           searchable
           searchPlaceholder="Search by name or department…"
-          searchKeys={['status'] as any}
+          getSearchText={(record) =>
+            [
+              record.employeeId?.name,
+              record.employeeId?.department,
+              record.employeeId?.employeeId,
+              record.status,
+            ]
+              .filter(Boolean)
+              .join(' ')
+          }
           pageSize={10}
           minWidth={820}
           emptyState={

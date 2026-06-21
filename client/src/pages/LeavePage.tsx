@@ -3,13 +3,10 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { leaveService, ApiLeave } from '../services/hrmsApi';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
-
-// Status badge colors — dual-theme safe
-const statusStyle: Record<string, { light: string; dark: string; dot: string }> = {
-  Pending:  { light: 'bg-amber-50 text-amber-600 border border-amber-200',     dark: 'dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400',     dot: 'bg-amber-500 dark:bg-amber-400' },
-  Approved: { light: 'bg-emerald-50 text-emerald-600 border border-emerald-200', dark: 'dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400', dot: 'bg-emerald-500 dark:bg-emerald-400' },
-  Rejected: { light: 'bg-red-50 text-red-600 border border-red-200',           dark: 'dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400',           dot: 'bg-red-500 dark:bg-red-400' },
-};
+import DataTable from '../components/common/DataTable';
+import type { DataTableColumn } from '../components/common/DataTable';
+import StatusBadge from '../components/common/StatusBadge';
+import EmptyState from '../components/common/EmptyState';
 
 export default function LeavePage() {
   const { user } = useAuth();
@@ -89,11 +86,105 @@ export default function LeavePage() {
     setReason('');
   };
 
-  const handleUpdateStatus = async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
+  const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
     // Optimistic UI
     setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
     success(`Leave request ${newStatus}`);
-  };
+  }, [success]);
+
+  // ── Columns defined inside component — Actions column closes over
+  //    isEmployee and handleUpdateStatus. Dep array: [isEmployee, handleUpdateStatus].
+  const columns = useMemo<DataTableColumn<ApiLeave>[]>(() => [
+    {
+      key: 'employee',
+      header: 'Employee',
+      sortable: true,
+      sortValue: (row) => row.employeeId?.name ?? '',
+      render: (row) => {
+        const empName = row.employeeId?.name || (row as any).name || 'Unknown';
+        const empDept = row.employeeId?.department || (row as any).department || 'Engineering';
+        return (
+          <div className="flex items-center gap-2.5">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+            >
+              {empName.charAt(0)}
+            </span>
+            <span>
+              <span className="block text-sm font-bold text-slate-900 dark:text-white">{empName}</span>
+              <span className="block text-xs text-slate-500">{empDept}</span>
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'type',
+      header: 'Leave Type',
+      sortable: true,
+      render: (row) => (
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{row.type}</span>
+      ),
+    },
+    {
+      key: 'days',
+      header: 'Duration',
+      sortable: true,
+      sortValue: (row) => row.days ?? 0,
+      render: (row) => (
+        <span className="text-sm text-slate-500 dark:text-slate-400">{row.days}d</span>
+      ),
+    },
+    {
+      key: 'dates',
+      header: 'Dates',
+      render: (row) => {
+        const fromStr = row.fromDate?.split('T')[0] || (row as any).from;
+        const toStr   = row.toDate?.split('T')[0]   || (row as any).to;
+        return (
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            {fromStr} <span className="px-1 text-slate-400">→</span> {toStr}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (row) => row.status ?? '',
+      render: (row) => <StatusBadge status={row.status ?? 'Pending'} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => {
+        const st = row.status || 'Pending';
+        if (!isEmployee && st === 'Pending') {
+          return (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus(row._id as string, 'Approved')}
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus(row._id as string, 'Rejected')}
+                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+              >
+                Reject
+              </button>
+            </div>
+          );
+        }
+        return <span className="text-xs font-medium text-slate-400 dark:text-slate-600">—</span>;
+      },
+    },
+  ], [isEmployee, handleUpdateStatus]);
 
   return (
     <DashboardLayout title="Leave Management" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
@@ -218,7 +309,7 @@ export default function LeavePage() {
           </form>
         )}
 
-        {/* ── Filters ── */}
+        {/* ── Filters — unchanged, stay outside DataTable ── */}
         <div className="flex flex-wrap items-center gap-2">
           {filters.map((item) => {
             const isActive = filter === item;
@@ -240,71 +331,45 @@ export default function LeavePage() {
           })}
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.02]">
-                  {['Employee', 'Leave Type', 'Duration', 'Dates', 'Status', 'Actions'].map((col) => (
-                    <th key={col} className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="p-4 text-center text-slate-500">No leave requests found.</td></tr>
-                ) : filtered.map((request, index) => {
-                  const empName = request.employeeId?.name || (request as any).name || 'Unknown';
-                  const empDept = request.employeeId?.department || (request as any).department || 'Engineering';
-                  const fromStr = request.fromDate?.split('T')[0] || (request as any).from;
-                  const toStr = request.toDate?.split('T')[0] || (request as any).to;
-                  const st = request.status || 'Pending';
-                  const style = statusStyle[st] || statusStyle.Pending;
+        {/* ── Leave Requests DataTable ── */}
+        {/* data={filtered} — receives the pill-filtered slice, not raw leaveRequests */}
+        <DataTable<ApiLeave>
+          columns={columns}
+          data={filtered}
+          rowKey={(row, i) => row._id ?? i}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search by name, department, or leave type…"
+          getSearchText={(row) =>
+            [
+              row.employeeId?.name,
+              row.employeeId?.department,
+              row.type,
+              row.status,
+            ]
+              .filter(Boolean)
+              .join(' ')
+          }
+          pageSize={10}
+          minWidth={900}
+          emptyState={
+            <EmptyState
+              icon={
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              }
+              title="No leave requests found"
+              description={
+                filter === 'All'
+                  ? 'No leave requests have been submitted yet.'
+                  : `No ${filter.toLowerCase()} requests found.`
+              }
+            />
+          }
+        />
 
-                  return (
-                  <tr key={request._id || index} className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.04] ${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/[0.05]' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}>
-                          {empName.charAt(0)}
-                        </span>
-                        <span>
-                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{empName}</span>
-                          <span className="block text-xs text-slate-500">{empDept}</span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{request.type}</td>
-                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{request.days}d</td>
-                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{fromStr} <span className="text-slate-400 px-1">→</span> {toStr}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${style.light} ${style.dark}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                        {st}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {!isEmployee && st === 'Pending' ? (
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => handleUpdateStatus(request._id as string, 'Approved')} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30">
-                            Approve
-                          </button>
-                          <button type="button" onClick={() => handleUpdateStatus(request._id as string, 'Rejected')} className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
-                            Reject
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-xs font-medium text-slate-400 dark:text-slate-600">—</span>
-                      )}
-                    </td>
-                  </tr>
-                )})}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );

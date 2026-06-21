@@ -54,8 +54,16 @@ export interface DataTableProps<T> {
   /**
    * Keys to search across. If omitted and `searchable` is true,
    * searches all string/number values via Object.values().
+   * Ignored when `getSearchText` is provided.
    */
   searchKeys?: (keyof T)[];
+  /**
+   * Returns a single flat search string for a row.
+   * Use this instead of `searchKeys` when the searchable fields
+   * are nested (e.g. row.employeeId.name). When provided, it takes
+   * priority over `searchKeys`.
+   */
+  getSearchText?: (row: T) => string;
   /** Page size for client-side pagination. 0 = no pagination. Default: 10. */
   pageSize?: number;
   /**
@@ -95,6 +103,7 @@ export default function DataTable<T extends object>({
   searchable = false,
   searchPlaceholder = 'Search…',
   searchKeys,
+  getSearchText,
   pageSize = 10,
   emptyState,
   onRowClick,
@@ -114,12 +123,16 @@ export default function DataTable<T extends object>({
     const q = query.trim().toLowerCase();
     if (!q) return data;
     return data.filter((row) => {
+      if (getSearchText) {
+        // Caller-supplied flat string — supports nested fields
+        return getSearchText(row).toLowerCase().includes(q);
+      }
       const vals = searchKeys
         ? searchKeys.map((k) => String(row[k] ?? ''))
         : Object.values(row).map(String);
       return vals.some((v) => v.toLowerCase().includes(q));
     });
-  }, [data, query, searchKeys]);
+  }, [data, query, searchKeys, getSearchText]);
 
   // ── Sort ─────────────────────────────────────────────────────────────────
   const sorted = useMemo(() => {
