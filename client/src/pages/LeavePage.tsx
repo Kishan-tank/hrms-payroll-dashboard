@@ -5,9 +5,9 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { leaveService, ApiLeave } from '../services/hrmsApi';
 // Status badge colors — dual-theme safe
 const statusStyle: Record<string, { light: string; dark: string; dot: string }> = {
-  Pending:  { light: 'bg-amber-50 text-amber-600 border border-amber-200',     dark: 'dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400',     dot: 'bg-amber-500 dark:bg-amber-400' },
+  Pending: { light: 'bg-amber-50 text-amber-600 border border-amber-200', dark: 'dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400', dot: 'bg-amber-500 dark:bg-amber-400' },
   Approved: { light: 'bg-emerald-50 text-emerald-600 border border-emerald-200', dark: 'dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400', dot: 'bg-emerald-500 dark:bg-emerald-400' },
-  Rejected: { light: 'bg-red-50 text-red-600 border border-red-200',           dark: 'dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400',           dot: 'bg-red-500 dark:bg-red-400' },
+  Rejected: { light: 'bg-red-50 text-red-600 border border-red-200', dark: 'dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400', dot: 'bg-red-500 dark:bg-red-400' },
 };
 
 export default function LeavePage() {
@@ -41,15 +41,15 @@ export default function LeavePage() {
   }, [fetchLeaves]);
 
   const [filter, setFilter] = useState('All');
-  
+
   // Employee Form State
   const [leaveType, setLeaveType] = useState('Casual Leave');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
-  
+
   const filters = ['All', 'Pending', 'Approved', 'Rejected'];
-  
+
   // Base requests based on role
   const roleRequests = useMemo(() => {
     if (isEmployee) {
@@ -89,12 +89,12 @@ export default function LeavePage() {
   const handleApplyLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromDate || !toDate) return;
-    
+
     if (!currentEmployeeId) {
       toast.error('Unable to identify employee session. Please login again.');
       return;
     }
-    
+
     // Calculate naive days
     const fDate = new Date(fromDate);
     const tDate = new Date(toDate);
@@ -111,34 +111,6 @@ export default function LeavePage() {
     } catch (err: any) {
       toast.error(err.message || 'Failed to apply leave');
     }
-  };
-  
-  const totalRequests = leaveRequests.length;
-
-  const handleApplyLeave = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Optimistic UI update
-    const newLeave = {
-      _id: `NEW-${Date.now()}`,
-      employeeId: { _id: (user as any)?._id || '1', name: user?.name || 'Employee', department: (user as any)?.department || 'Engineering' },
-      type: leaveType,
-      days: 1,
-      fromDate,
-      toDate,
-      status: 'Pending',
-      reason
-    } as ApiLeave;
-    setLeaveRequests(prev => [newLeave, ...prev]);
-    success('Leave request submitted successfully');
-    setFromDate('');
-    setToDate('');
-    setReason('');
-  };
-
-  const handleUpdateStatus = async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
-    // Optimistic UI
-    setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
-    success(`Leave request ${newStatus}`);
   };
 
   return (
@@ -162,7 +134,7 @@ export default function LeavePage() {
           {!isEmployee && (
             <button
               type="button"
-              onClick={() => info('Create Policy is coming soon')}
+              onClick={() => toast.info('Create Policy is coming soon.')}
               className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
               style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
             >
@@ -174,8 +146,8 @@ export default function LeavePage() {
         {/* ── KPI Summary Cards ── */}
         <div className="grid gap-4 md:grid-cols-3">
           {[
-            ['Pending',  counts.Pending,  'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20', isEmployee ? 'Your pending requests' : 'Needs approval', 'PE'],
-            ['Approved', counts.Approved, 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20', isEmployee ? 'Your approved leaves' : 'This month',     'AP'],
+            ['Pending', counts.Pending, 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20', isEmployee ? 'Your pending requests' : 'Needs approval', 'PE'],
+            ['Approved', counts.Approved, 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20', isEmployee ? 'Your approved leaves' : 'This month', 'AP'],
             ['Rejected', counts.Rejected, 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20', isEmployee ? 'Your rejected leaves' : 'Policy conflicts', 'RJ'],
           ].map(([label, value, classes, sub, abbr]) => (
             <div
@@ -183,10 +155,14 @@ export default function LeavePage() {
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20"
             >
               <div className="mb-4 flex items-center justify-between">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${classes}`}>
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${classes}`}
+                >
                   {abbr}
                 </span>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide ${classes}`}>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide ${classes}`}
+                >
                   {totalRequests > 0 ? Math.round((Number(value) / totalRequests) * 100) : 0}%
                 </span>
               </div>
@@ -257,7 +233,9 @@ export default function LeavePage() {
               <button
                 type="submit"
                 className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
-                style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+                style={{
+                  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                }}
               >
                 Submit Request
               </button>
@@ -274,12 +252,18 @@ export default function LeavePage() {
                 key={item}
                 type="button"
                 onClick={() => setFilter(item)}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 ${
-                  isActive
-                    ? 'border-transparent text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400'
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 ${isActive
+                    ? 'border-transparent text-blue-700 bg-blue-50 dark:text-white'
                     : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white'
-                }`}
-                style={isActive ? { boxShadow: 'inset 0 0 0 1px rgba(59,130,246,0.2)' } : {}}
+                  }`}
+                style={
+                  isActive
+                    ? {
+                      background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(37,99,235,0.05))',
+                      boxShadow: 'inset 0 0 0 1px rgba(59,130,246,0.2)',
+                    }
+                    : {}
+                }
               >
                 {item}
               </button>
@@ -321,9 +305,8 @@ export default function LeavePage() {
                 ) : filtered.map((request, index) => (
                   <tr
                     key={request._id}
-                    className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${
-                      index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''
-                    }`}
+                    className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''
+                      }`}
                   >
                     {/* Employee name + Dept */}
                     <td className="px-4 py-3">
@@ -342,6 +325,8 @@ export default function LeavePage() {
                         </span>
                       </div>
                     </td>
+
+                    {/* Leave Type */}
                     <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{request.type}</td>
 
                     {/* Duration */}
@@ -366,8 +351,10 @@ export default function LeavePage() {
                         {request.status}
                       </span>
                     </td>
+
+                    {/* Actions */}
                     <td className="px-4 py-3">
-                      {!isEmployee && st === 'Pending' ? (
+                      {!isEmployee && request.status === 'Pending' ? (
                         <div className="flex gap-2">
                           <button
                             type="button"
