@@ -37,13 +37,8 @@ export default function HRDashboard() {
           dashboardService.getRecentActivity(),
         ]);
         if (sumRes.status   === 'fulfilled') {
-          // Use consistent enterprise demo dataset as requested
-          setSummary({
-            totalEmployees: 1248,
-            attendanceRate: '97.8%',
-            payrollStatus: '₹4.12M Processed',
-            pendingApprovals: 18,
-          });
+          // Use real data from the backend!
+          setSummary(sumRes.value.summary);
         }
         if (actRes.status   === 'fulfilled') setActivities(actRes.value.activities);
 

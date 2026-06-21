@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -16,6 +16,10 @@ import LeavePage from '../pages/LeavePage';
 import ReportsPage from '../pages/ReportsPage';
 import SettingsPage from '../pages/SettingsPage';
 import ProfilePage from '../pages/ProfilePage';
+import NotFoundPage from '../pages/NotFoundPage';
+import NotificationsPage from '../pages/NotificationsPage';
+import DocumentsPage from '../pages/DocumentsPage';
+import HelpCenterPage from '../pages/HelpCenterPage';
 
 export default function AppRouter() {
   return (
@@ -30,12 +34,18 @@ export default function AppRouter() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/design-system" element={<DesignSystemPage />} />
+          {/* /design-system is a dev-only tool — unreachable in production builds */}
+          {import.meta.env.DEV && (
+            <Route path="/design-system" element={<DesignSystemPage />} />
+          )}
 
           {/* ── Any logged-in user ── */}
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/help" element={<HelpCenterPage />} />
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/leave" element={<LeavePage />} />
             <Route path="/payroll" element={<PayrollPage />} />
@@ -56,8 +66,8 @@ export default function AppRouter() {
             <Route path="/reports" element={<ReportsPage />} />
           </Route>
 
-          {/* ── Catch-all ── */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* ── Catch-all: proper 404 instead of silent redirect ── */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

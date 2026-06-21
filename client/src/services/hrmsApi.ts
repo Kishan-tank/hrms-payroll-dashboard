@@ -203,6 +203,9 @@ export const dashboardService = {
 
   getRecentActivity: () =>
     request<{ success: boolean; activities: Activity[] }>('GET', '/dashboard/recent-activity'),
+
+  getEmployeeSummary: () =>
+    request<{ success: boolean; summary: EmployeeSummary }>('GET', '/dashboard/employee-summary'),
 };
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
