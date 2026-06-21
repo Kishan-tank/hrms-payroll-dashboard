@@ -100,23 +100,6 @@ export interface HrSummary {
   pendingApprovals: number;
 }
 
-export interface EmployeeSummary {
-  employee: {
-    name: string;
-    role: string;
-    department: string;
-  };
-  workspace: {
-    attendanceStatus: string;
-    checkInTime: string;
-  };
-  payrollLeave: {
-    leavesTaken: number;
-    leaveBalance: number;
-    latestNetPay: number;
-  };
-}
-
 export interface Activity {
   action: string;
   name: string;

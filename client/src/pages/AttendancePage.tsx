@@ -6,9 +6,9 @@ import { attendanceService, ApiAttendance } from '../services/hrmsApi';
 // Status badge colors — dual-theme safe
 const statusStyle: Record<string, { light: string; dark: string; dot: string }> = {
   Present: { light: 'bg-emerald-50 text-emerald-600 border border-emerald-200', dark: 'dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400', dot: 'bg-emerald-500 dark:bg-emerald-400' },
-  Late:    { light: 'bg-amber-50 text-amber-600 border border-amber-200',     dark: 'dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400',     dot: 'bg-amber-500 dark:bg-amber-400' },
-  Absent:  { light: 'bg-red-50 text-red-600 border border-red-200',           dark: 'dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400',           dot: 'bg-red-500 dark:bg-red-400' },
-  Leave:   { light: 'bg-violet-50 text-violet-600 border border-violet-200',  dark: 'dark:bg-violet-500/20 dark:border-violet-500/30 dark:text-violet-400',  dot: 'bg-violet-500 dark:bg-violet-400' },
+  Late: { light: 'bg-amber-50 text-amber-600 border border-amber-200', dark: 'dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400', dot: 'bg-amber-500 dark:bg-amber-400' },
+  Absent: { light: 'bg-red-50 text-red-600 border border-red-200', dark: 'dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400', dot: 'bg-red-500 dark:bg-red-400' },
+  Leave: { light: 'bg-violet-50 text-violet-600 border border-violet-200', dark: 'dark:bg-violet-500/20 dark:border-violet-500/30 dark:text-violet-400', dot: 'bg-violet-500 dark:bg-violet-400' },
 };
 
 export default function AttendancePage() {
@@ -24,14 +24,10 @@ export default function AttendancePage() {
     try {
       setLoading(true);
       const res = await attendanceService.getAll();
-      setRecords(res.records || []);
+      setRecords(res.records);
       setError('');
     } catch (err: any) {
       setError(err.message || 'Failed to fetch attendance');
-      // Mock data fallback if API fails
-      setRecords([
-        { _id: '1', employeeId: { name: 'Anil Kumar', department: 'Engineering' }, checkIn: '09:00 AM', checkOut: '06:00 PM', status: 'Present', date: '' } as any
-      ]);
     } finally {
       setLoading(false);
     }
@@ -62,18 +58,46 @@ export default function AttendancePage() {
   };
 
   const calculateHours = (checkIn?: string, checkOut?: string) => {
-    if (!checkIn || !checkOut) return '-';
-    return '8h 00m'; // Dummy computation for now
+    if (!checkIn || !checkOut || checkIn === '-' || checkOut === '-') return '-';
+    try {
+      const [inTime, inModifier] = checkIn.split(' ');
+      let [inHrs, inMins] = inTime.split(':').map(Number);
+      if (inModifier === 'PM' && inHrs !== 12) inHrs += 12;
+      if (inModifier === 'AM' && inHrs === 12) inHrs = 0;
+
+      const [outTime, outModifier] = checkOut.split(' ');
+      let [outHrs, outMins] = outTime.split(':').map(Number);
+      if (outModifier === 'PM' && outHrs !== 12) outHrs += 12;
+      if (outModifier === 'AM' && outHrs === 12) outHrs = 0;
+
+      const inDate = new Date();
+      inDate.setHours(inHrs, inMins, 0, 0);
+
+      const outDate = new Date();
+      outDate.setHours(outHrs, outMins, 0, 0);
+
+      const diffMs = outDate.getTime() - inDate.getTime();
+      if (diffMs <= 0) return '-';
+
+      const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `${diffHrs}h ${diffMins.toString().padStart(2, '0')}m`;
+    } catch (e) {
+      return '-';
+    }
   };
 
   const presentCount = records.filter(r => r.status === 'Present').length;
+  const lateCount = records.filter(r => r.status === 'Late').length;
   const absentCount = records.filter(r => r.status === 'Absent').length;
+  const leaveCount = records.filter(r => r.status === 'Leave').length;
 
   const kpiCards = [
-    { label: 'Present',  value: presentCount, abbr: 'PR', classes: 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20' },
-    { label: 'Late',     value: 0,   abbr: 'LT', classes: 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20' },
-    { label: 'Absent',   value: absentCount,   abbr: 'AB', classes: 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20' },
-    { label: 'On Leave', value: 0,  abbr: 'LV', classes: 'text-violet-500 bg-violet-50 dark:text-violet-400 dark:bg-violet-500/20' },
+    { label: 'Present', value: presentCount, abbr: 'PR', classes: 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20' },
+    { label: 'Late', value: lateCount, abbr: 'LT', classes: 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20' },
+    { label: 'Absent', value: absentCount, abbr: 'AB', classes: 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20' },
+    { label: 'On Leave', value: leaveCount, abbr: 'LV', classes: 'text-violet-500 bg-violet-50 dark:text-violet-400 dark:bg-violet-500/20' },
   ];
 
   const totalEmployees = records.length;
@@ -115,13 +139,13 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl dark:bg-red-500/10 dark:text-red-400">{error}</div>}
+        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl">{error}</div>}
 
         {/* ── KPI Summary Cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kpiCards.map(([label, value, color, abbr]) => (
+          {kpiCards.map(({ label, value, classes, abbr }) => (
             <div
-              key={String(label)}
+              key={label}
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20"
             >
               <div className="mb-4 flex items-center justify-between">
@@ -162,15 +186,14 @@ export default function AttendancePage() {
               </thead>
               <tbody>
                 {loading ? (
-                   <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
+                  <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
                 ) : records.length === 0 ? (
-                   <tr><td colSpan={6} className="p-4 text-center text-slate-500">No records found.</td></tr>
+                  <tr><td colSpan={6} className="p-4 text-center text-slate-500">No records found.</td></tr>
                 ) : records.map((record, index) => (
                   <tr
                     key={record._id}
-                    className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${
-                      index < records.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''
-                    }`}
+                    className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${index < records.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''
+                      }`}
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
@@ -201,11 +224,12 @@ export default function AttendancePage() {
                       </span>
                     </td>
                   </tr>
-                )})}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
+
       </div>
     </DashboardLayout>
   );
