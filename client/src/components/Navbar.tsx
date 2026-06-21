@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import CommandPalette from './common/CommandPalette';
 
 function useLiveTime() {
@@ -47,8 +48,9 @@ function ChevronIcon() {
 
 
 export default function Navbar({ title, userName, userRole }: NavbarProps) {
-  const { user } = useAuthContext();
+  const { user, logout } = useAuthContext();
   const navigate = useNavigate();
+  const { unreadCount } = useNotifications();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -121,7 +123,11 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
               aria-label="Notifications"
             >
               <BellIcon />
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white shadow-[0_0_8px_rgba(59,130,246,0.6)] ring-2 ring-white dark:ring-slate-950">3</span>
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white shadow-[0_0_8px_rgba(59,130,246,0.6)] ring-2 ring-white dark:ring-slate-950">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
 
             <NotificationDropdown open={showNotifications} onClose={() => setShowNotifications(false)} />
@@ -148,10 +154,10 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
                   <p className="text-xs text-slate-500 dark:text-slate-400">{displayRole}</p>
                 </div>
                 {[
-                  ['My Profile',  '/profile'],
-                  ['Documents',   '/documents'],
-                  ['Settings',    '/settings'],
-                  ['Help Center', '/help'],
+                  ['My Profile',   '/profile'],
+                  ['Documents',    '/documents'],
+                  ['Help Center',  '/help'],
+                  ['Settings',     '/settings'],
                 ].map(([label, path]) => (
                   <button key={label} type="button" onClick={() => navigate(path)}
                     className="w-full px-4 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">
@@ -159,7 +165,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
                   </button>
                 ))}
                 <div className="mt-1 border-t border-slate-100 pt-1 dark:border-white/10">
-                  <button type="button" onClick={() => {}} className="w-full px-4 py-2.5 text-left text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300">
+                  <button type="button" onClick={logout} className="w-full px-4 py-2.5 text-left text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300">
                     Logout
                   </button>
                 </div>

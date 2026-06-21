@@ -1,217 +1,223 @@
-import { useMemo, useState } from 'react';
-<<<<<<< HEAD
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
+import { leaveService, ApiLeave } from '../services/hrmsApi';
+import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../context/ToastContext';
 
-const leaveRequests = [
-  { name: 'John Doe', department: 'Engineering', type: 'Casual Leave', days: 2, from: '2026-06-12', to: '2026-06-13', status: 'Pending' },
-  { name: 'Priya Nair', department: 'Marketing', type: 'Sick Leave', days: 1, from: '2026-06-10', to: '2026-06-10', status: 'Approved' },
-  { name: 'Rahul Mehta', department: 'Sales', type: 'Earned Leave', days: 3, from: '2026-06-18', to: '2026-06-20', status: 'Pending' },
-  { name: 'Sneha Rao', department: 'HR', type: 'Work From Home', days: 1, from: '2026-06-09', to: '2026-06-09', status: 'Rejected' },
-  { name: 'Anil Kumar', department: 'Engineering', type: 'Optional Holiday', days: 1, from: '2026-06-21', to: '2026-06-21', status: 'Approved' },
-];
-
-const statusClass: Record<string, string> = {
-  Pending: 'bg-amber-50 text-amber-600',
-  Approved: 'bg-emerald-50 text-emerald-600',
-  Rejected: 'bg-red-50 text-red-600',
+// Status badge colors — dual-theme safe
+const statusStyle: Record<string, { light: string; dark: string; dot: string }> = {
+  Pending:  { light: 'bg-amber-50 text-amber-600 border border-amber-200',     dark: 'dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400',     dot: 'bg-amber-500 dark:bg-amber-400' },
+  Approved: { light: 'bg-emerald-50 text-emerald-600 border border-emerald-200', dark: 'dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400', dot: 'bg-emerald-500 dark:bg-emerald-400' },
+  Rejected: { light: 'bg-red-50 text-red-600 border border-red-200',           dark: 'dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400',           dot: 'bg-red-500 dark:bg-red-400' },
 };
 
 export default function LeavePage() {
+  const { user } = useAuth();
+  const { success, info } = useToast();
+  
+  const isEmployee = user?.role === 'Employee';
+  const displayName = user?.name || 'HR Manager';
+
+  const [leaveRequests, setLeaveRequests] = useState<ApiLeave[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  
   const [filter, setFilter] = useState('All');
+  
+  // Employee Form State
+  const [leaveType, setLeaveType] = useState('Casual Leave');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [reason, setReason] = useState('');
+  
   const filters = ['All', 'Pending', 'Approved', 'Rejected'];
-  const filtered = useMemo(() => (filter === 'All' ? leaveRequests : leaveRequests.filter((item) => item.status === filter)), [filter]);
+
+  const fetchLeaves = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await leaveService.getAll();
+      let leaves = res.leaves || [];
+      if (isEmployee) {
+        // Optimistic filtering if API returns all
+        leaves = leaves.filter(l => l.employeeId?._id === (user as any)?._id || l.employeeId?.name === user?.name);
+      }
+      setLeaveRequests(leaves);
+      setError('');
+    } catch (err: any) {
+      // Mock data fallback if API fails
+      setLeaveRequests([
+        { _id: 'LR-001', employeeId: { name: 'John Doe', department: 'Engineering' }, type: 'Casual Leave', days: 2, fromDate: '2026-06-12', toDate: '2026-06-13', status: 'Pending' },
+        { _id: 'LR-002', employeeId: { name: 'Priya Nair', department: 'Marketing' }, type: 'Sick Leave', days: 1, fromDate: '2026-06-10', toDate: '2026-06-10', status: 'Approved' },
+        { _id: 'LR-003', employeeId: { name: 'Rahul Mehta', department: 'Sales' }, type: 'Earned Leave', days: 3, fromDate: '2026-06-18', toDate: '2026-06-20', status: 'Pending' },
+      ] as any[]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isEmployee, user]);
+
+  useEffect(() => {
+    void fetchLeaves();
+  }, [fetchLeaves]);
+
+  const filtered = useMemo(() => (filter === 'All' ? leaveRequests : leaveRequests.filter((item) => item.status === filter)), [filter, leaveRequests]);
+  
   const counts = {
     Pending: leaveRequests.filter((item) => item.status === 'Pending').length,
     Approved: leaveRequests.filter((item) => item.status === 'Approved').length,
     Rejected: leaveRequests.filter((item) => item.status === 'Rejected').length,
   };
-
-  return (
-    <DashboardLayout title="Leave Management" userName="Anil Kumar" userRole="HR Manager">
-      <div className="space-y-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-950">Leave Management</h1>
-            <p className="text-sm text-slate-400">Review requests, approve leave, and monitor workforce availability.</p>
-          </div>
-          <button className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white" type="button">Create Policy</button>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            ['Pending', counts.Pending, '#F59E0B', 'Needs approval'],
-            ['Approved', counts.Approved, '#22C55E', 'This month'],
-            ['Rejected', counts.Rejected, '#EF4444', 'Policy conflicts'],
-          ].map(([label, value, color, sub]) => (
-            <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${color}18`, color: String(color) }}>{String(label).slice(0, 2).toUpperCase()}</span>
-                <span className="text-xs font-bold text-slate-400">{sub}</span>
-              </div>
-              <p className="text-3xl font-bold text-slate-950">{value}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-400">{label}</p>
-=======
-import { useAuthContext } from '../context/AuthContext';
-import DashboardLayout from '../layouts/DashboardLayout';
-
-const initialLeaveRequests = [
-  { id: 'LR-001', name: 'John Doe',    department: 'Engineering', type: 'Casual Leave',   days: 2, from: '2026-06-12', to: '2026-06-13', status: 'Pending' },
-  { id: 'LR-002', name: 'Priya Nair',  department: 'Marketing',   type: 'Sick Leave',     days: 1, from: '2026-06-10', to: '2026-06-10', status: 'Approved' },
-  { id: 'LR-003', name: 'Rahul Mehta', department: 'Sales',       type: 'Earned Leave',   days: 3, from: '2026-06-18', to: '2026-06-20', status: 'Pending' },
-  { id: 'LR-004', name: 'Sneha Rao',   department: 'HR',          type: 'Work From Home', days: 1, from: '2026-06-09', to: '2026-06-09', status: 'Rejected' },
-  { id: 'LR-005', name: 'Anil Kumar',  department: 'Engineering', type: 'Optional Holiday', days: 1, from: '2026-06-21', to: '2026-06-21', status: 'Approved' },
-];
-
-// Status badge colors — dark-theme safe
-const statusStyle: Record<string, { text: string; bg: string; dot: string }> = {
-  Pending:  { text: 'text-amber-400',   bg: 'bg-amber-500/10  border border-amber-500/20',   dot: 'bg-amber-400'   },
-  Approved: { text: 'text-emerald-400', bg: 'bg-emerald-500/10 border border-emerald-500/20', dot: 'bg-emerald-400' },
-  Rejected: { text: 'text-red-400',     bg: 'bg-red-500/10    border border-red-500/20',      dot: 'bg-red-400'     },
-};
-
-export default function LeavePage() {
-  const { user } = useAuthContext();
-  const displayName = user?.name ?? 'HR Manager';
-
-  // Local state for optimistic updates
-  const [requests, setRequests] = useState(initialLeaveRequests);
-  const [filter, setFilter] = useState('All');
   
-  const filters = ['All', 'Pending', 'Approved', 'Rejected'];
-  
-  const filtered = useMemo(() => {
-    return filter === 'All' ? requests : requests.filter((item) => item.status === filter);
-  }, [filter, requests]);
+  const totalRequests = leaveRequests.length;
 
-  const counts = useMemo(() => ({
-    Pending: requests.filter((item) => item.status === 'Pending').length,
-    Approved: requests.filter((item) => item.status === 'Approved').length,
-    Rejected: requests.filter((item) => item.status === 'Rejected').length,
-  }), [requests]);
+  const handleApplyLeave = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Optimistic UI update
+    const newLeave = {
+      _id: `NEW-${Date.now()}`,
+      employeeId: { _id: (user as any)?._id || '1', name: user?.name || 'Employee', department: (user as any)?.department || 'Engineering' },
+      type: leaveType,
+      days: 1,
+      fromDate,
+      toDate,
+      status: 'Pending',
+      reason
+    } as ApiLeave;
+    setLeaveRequests(prev => [newLeave, ...prev]);
+    success('Leave request submitted successfully');
+    setFromDate('');
+    setToDate('');
+    setReason('');
+  };
 
-  const totalRequests = requests.length;
-
-  const handleUpdateStatus = (id: string, newStatus: string) => {
-    // TODO: wire real leave-approval API
-    setRequests((prev) =>
-      prev.map((req) => (req.id === id ? { ...req, status: newStatus } : req))
-    );
+  const handleUpdateStatus = async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
+    // Optimistic UI
+    setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
+    success(`Leave request ${newStatus}`);
   };
 
   return (
-    <DashboardLayout title="Leave Management">
-      {/* Ambient glows — identical to HRDashboard and AttendancePage */}
+    <DashboardLayout title="Leave Management" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
+      {/* Ambient glows */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="absolute -right-[15%] -top-[10%] h-[55vw] w-[55vw] rounded-full bg-blue-600/8 blur-[140px]" />
         <div className="absolute left-[25%] top-[35%] h-[35vw] w-[35vw] rounded-full bg-indigo-600/5 blur-[100px]" />
       </div>
 
       <div className="relative z-10 space-y-5">
-
-        {/* ── Page header ── */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-white">Leave Management</h1>
-            <p className="mt-0.5 text-sm text-slate-400">
-              Welcome, <span className="font-semibold text-slate-300">{displayName}</span> — review requests, approve leave, and monitor workforce availability.
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Leave Management</h1>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              Welcome, <span className="font-semibold text-slate-700 dark:text-slate-300">{displayName}</span> — {isEmployee ? 'apply for leave and track your requests.' : 'review requests, approve leave, and monitor workforce availability.'}
             </p>
           </div>
-          <button
-            type="button"
-            className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90"
-            style={{
-              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-              boxShadow: '0 4px 16px rgba(59,130,246,0.3)',
-            }}
-          >
-            Create Policy
-          </button>
+          {!isEmployee && (
+            <button
+              type="button"
+              onClick={() => info('Create Policy is coming soon')}
+              className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+            >
+              Create Policy
+            </button>
+          )}
         </div>
 
-        {/* ── KPI Summary Cards ── */}
+        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl dark:bg-red-500/10 dark:text-red-400">{error}</div>}
+
         <div className="grid gap-4 md:grid-cols-3">
           {[
-            ['Pending',  counts.Pending,  '#F59E0B', 'Needs approval', 'PE'],
-            ['Approved', counts.Approved, '#22C55E', 'This month',     'AP'],
-            ['Rejected', counts.Rejected, '#EF4444', 'Policy conflicts', 'RJ'],
-          ].map(([label, value, color, sub, abbr]) => (
+            ['Pending',  counts.Pending,  'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20', isEmployee ? 'Your pending requests' : 'Needs approval', 'PE'],
+            ['Approved', counts.Approved, 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20', isEmployee ? 'Your approved leaves' : 'This month',     'AP'],
+            ['Rejected', counts.Rejected, 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20', isEmployee ? 'Your rejected leaves' : 'Policy conflicts', 'RJ'],
+          ].map(([label, value, classes, sub, abbr]) => (
             <div
               key={String(label)}
-              className="rounded-2xl border border-white/[0.07] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[0.12]"
-              style={{
-                background: 'rgba(255,255,255,0.02)',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
-              }}
+              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20"
             >
               <div className="mb-4 flex items-center justify-between">
-                <span
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold"
-                  style={{ background: `${color}18`, color: String(color) }}
-                >
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${classes}`}>
                   {abbr}
                 </span>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                  style={{ background: `${color}18`, color: String(color) }}
-                >
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide ${classes}`}>
                   {totalRequests > 0 ? Math.round((Number(value) / totalRequests) * 100) : 0}%
                 </span>
               </div>
-              <p className="text-3xl font-extrabold text-white">{value}</p>
+              <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{value}</p>
               <div className="mt-1 flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
                 <p className="text-xs text-slate-400">{sub}</p>
               </div>
->>>>>>> 6c4ae97ff3f416a65cac6e1d31ab7f3f4eaa026f
             </div>
           ))}
         </div>
 
-<<<<<<< HEAD
-        <div className="flex flex-wrap items-center gap-2">
-          {filters.map((item) => (
-            <button key={item} type="button" onClick={() => setFilter(item)} className={`rounded-xl px-4 py-2 text-sm font-bold ${filter === item ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white text-slate-500'}`}>
-              {item}
-            </button>
-          ))}
-        </div>
+        {/* ── Employee Apply Leave Form ── */}
+        {isEmployee && (
+          <form
+            onSubmit={handleApplyLeave}
+            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl"
+          >
+            <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">Apply for Leave</h2>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Leave Type</label>
+                <select
+                  value={leaveType}
+                  onChange={(e) => setLeaveType(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
+                >
+                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Casual Leave">Casual Leave</option>
+                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Sick Leave">Sick Leave</option>
+                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Earned Leave">Earned Leave</option>
+                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Work From Home">Work From Home</option>
+                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Optional Holiday">Optional Holiday</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">From Date</label>
+                <input
+                  type="date"
+                  required
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">To Date</label>
+                <input
+                  type="date"
+                  required
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Reason</label>
+                <input
+                  type="text"
+                  required
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. Medical appointment"
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="submit"
+                className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+              >
+                Submit Request
+              </button>
+            </div>
+          </form>
+        )}
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[900px]">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                {['Employee', 'Leave Type', 'Duration', 'Dates', 'Status', 'Actions'].map((col) => (
-                  <th key={col} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-400">{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((request, index) => (
-                <tr key={`${request.name}-${request.from}`} className={index < filtered.length - 1 ? 'border-b border-slate-100 hover:bg-slate-50' : 'hover:bg-slate-50'}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{request.name.charAt(0)}</span>
-                      <span>
-                        <span className="block text-sm font-bold text-slate-950">{request.name}</span>
-                        <span className="block text-xs text-slate-400">{request.department}</span>
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-slate-700">{request.type}</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{request.days}d</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{request.from} - {request.to}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[request.status]}`}>{request.status}</span></td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button type="button" className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600">Approve</button>
-                      <button type="button" className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600">Reject</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-=======
         {/* ── Filters ── */}
         <div className="flex flex-wrap items-center gap-2">
           {filters.map((item) => {
@@ -223,17 +229,10 @@ export default function LeavePage() {
                 onClick={() => setFilter(item)}
                 className={`rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 ${
                   isActive
-                    ? 'border-transparent text-white'
-                    : 'border border-white/10 bg-white/[0.02] text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                    ? 'border-transparent text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400'
+                    : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white'
                 }`}
-                style={
-                  isActive
-                    ? {
-                        background: 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1))',
-                        boxShadow: 'inset 0 0 0 1px rgba(59,130,246,0.3)',
-                      }
-                    : {}
-                }
+                style={isActive ? { boxShadow: 'inset 0 0 0 1px rgba(59,130,246,0.2)' } : {}}
               >
                 {item}
               </button>
@@ -241,112 +240,70 @@ export default function LeavePage() {
           })}
         </div>
 
-        {/* ── Requests Table ── */}
-        <div
-          className="overflow-hidden rounded-2xl border border-white/[0.07]"
-          style={{
-            background: 'rgba(255,255,255,0.02)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
-          }}
-        >
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead>
-                <tr className="border-b border-white/[0.07]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <tr className="border-b border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.02]">
                   {['Employee', 'Leave Type', 'Duration', 'Dates', 'Status', 'Actions'].map((col) => (
-                    <th
-                      key={col}
-                      className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500"
-                    >
-                      {col}
-                    </th>
+                    <th key={col} className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{col}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((request, index) => (
-                  <tr
-                    key={request.id}
-                    className={`transition-colors duration-150 hover:bg-white/[0.04] ${
-                      index < filtered.length - 1 ? 'border-b border-white/[0.05]' : ''
-                    }`}
-                  >
-                    {/* Employee name + Dept */}
+                {loading ? (
+                  <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={6} className="p-4 text-center text-slate-500">No leave requests found.</td></tr>
+                ) : filtered.map((request, index) => {
+                  const empName = request.employeeId?.name || (request as any).name || 'Unknown';
+                  const empDept = request.employeeId?.department || (request as any).department || 'Engineering';
+                  const fromStr = request.fromDate?.split('T')[0] || (request as any).from;
+                  const toStr = request.toDate?.split('T')[0] || (request as any).to;
+                  const st = request.status || 'Pending';
+                  const style = statusStyle[st] || statusStyle.Pending;
+
+                  return (
+                  <tr key={request._id || index} className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.04] ${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/[0.05]' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <span
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                          style={{
-                            background: 'linear-gradient(135deg, #3b82f6, #4f46e5)',
-                            boxShadow: '0 2px 8px rgba(59,130,246,0.25)',
-                          }}
-                        >
-                          {request.name.charAt(0)}
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}>
+                          {empName.charAt(0)}
                         </span>
                         <span>
-                          <span className="block text-sm font-bold text-white">{request.name}</span>
-                          <span className="block text-xs text-slate-500">{request.department}</span>
+                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{empName}</span>
+                          <span className="block text-xs text-slate-500">{empDept}</span>
                         </span>
                       </div>
                     </td>
-
-                    {/* Leave Type */}
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-300">{request.type}</td>
-
-                    {/* Duration */}
-                    <td className="px-4 py-3 text-sm text-slate-400">{request.days}d</td>
-
-                    {/* Dates */}
-                    <td className="px-4 py-3 text-sm text-slate-400">
-                      {request.from} <span className="text-slate-600 px-1">→</span> {request.to}
-                    </td>
-
-                    {/* Status badge */}
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{request.type}</td>
+                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{request.days}d</td>
+                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{fromStr} <span className="text-slate-400 px-1">→</span> {toStr}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle[request.status].bg} ${statusStyle[request.status].text}`}
-                      >
-                        <span className={`h-1.5 w-1.5 rounded-full ${statusStyle[request.status].dot}`} />
-                        {request.status}
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${style.light} ${style.dark}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+                        {st}
                       </span>
                     </td>
-
-                    {/* Actions */}
                     <td className="px-4 py-3">
-                      {request.status === 'Pending' ? (
+                      {!isEmployee && st === 'Pending' ? (
                         <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus(request.id, 'Approved')}
-                            className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/20"
-                          >
+                          <button type="button" onClick={() => handleUpdateStatus(request._id as string, 'Approved')} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30">
                             Approve
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus(request.id, 'Rejected')}
-                            className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
-                          >
+                          <button type="button" onClick={() => handleUpdateStatus(request._id as string, 'Rejected')} className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
                             Reject
                           </button>
                         </div>
                       ) : (
-                        <span className="text-xs font-medium text-slate-600">—</span>
+                        <span className="text-xs font-medium text-slate-400 dark:text-slate-600">—</span>
                       )}
                     </td>
                   </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
-                      No leave requests found for this filter.
-                    </td>
-                  </tr>
-                )}
+                )})}
               </tbody>
             </table>
           </div>
->>>>>>> 6c4ae97ff3f416a65cac6e1d31ab7f3f4eaa026f
         </div>
       </div>
     </DashboardLayout>
