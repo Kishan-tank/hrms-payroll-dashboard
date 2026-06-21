@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Sparkles, Send, User } from 'lucide-react';
+import { aiService } from '../../services/hrmsApi';
 
 const SUGGESTIONS = [
   'How many leaves remaining?',
@@ -14,7 +15,7 @@ export default function FloatingAIAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
-    { role: 'ai', text: 'Hello! I am your AI Assistant. Note: This is currently in Demo Mode and responds to specific keywords (like leaves, payslips, or attendance) with simulated answers.' },
+    { role: 'ai', text: 'Hello! I am your AI Assistant. How can I help you today?' },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -24,34 +25,33 @@ export default function FloatingAIAssistant() {
     }
   }, [messages, isOpen]);
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
     if (!text.trim()) return;
-    
+
     setMessages((prev) => [...prev, { role: 'user', text }]);
     setInput('');
-    
-    // Simulate AI response
-    setTimeout(() => {
-      let aiResponse = 'I am processing your request. This is a mockup response from the HRMS AI.';
-      const lowerText = text.toLowerCase();
-      
-      if (lowerText.includes('payslip')) {
-        aiResponse = 'I have generated your latest payslip for June 2026. You can download it from the Quick Actions section.';
-      } else if (lowerText.includes('attendance')) {
-        aiResponse = 'Your attendance report looks solid. You have maintained a 98% attendance rate this month.';
-      } else if (lowerText.includes('leave')) {
-        aiResponse = 'You currently have 18 days of annual leave remaining for this year.';
-      } else if (lowerText.includes('summary')) {
-        aiResponse = 'Generating your monthly summary... You have completed 12 tasks, maintained 98% attendance, and used 2 leave days this month.';
-      } else if (lowerText.includes('hello') || lowerText.includes('hi')) {
-        aiResponse = 'Hello there! How can I assist you with your HR tasks today?';
+
+    try {
+      const res = await aiService.ask(text);
+      if (res.success) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'ai', text: res.response },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'ai', text: "I'm sorry, I couldn't process that right now." },
+        ]);
       }
 
+    } catch (err: any) {
+      console.error(err);
       setMessages((prev) => [
         ...prev,
-        { role: 'ai', text: aiResponse },
+        { role: 'ai', text: "I'm having trouble connecting to the server. Please check your API keys and try again." },
       ]);
-    }, 1000);
+    }
   };
 
   return (
@@ -72,10 +72,7 @@ export default function FloatingAIAssistant() {
                   <Bot size={18} className="text-white" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-[15px] font-extrabold tracking-wide">AI Assistant</h3>
-                    <span className="rounded-full border border-white/20 bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-sm">Demo Mode</span>
-                  </div>
+                  <h3 className="text-[15px] font-extrabold tracking-wide">AI Assistant</h3>
                   <div className="flex items-center gap-1.5 text-[11px] text-white/70 font-semibold">
                     <span className="flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                     Online
@@ -99,20 +96,18 @@ export default function FloatingAIAssistant() {
                     className={`flex items-end gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                   >
                     <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-md ${
-                        msg.role === 'user'
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-md ${msg.role === 'user'
                           ? 'bg-blue-600'
                           : 'bg-gradient-to-br from-indigo-500 to-purple-600'
-                      }`}
+                        }`}
                     >
                       {msg.role === 'user' ? <User size={14} className="text-white" /> : <Bot size={14} className="text-white" />}
                     </div>
                     <div
-                      className={`max-w-[75%] rounded-[16px] px-4 py-2.5 text-[14px] leading-relaxed shadow-sm ${
-                        msg.role === 'user'
+                      className={`max-w-[75%] rounded-[16px] px-4 py-2.5 text-[14px] leading-relaxed shadow-sm ${msg.role === 'user'
                           ? 'bg-blue-600 text-white dark:bg-blue-600/20 dark:border dark:border-blue-500/30 dark:backdrop-blur-sm'
                           : 'bg-white border border-slate-200 text-slate-700 dark:bg-white/5 dark:text-slate-200 dark:border-white/10 dark:backdrop-blur-sm'
-                      } ${msg.role === 'user' ? 'rounded-br-sm' : 'rounded-bl-sm'}`}
+                        } ${msg.role === 'user' ? 'rounded-br-sm' : 'rounded-bl-sm'}`}
                     >
                       {msg.text}
                     </div>
@@ -148,7 +143,7 @@ export default function FloatingAIAssistant() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
-                  placeholder="Try asking about leaves or payslips..."
+                  placeholder="Ask me anything..."
                   className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-5 pr-12 text-[14px] text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 shadow-inner dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-blue-500/50 dark:focus:bg-white/10 dark:focus:ring-blue-500/10"
                 />
                 <button
@@ -166,11 +161,11 @@ export default function FloatingAIAssistant() {
 
       <div className="group/btn relative">
         {/* Tooltip */}
-        <div className="pointer-events-none absolute -left-40 top-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-1.5 text-[12px] font-bold text-white opacity-0 shadow-xl transition-all duration-300 group-hover/btn:-translate-x-2 group-hover/btn:opacity-100 whitespace-nowrap border border-slate-800 dark:bg-[#0B1121] dark:border-white/10">
-          Try AI Assistant (Demo)
+        <div className="pointer-events-none absolute -left-32 top-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-1.5 text-[12px] font-bold text-white opacity-0 shadow-xl transition-all duration-300 group-hover/btn:-translate-x-2 group-hover/btn:opacity-100 whitespace-nowrap border border-slate-800 dark:bg-[#0B1121] dark:border-white/10">
+          Ask HRMS AI
           <div className="absolute -right-1 top-1/2 -translate-y-1/2 border-4 border-transparent border-l-slate-900 dark:border-l-[#0B1121]" />
         </div>
-        
+
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}

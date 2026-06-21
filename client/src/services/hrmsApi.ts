@@ -100,6 +100,13 @@ export interface HrSummary {
   pendingApprovals: number;
 }
 
+export interface Activity {
+  action: string;
+  name: string;
+  dept: string;
+  time: string;
+}
+
 export interface EmployeeSummary {
   employee: {
     name: string;
@@ -108,20 +115,13 @@ export interface EmployeeSummary {
   };
   workspace: {
     attendanceStatus: string;
-    checkInTime: string;
+    checkInTime: string | null;
   };
   payrollLeave: {
     leavesTaken: number;
     leaveBalance: number;
     latestNetPay: number;
   };
-}
-
-export interface Activity {
-  action: string;
-  name: string;
-  dept: string;
-  time: string;
 }
 
 export interface ApiAttendance {
@@ -255,4 +255,12 @@ export const leaveService = {
   getAll: () => request<{ success: boolean; leaves: ApiLeave[] }>('GET', '/leave'),
   apply: (payload: { employeeId: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
     request<{ success: boolean; message: string; leave: ApiLeave }>('POST', '/leave', payload),
+  updateStatus: (id: string, status: 'Approved' | 'Rejected') =>
+    request<{ success: boolean; leave: ApiLeave }>('PUT', `/leave/${id}/status`, { status }),
+};
+
+// ─── AI Assistant ────────────────────────────────────────────────────────────
+
+export const aiService = {
+  ask: (prompt: string) => request<{ success: boolean; response: string }>('POST', '/ai/ask', { prompt }),
 };
