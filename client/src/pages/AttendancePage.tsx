@@ -1,16 +1,8 @@
+import { useEffect, useState, useCallback } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import DashboardLayout from '../layouts/DashboardLayout';
-
-// TODO: wire real attendance API
-const records = [
-  { id: 'EMP001', name: 'Anil Kumar',  department: 'Engineering', checkIn: '09:02 AM', checkOut: '06:15 PM', hours: '9h 13m', status: 'Present' },
-  { id: 'EMP002', name: 'Priya Nair',  department: 'Marketing',   checkIn: '09:45 AM', checkOut: '06:00 PM', hours: '8h 15m', status: 'Late'    },
-  { id: 'EMP003', name: 'Rahul Mehta', department: 'Sales',       checkIn: '-',        checkOut: '-',        hours: '-',      status: 'Absent'  },
-  { id: 'EMP004', name: 'Sneha Rao',   department: 'HR',          checkIn: '08:55 AM', checkOut: '05:45 PM', hours: '8h 50m', status: 'Present' },
-  { id: 'EMP005', name: 'Arjun Singh', department: 'Finance',     checkIn: '-',        checkOut: '-',        hours: '-',      status: 'Leave'   },
-];
-
+import { attendanceService, ApiAttendance } from '../services/hrmsApi';
 // Status badge colors — dual-theme safe
 const statusStyle: Record<string, { light: string; dark: string; dot: string }> = {
   Present: { light: 'bg-emerald-50 text-emerald-600 border border-emerald-200', dark: 'dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400', dot: 'bg-emerald-500 dark:bg-emerald-400' },
@@ -19,21 +11,68 @@ const statusStyle: Record<string, { light: string; dark: string; dot: string }> 
   Leave:   { light: 'bg-violet-50 text-violet-600 border border-violet-200',  dark: 'dark:bg-violet-500/20 dark:border-violet-500/30 dark:text-violet-400',  dot: 'bg-violet-500 dark:bg-violet-400' },
 };
 
-// KPI summary cards
-const kpiCards = [
-  { label: 'Present',  value: 112, abbr: 'PR', classes: 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20' },
-  { label: 'Late',     value: 6,   abbr: 'LT', classes: 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20' },
-  { label: 'Absent',   value: 8,   abbr: 'AB', classes: 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20' },
-  { label: 'On Leave', value: 18,  abbr: 'LV', classes: 'text-violet-500 bg-violet-50 dark:text-violet-400 dark:bg-violet-500/20' },
-];
-
 export default function AttendancePage() {
   const { user } = useAuthContext();
   const toast = useToast();
   const displayName = user?.name ?? 'HR Manager';
 
-  // Calculate total employees from the mocked kpiCards instead of records.length
-  const totalEmployees = kpiCards.reduce((sum, card) => sum + card.value, 0);
+  const [records, setRecords] = useState<ApiAttendance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchAttendance = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await attendanceService.getAll();
+      setRecords(res.records);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch attendance');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchAttendance();
+  }, [fetchAttendance]);
+
+  const handleCheckIn = async () => {
+    try {
+      await attendanceService.checkIn();
+      toast.success('Successfully checked in!');
+      void fetchAttendance();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to check in');
+    }
+  };
+
+  const handleCheckOut = async () => {
+    try {
+      await attendanceService.checkOut();
+      toast.success('Successfully checked out!');
+      void fetchAttendance();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to check out');
+    }
+  };
+
+  const calculateHours = (checkIn?: string, checkOut?: string) => {
+    if (!checkIn || !checkOut) return '-';
+    return '8h 00m'; // Dummy computation for now
+  };
+
+  const presentCount = records.filter(r => r.status === 'Present').length;
+  const absentCount = records.filter(r => r.status === 'Absent').length;
+
+  const kpiCards = [
+    { label: 'Present',  value: presentCount, abbr: 'PR', classes: 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20' },
+    { label: 'Late',     value: 0,   abbr: 'LT', classes: 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20' },
+    { label: 'Absent',   value: absentCount,   abbr: 'AB', classes: 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20' },
+    { label: 'On Leave', value: 0,  abbr: 'LV', classes: 'text-violet-500 bg-violet-50 dark:text-violet-400 dark:bg-violet-500/20' },
+  ];
+
+  const totalEmployees = records.length;
 
   return (
     <DashboardLayout title="Attendance">
@@ -56,21 +95,23 @@ export default function AttendancePage() {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => toast.info('Export is coming soon.')}
+              onClick={handleCheckIn}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition-all duration-200 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.04] dark:hover:text-white"
             >
-              Export
+              Check In
             </button>
             <button
               type="button"
-              onClick={() => toast.info('Mark Attendance is coming soon.')}
+              onClick={handleCheckOut}
               className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
               style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
             >
-              Mark Attendance
+              Check Out
             </button>
           </div>
         </div>
+
+        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl">{error}</div>}
 
         {/* ── KPI Summary Cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -116,9 +157,13 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((record, index) => (
+                {loading ? (
+                   <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
+                ) : records.length === 0 ? (
+                   <tr><td colSpan={6} className="p-4 text-center text-slate-500">No records found.</td></tr>
+                ) : records.map((record, index) => (
                   <tr
-                    key={record.id}
+                    key={record._id}
                     className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${
                       index < records.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''
                     }`}
@@ -131,23 +176,23 @@ export default function AttendancePage() {
                             background: 'linear-gradient(135deg, #3b82f6, #4f46e5)',
                           }}
                         >
-                          {record.name.charAt(0)}
+                          {record.employeeId?.name?.charAt(0) || '?'}
                         </span>
                         <span>
-                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{record.name}</span>
-                          <span className="block text-xs text-slate-500">{record.id}</span>
+                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{record.employeeId?.name || 'Unknown'}</span>
+                          <span className="block text-xs text-slate-500">{record.employeeId?.employeeId || record.employeeId?._id}</span>
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{record.department}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-300">{record.checkIn}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{record.checkOut}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{record.hours}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{record.employeeId?.department || '-'}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-300">{record.checkIn || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{record.checkOut || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{calculateHours(record.checkIn, record.checkOut)}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle[record.status].light} ${statusStyle[record.status].dark}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle[record.status]?.light || ''} ${statusStyle[record.status]?.dark || ''}`}
                       >
-                        <span className={`h-1.5 w-1.5 rounded-full ${statusStyle[record.status].dot}`} />
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusStyle[record.status]?.dot || 'bg-slate-400'}`} />
                         {record.status}
                       </span>
                     </td>
