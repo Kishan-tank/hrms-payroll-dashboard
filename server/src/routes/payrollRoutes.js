@@ -7,7 +7,7 @@ const router = express.Router();
 router.use(verifyToken);
 
 router.post("/run", requireRole("admin", "hr"), runPayroll);
-router.get("/", requireRole("admin", "hr", "hr-manager", "employee"), getPayrollRecords);
+router.get("/", requireRole("admin", "hr"), getPayrollRecords);
 router.get("/summary", requireRole("admin", "hr"), getPayrollSummary);
 
 export default router;

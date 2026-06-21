@@ -7,8 +7,6 @@ import employeeRoutes from "./routes/employeeRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
 import payrollRoutes from "./routes/payrollRoutes.js";
-import attendanceRoutes from "./routes/attendanceRoutes.js";
-import leaveRoutes from "./routes/leaveRoutes.js";
 const app = express();
 
 app.use(express.json());
@@ -42,7 +40,5 @@ app.use("/api/employees", employeeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/payroll", payrollRoutes);
-app.use("/api/attendance", attendanceRoutes);
-app.use("/api/leave", leaveRoutes);
 
 export default app;
