@@ -4,6 +4,7 @@ import { payrollService } from '../services/hrmsApi';
 import type { PayrollRecord, PayrollSummary } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import EmptyState from '../components/common/EmptyState';
 
 const statusClass: Record<string, string> = {
   Paid: 'bg-blue-50 text-blue-600',
@@ -361,21 +362,15 @@ export default function PayrollPage() {
 
             {/* Payslip List */}
             {myRecords.length === 0 && !loading ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 px-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 dark:bg-white/5">
-                  <span className="text-2xl">📄</span>
-                </div>
-                <h3 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">No payslips available yet</h3>
-                <p className="mb-6 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-                  Your payslips for {filterMonth} {filterYear} will appear here once payroll is processed by HR.
-                </p>
-                <button
-                  type="button"
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5"
-                >
-                  Contact HR
-                </button>
-              </div>
+              <EmptyState
+                icon={
+                  <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                }
+                title="No payslips available yet"
+                description={`Your payslips for ${filterMonth} ${filterYear} will appear here once payroll is processed by your HR team.`}
+              />
             ) : (
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
                 <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">

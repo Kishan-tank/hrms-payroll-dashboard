@@ -94,6 +94,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
         <button
           type="button"
           onClick={() => setCmdOpen(true)}
+          aria-label="Open command palette"
           className="group flex h-12 flex-1 items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 text-left text-slate-800 transition-all duration-300 hover:scale-[1.02] hover:bg-slate-100 hover:border-blue-500/30 focus:border-blue-500/30 focus:outline-none focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.06] md:max-w-[520px] xl:max-w-[600px]"
         >
           <span className="text-slate-400 transition-all duration-300 group-hover:text-blue-500 group-focus:text-blue-500 group-hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.3)] group-focus:drop-shadow-[0_0_8px_rgba(59,130,246,0.3)] dark:group-hover:text-blue-400 dark:group-focus:text-blue-400 dark:group-hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] dark:group-focus:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]"><SearchIcon /></span>
@@ -141,6 +142,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
             <button
               type="button"
               onClick={() => { setShowProfile((v) => !v); setShowNotifications(false); }}
+              aria-label="Open profile menu"
               className="group flex h-10 items-center gap-2 rounded-xl px-2 transition-all duration-300 hover:scale-[1.02] hover:bg-slate-100 dark:hover:bg-white/8"
             >
               <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff`} alt="Avatar" className="h-8 w-8 rounded-full object-cover shadow-[0_0_12px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:shadow-[0_0_16px_rgba(59,130,246,0.4)] dark:shadow-[0_0_12px_rgba(37,99,235,0.4)] dark:group-hover:shadow-[0_0_16px_rgba(59,130,246,0.6)]" />

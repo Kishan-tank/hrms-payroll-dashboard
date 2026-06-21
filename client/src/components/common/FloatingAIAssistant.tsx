@@ -14,7 +14,7 @@ export default function FloatingAIAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
-    { role: 'ai', text: 'Hello! I am your AI Assistant. How can I help you today?' },
+    { role: 'ai', text: 'Hello! I am your AI Assistant. Note: This is currently in Demo Mode and responds to specific keywords (like leaves, payslips, or attendance) with simulated answers.' },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +72,10 @@ export default function FloatingAIAssistant() {
                   <Bot size={18} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-extrabold tracking-wide">AI Assistant</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-[15px] font-extrabold tracking-wide">AI Assistant</h3>
+                    <span className="rounded-full border border-white/20 bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-sm">Demo Mode</span>
+                  </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-white/70 font-semibold">
                     <span className="flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                     Online
@@ -145,7 +148,7 @@ export default function FloatingAIAssistant() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
-                  placeholder="Ask me anything..."
+                  placeholder="Try asking about leaves or payslips..."
                   className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-5 pr-12 text-[14px] text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 shadow-inner dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-blue-500/50 dark:focus:bg-white/10 dark:focus:ring-blue-500/10"
                 />
                 <button
@@ -163,8 +166,8 @@ export default function FloatingAIAssistant() {
 
       <div className="group/btn relative">
         {/* Tooltip */}
-        <div className="pointer-events-none absolute -left-32 top-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-1.5 text-[12px] font-bold text-white opacity-0 shadow-xl transition-all duration-300 group-hover/btn:-translate-x-2 group-hover/btn:opacity-100 whitespace-nowrap border border-slate-800 dark:bg-[#0B1121] dark:border-white/10">
-          Ask HRMS AI
+        <div className="pointer-events-none absolute -left-40 top-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-1.5 text-[12px] font-bold text-white opacity-0 shadow-xl transition-all duration-300 group-hover/btn:-translate-x-2 group-hover/btn:opacity-100 whitespace-nowrap border border-slate-800 dark:bg-[#0B1121] dark:border-white/10">
+          Try AI Assistant (Demo)
           <div className="absolute -right-1 top-1/2 -translate-y-1/2 border-4 border-transparent border-l-slate-900 dark:border-l-[#0B1121]" />
         </div>
         
