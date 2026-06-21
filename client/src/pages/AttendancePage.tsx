@@ -2,22 +2,107 @@ import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { attendanceService, ApiAttendance } from '../services/hrmsApi';
 import { useAuth } from '../hooks/useAuth';
+import DataTable from '../components/common/DataTable';
+import type { DataTableColumn } from '../components/common/DataTable';
+import StatusBadge from '../components/common/StatusBadge';
+import EmptyState from '../components/common/EmptyState';
 
-// Status badge colors — dual-theme safe
-const statusStyle: Record<string, { light: string; dark: string; dot: string }> = {
-  Present: { light: 'bg-emerald-50 text-emerald-600 border border-emerald-200', dark: 'dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400', dot: 'bg-emerald-500 dark:bg-emerald-400' },
-  Late:    { light: 'bg-amber-50 text-amber-600 border border-amber-200',     dark: 'dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400',     dot: 'bg-amber-500 dark:bg-amber-400' },
-  Absent:  { light: 'bg-red-50 text-red-600 border border-red-200',           dark: 'dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400',           dot: 'bg-red-500 dark:bg-red-400' },
-  Leave:   { light: 'bg-violet-50 text-violet-600 border border-violet-200',  dark: 'dark:bg-violet-500/20 dark:border-violet-500/30 dark:text-violet-400',  dot: 'bg-violet-500 dark:bg-violet-400' },
-};
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function calculateHours(checkIn?: string, checkOut?: string): string {
+  if (!checkIn || !checkOut) return '-';
+  return '8h 00m'; // Placeholder — replace with real calculation when backend provides timestamps
+}
+
+// ─── Column definitions ───────────────────────────────────────────────────────
+
+/**
+ * We define columns outside the component so the reference is stable
+ * and DataTable doesn't re-compute on every render.
+ */
+const COLUMNS: DataTableColumn<ApiAttendance>[] = [
+  {
+    key: 'employee',
+    header: 'Employee',
+    sortable: true,
+    sortValue: (row) => row.employeeId?.name ?? '',
+    render: (row) => {
+      const name = row.employeeId?.name ?? (row as any).name ?? 'Unknown';
+      const id   = row.employeeId?.employeeId ?? row.employeeId?._id ?? (row as any).id ?? '—';
+      return (
+        <div className="flex items-center gap-2.5">
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+            style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+          >
+            {name.charAt(0)}
+          </span>
+          <span>
+            <span className="block text-sm font-bold text-slate-900 dark:text-white">{name}</span>
+            <span className="block text-xs text-slate-500">{id}</span>
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    key: 'department',
+    header: 'Department',
+    sortable: true,
+    sortValue: (row) => row.employeeId?.department ?? '',
+    render: (row) => (
+      <span className="text-sm text-slate-600 dark:text-slate-400">
+        {row.employeeId?.department ?? (row as any).department ?? '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'checkIn',
+    header: 'Check In',
+    sortable: true,
+    sortValue: (row) => row.checkIn ?? '',
+    render: (row) => (
+      <span className="text-sm font-semibold text-slate-900 dark:text-slate-300">
+        {row.checkIn ?? '-'}
+      </span>
+    ),
+  },
+  {
+    key: 'checkOut',
+    header: 'Check Out',
+    render: (row) => (
+      <span className="text-sm text-slate-600 dark:text-slate-400">
+        {row.checkOut ?? '-'}
+      </span>
+    ),
+  },
+  {
+    key: 'hours',
+    header: 'Hours',
+    render: (row) => (
+      <span className="text-sm text-slate-600 dark:text-slate-400">
+        {calculateHours(row.checkIn, row.checkOut)}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    sortable: true,
+    sortValue: (row) => row.status ?? '',
+    render: (row) => <StatusBadge status={row.status ?? 'Present'} />,
+  },
+];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AttendancePage() {
   const { user } = useAuth();
   const displayName = user?.name || 'HR Manager';
 
-  const [records, setRecords] = useState<ApiAttendance[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [records, setRecords]   = useState<ApiAttendance[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
 
   const fetchAttendance = useCallback(async () => {
     try {
@@ -29,7 +114,14 @@ export default function AttendancePage() {
       setError(err.message || 'Failed to fetch attendance');
       // Mock data fallback if API fails
       setRecords([
-        { _id: '1', employeeId: { name: 'Anil Kumar', department: 'Engineering' }, checkIn: '09:00 AM', checkOut: '06:00 PM', status: 'Present', date: '' } as any
+        {
+          _id: '1',
+          employeeId: { _id: '1', name: 'Anil Kumar', employeeId: 'EMP-001', department: 'Engineering' },
+          checkIn: '09:00 AM',
+          checkOut: '06:00 PM',
+          status: 'Present',
+          date: new Date().toISOString(),
+        } as ApiAttendance,
       ]);
     } finally {
       setLoading(false);
@@ -58,23 +150,23 @@ export default function AttendancePage() {
     }
   };
 
-  const calculateHours = (checkIn?: string, checkOut?: string) => {
-    if (!checkIn || !checkOut) return '-';
-    return '8h 00m'; // Dummy computation
-  };
-
-  const presentCount = records.filter(r => r.status === 'Present').length;
-  const absentCount = records.filter(r => r.status === 'Absent').length;
+  // ── KPI cards ──────────────────────────────────────────────────────────────
+  const presentCount = records.filter((r) => r.status === 'Present').length;
+  const absentCount  = records.filter((r) => r.status === 'Absent').length;
+  const lateCount    = records.filter((r) => r.status === 'Late').length;
+  const leaveCount   = records.filter((r) => r.status === 'Leave').length;
 
   const kpiCards = [
-    ['Present', presentCount, '#22C55E', 'PR'],
-    ['Absent', absentCount, '#EF4444', 'AB'],
-    ['Late', 0, '#F59E0B', 'LT'],
-    ['On Leave', 0, '#8B5CF6', 'LV'],
+    { label: 'Present',  value: presentCount, color: '#22C55E', abbr: 'PR' },
+    { label: 'Absent',   value: absentCount,  color: '#EF4444', abbr: 'AB' },
+    { label: 'Late',     value: lateCount,    color: '#F59E0B', abbr: 'LT' },
+    { label: 'On Leave', value: leaveCount,   color: '#8B5CF6', abbr: 'LV' },
   ];
 
+  const total = records.length;
+
   return (
-    <DashboardLayout title="Attendance" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
+    <DashboardLayout title="Attendance" userName={user?.name || 'Employee'} userRole={user?.role || 'Employee'}>
       {/* Ambient glows */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="absolute -right-[15%] -top-[10%] h-[55vw] w-[55vw] rounded-full bg-blue-600/8 blur-[140px]" />
@@ -82,88 +174,96 @@ export default function AttendancePage() {
       </div>
 
       <div className="relative z-10 space-y-5">
+
+        {/* ── Header ── */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Attendance</h1>
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Attendance
+            </h1>
             <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-              Welcome, <span className="font-semibold text-slate-700 dark:text-slate-300">{displayName}</span> — track daily check-ins, absences, and shift completion.
+              Welcome,{' '}
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{displayName}</span>{' '}
+              — track daily check-ins, absences, and shift completion.
             </p>
           </div>
           <div className="flex gap-3">
-            <button onClick={handleCheckIn} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-300 dark:hover:bg-white/[0.06]" type="button">Check In</button>
-            <button onClick={handleCheckOut} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} type="button">Check Out</button>
+            <button
+              onClick={handleCheckIn}
+              type="button"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-300 dark:hover:bg-white/[0.06]"
+            >
+              Check In
+            </button>
+            <button
+              onClick={handleCheckOut}
+              type="button"
+              className="rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+            >
+              Check Out
+            </button>
           </div>
         </div>
 
-        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl dark:bg-red-500/10 dark:text-red-400">{error}</div>}
+        {/* ── Error banner ── */}
+        {error && (
+          <div className="rounded-xl bg-red-50 p-4 text-red-600 dark:bg-red-500/10 dark:text-red-400">
+            {error}
+          </div>
+        )}
 
+        {/* ── KPI Cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kpiCards.map(([label, value, color, abbr]) => (
+          {kpiCards.map(({ label, value, color, abbr }) => (
             <div
-              key={String(label)}
+              key={label}
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20"
             >
               <div className="mb-4 flex items-center justify-between">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${color}18`, color: String(color) }}>{abbr}</span>
-                <span className="text-xs font-bold text-slate-400">{records.length ? Math.round((Number(value) / records.length) * 100) : 0}%</span>
+                <span
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold"
+                  style={{ background: `${color}18`, color }}
+                >
+                  {abbr}
+                </span>
+                <span className="text-xs font-bold text-slate-400">
+                  {total > 0 ? Math.round((value / total) * 100) : 0}%
+                </span>
               </div>
               <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{value}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {label}
+              </p>
             </div>
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px]">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.02]">
-                  {['Employee', 'Department', 'Check In', 'Check Out', 'Hours', 'Status'].map((col) => (
-                    <th key={col} className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                   <tr><td colSpan={6} className="p-4 text-center text-slate-500">Loading...</td></tr>
-                ) : records.length === 0 ? (
-                   <tr><td colSpan={6} className="p-4 text-center text-slate-500">No records found.</td></tr>
-                ) : records.map((record, index) => {
-                  const empName = record.employeeId?.name || (record as any).name || 'Unknown';
-                  const empDept = record.employeeId?.department || (record as any).department || 'Engineering';
-                  const empId = record.employeeId?.employeeId || record.employeeId?._id || (record as any).id || '-';
-                  const st = record.status || 'Present';
-                  const style = statusStyle[st] || statusStyle.Present;
+        {/* ── Attendance DataTable ── */}
+        <DataTable<ApiAttendance>
+          columns={COLUMNS}
+          data={records}
+          rowKey={(row, i) => row._id ?? i}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search by name or department…"
+          searchKeys={['status'] as any}
+          pageSize={10}
+          minWidth={820}
+          emptyState={
+            <EmptyState
+              icon={
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+              title="No attendance records"
+              description="No records found for the current filter. Try a different search or check back later."
+            />
+          }
+        />
 
-                  return (
-                  <tr key={record._id || index} className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.04] ${index < records.length - 1 ? 'border-b border-slate-100 dark:border-white/[0.05]' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}>
-                          {empName.charAt(0)}
-                        </span>
-                        <span>
-                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{empName}</span>
-                          <span className="block text-xs text-slate-500">{empId}</span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{empDept}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-300">{record.checkIn || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{record.checkOut || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{calculateHours(record.checkIn, record.checkOut)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${style.light} ${style.dark}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                        {st}
-                      </span>
-                    </td>
-                  </tr>
-                )})}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );
