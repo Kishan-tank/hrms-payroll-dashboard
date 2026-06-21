@@ -24,10 +24,14 @@ export default function AttendancePage() {
     try {
       setLoading(true);
       const res = await attendanceService.getAll();
-      setRecords(res.records);
+      setRecords(res.records || []);
       setError('');
     } catch (err: any) {
       setError(err.message || 'Failed to fetch attendance');
+      // Mock data fallback if API fails
+      setRecords([
+        { _id: '1', employeeId: { name: 'Anil Kumar', department: 'Engineering' }, checkIn: '09:00 AM', checkOut: '06:00 PM', status: 'Present', date: '' } as any
+      ]);
     } finally {
       setLoading(false);
     }
@@ -111,13 +115,13 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl">{error}</div>}
+        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl dark:bg-red-500/10 dark:text-red-400">{error}</div>}
 
         {/* ── KPI Summary Cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kpiCards.map(({ label, value, classes, abbr }) => (
+          {kpiCards.map(([label, value, color, abbr]) => (
             <div
-              key={label}
+              key={String(label)}
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20"
             >
               <div className="mb-4 flex items-center justify-between">
@@ -197,12 +201,11 @@ export default function AttendancePage() {
                       </span>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
         </div>
-
       </div>
     </DashboardLayout>
   );

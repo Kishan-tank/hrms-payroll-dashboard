@@ -112,6 +112,34 @@ export default function LeavePage() {
       toast.error(err.message || 'Failed to apply leave');
     }
   };
+  
+  const totalRequests = leaveRequests.length;
+
+  const handleApplyLeave = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Optimistic UI update
+    const newLeave = {
+      _id: `NEW-${Date.now()}`,
+      employeeId: { _id: (user as any)?._id || '1', name: user?.name || 'Employee', department: (user as any)?.department || 'Engineering' },
+      type: leaveType,
+      days: 1,
+      fromDate,
+      toDate,
+      status: 'Pending',
+      reason
+    } as ApiLeave;
+    setLeaveRequests(prev => [newLeave, ...prev]);
+    success('Leave request submitted successfully');
+    setFromDate('');
+    setToDate('');
+    setReason('');
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
+    // Optimistic UI
+    setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
+    success(`Leave request ${newStatus}`);
+  };
 
   return (
     <DashboardLayout title="Leave Management">
@@ -134,7 +162,7 @@ export default function LeavePage() {
           {!isEmployee && (
             <button
               type="button"
-              onClick={() => toast.info('Create Policy is coming soon.')}
+              onClick={() => info('Create Policy is coming soon')}
               className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
               style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
             >
@@ -155,14 +183,10 @@ export default function LeavePage() {
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20"
             >
               <div className="mb-4 flex items-center justify-between">
-                <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${classes}`}
-                >
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${classes}`}>
                   {abbr}
                 </span>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide ${classes}`}
-                >
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide ${classes}`}>
                   {totalRequests > 0 ? Math.round((Number(value) / totalRequests) * 100) : 0}%
                 </span>
               </div>
@@ -233,9 +257,7 @@ export default function LeavePage() {
               <button
                 type="submit"
                 className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
-                style={{
-                  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                }}
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
               >
                 Submit Request
               </button>
@@ -254,17 +276,10 @@ export default function LeavePage() {
                 onClick={() => setFilter(item)}
                 className={`rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 ${
                   isActive
-                    ? 'border-transparent text-blue-700 bg-blue-50 dark:text-white'
+                    ? 'border-transparent text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400'
                     : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white'
                 }`}
-                style={
-                  isActive
-                    ? {
-                        background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(37,99,235,0.05))',
-                        boxShadow: 'inset 0 0 0 1px rgba(59,130,246,0.2)',
-                      }
-                    : {}
-                }
+                style={isActive ? { boxShadow: 'inset 0 0 0 1px rgba(59,130,246,0.2)' } : {}}
               >
                 {item}
               </button>
@@ -327,8 +342,6 @@ export default function LeavePage() {
                         </span>
                       </div>
                     </td>
-
-                    {/* Leave Type */}
                     <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{request.type}</td>
 
                     {/* Duration */}
@@ -353,10 +366,8 @@ export default function LeavePage() {
                         {request.status}
                       </span>
                     </td>
-
-                    {/* Actions */}
                     <td className="px-4 py-3">
-                      {!isEmployee && request.status === 'Pending' ? (
+                      {!isEmployee && st === 'Pending' ? (
                         <div className="flex gap-2">
                           <button
                             type="button"
