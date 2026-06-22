@@ -132,7 +132,7 @@ export default function ProfilePage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
                   activeTab === tab.id 
-                    ? 'bg-slate-900 text-white shadow-md dark:bg-white dark:text-slate-900' 
+                    ? 'bg-slate-900 text-white shadow-md dark:bg-blue-500/10 dark:text-blue-400 dark:shadow-none' 
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
                 }`}
               >

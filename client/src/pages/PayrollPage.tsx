@@ -447,7 +447,7 @@ export default function PayrollPage() {
 
         {/* HR Messages */}
         {!isEmployee && runMsg && (
-          <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${runMsg.startsWith('✅') ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
+          <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${runMsg.startsWith('✅') ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-400' : 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400'}`}>
             {runMsg}
           </div>
         )}
@@ -521,7 +521,7 @@ export default function PayrollPage() {
               {loading || !hrSummaryCards
                 ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)
                 : hrSummaryCards.map(([label, value, sub, color, icon]) => (
-                    <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20">
                       <div className="mb-4 flex items-center justify-between">
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${color}18`, color: String(color) }}>{icon}</span>
                       </div>

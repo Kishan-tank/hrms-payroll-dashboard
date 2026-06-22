@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { employeeService } from '../services/hrmsApi';
-import type { ApiEmployee, AddEmployeePayload } from '../services/hrmsApi';
+import type { ApiEmployee } from '../services/hrmsApi';
 import EmployeeDrawer from '../components/employees/EmployeeDrawer';
 import EmptyState from '../components/common/EmptyState';
 import DataTable from '../components/common/DataTable';
@@ -11,7 +14,24 @@ import StatusBadge from '../components/common/StatusBadge';
 const departments = ['All', 'Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations'];
 const statuses = ['All', 'Active', 'On Leave', 'Inactive'];
 
-const emptyForm: AddEmployeePayload = {
+const employeeSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  employeeId: z.string().min(2, 'Employee ID is required'),
+  email: z.string().email('Please enter a valid email address'),
+  phone: z.string().optional().refine(
+    (val) => !val || /^[+\d\s\-()]{7,15}$/.test(val),
+    { message: 'Please enter a valid phone number' }
+  ),
+  role: z.string().min(2, 'Role is required'),
+  basicPay: z.number({ message: 'Basic pay must be a number' })
+    .positive('Basic pay must be greater than 0'),
+  joinDate: z.string().min(1, 'Join date is required'),
+  department: z.string().min(1, 'Department is required'),
+});
+
+type EmployeeFormData = z.infer<typeof employeeSchema>;
+
+const emptyForm: EmployeeFormData = {
   employeeId: '',
   name: '',
   email: '',
@@ -47,12 +67,22 @@ export default function EmployeeManagement() {
   const [page, setPage] = useState(1);
   const perPage = 7;
 
+  // dropdown states
+  const [isDeptOpen, setIsDeptOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+
   // add/edit modal
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<ApiEmployee | null>(null);
-  const [form, setForm] = useState<AddEmployeePayload>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<EmployeeFormData>({
+    resolver: zodResolver(employeeSchema),
+    defaultValues: emptyForm,
+  });
+
+  const [isFormDeptOpen, setIsFormDeptOpen] = useState(false);
 
   // delete confirm
   const [deleteTarget, setDeleteTarget] = useState<ApiEmployee | null>(null);
@@ -81,15 +111,16 @@ export default function EmployeeManagement() {
   // ── open add modal ────────────────────────────────────────────────────────
   function openAdd() {
     setEditTarget(null);
-    setForm(emptyForm);
+    reset(emptyForm);
     setFormError(null);
+    setIsFormDeptOpen(false);
     setShowModal(true);
   }
 
   // ── open edit modal ───────────────────────────────────────────────────────
   const openEdit = useCallback((emp: ApiEmployee) => {
     setEditTarget(emp);
-    setForm({
+    reset({
       employeeId: emp.employeeId,
       name: emp.name,
       email: emp.email,
@@ -100,31 +131,29 @@ export default function EmployeeManagement() {
       basicPay: emp.basicPay,
     });
     setFormError(null);
+    setIsFormDeptOpen(false);
     setShowModal(true);
-  }, []);
+  }, [reset]);
 
   // ── save (add or update) ─────────────────────────────────────────────────
-  async function handleSave() {
-    if (!form.name || !form.email || !form.employeeId || !form.department || !form.role || !form.joinDate) {
-      setFormError('Please fill in all required fields.');
-      return;
-    }
+  const handleSave = handleSubmit(async (data: EmployeeFormData) => {
     setSaving(true);
     setFormError(null);
     try {
       if (editTarget) {
-        await employeeService.update(editTarget._id, form);
+        await employeeService.update(editTarget._id, data);
       } else {
-        await employeeService.add(form);
+        await employeeService.add(data);
       }
       setShowModal(false);
+      reset(emptyForm);
       void fetchEmployees();
     } catch (err) {
       setFormError((err as Error).message);
     } finally {
       setSaving(false);
     }
-  }
+  });
 
   // ── deactivate ───────────────────────────────────────────────────────────
   async function handleDelete() {
@@ -147,7 +176,7 @@ export default function EmployeeManagement() {
       key: 'employeeId',
       header: 'Employee ID',
       sortable: true,
-      className: 'font-mono text-sm text-blue-600',
+      className: 'font-mono text-sm text-blue-600 dark:text-blue-400',
     },
     {
       key: 'name',
@@ -155,8 +184,8 @@ export default function EmployeeManagement() {
       sortable: true,
       render: (emp) => (
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{emp.name.charAt(0)}</span>
-          <span className="text-sm font-medium text-slate-950">{emp.name}</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white dark:bg-white/10 dark:text-white">{emp.name.charAt(0)}</span>
+          <span className="text-sm font-medium text-slate-950 dark:text-white">{emp.name}</span>
         </div>
       ),
     },
@@ -186,7 +215,7 @@ export default function EmployeeManagement() {
       key: 'basicPay',
       header: 'Basic Pay',
       sortable: true,
-      className: 'font-bold text-slate-950',
+      className: 'font-bold text-slate-950 dark:text-white',
       render: (emp) => `₹${emp.basicPay.toLocaleString('en-IN')}`,
     },
     {
@@ -207,8 +236,8 @@ export default function EmployeeManagement() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-950">Employee Management</h1>
-            <p className="text-sm text-slate-400">{total} employees found</p>
+            <h1 className="text-xl font-bold text-slate-950 dark:text-white">Employee Management</h1>
+            <p className="text-sm text-slate-400 dark:text-slate-500">{total} employees found</p>
           </div>
           <button type="button" onClick={openAdd} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
             <Icon name="plus" /> Add Employee
@@ -218,12 +247,70 @@ export default function EmployeeManagement() {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-slate-400"><Icon name="filter" /></span>
-          <select value={department} onChange={(e) => { setDepartment(e.target.value); setPage(1); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none">
-            {departments.map((d) => <option className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white" key={d}>{d}</option>)}
-          </select>
-          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none">
-            {statuses.map((s) => <option className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white" key={s}>{s}</option>)}
-          </select>
+          
+          {/* Department Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => { setIsDeptOpen(!isDeptOpen); setIsStatusOpen(false); }}
+              className="flex items-center justify-between gap-2 w-40 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121]/50 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              {department}
+              <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isDeptOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+
+            {isDeptOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsDeptOpen(false)} />
+                <div className="absolute left-0 z-50 mt-2 w-48 max-h-64 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+                  {departments.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => { setDepartment(d); setPage(1); setIsDeptOpen(false); }}
+                      className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                        department === d
+                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Status Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => { setIsStatusOpen(!isStatusOpen); setIsDeptOpen(false); }}
+              className="flex items-center justify-between gap-2 w-32 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121]/50 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              {status}
+              <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isStatusOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+
+            {isStatusOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsStatusOpen(false)} />
+                <div className="absolute left-0 z-50 mt-2 w-40 max-h-64 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+                  {statuses.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => { setStatus(s); setPage(1); setIsStatusOpen(false); }}
+                      className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                        status === s
+                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Error banner */}
@@ -270,44 +357,83 @@ export default function EmployeeManagement() {
       {/* ── Add / Edit Modal ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
-            <h2 className="mb-5 text-lg font-bold text-slate-950">{editTarget ? 'Edit Employee' : 'Add New Employee'}</h2>
-            {formError && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</p>}
-            <div className="grid grid-cols-2 gap-4">
-              {([
-                ['Full Name *', 'name', 'text', 'e.g. John Doe'],
-                ['Employee ID *', 'employeeId', 'text', 'e.g. EMP011'],
-                ['Email *', 'email', 'email', 'john@company.com'],
-                ['Phone', 'phone', 'tel', '+91 98765 43210'],
-                ['Role *', 'role', 'text', 'Software Developer'],
-                ['Basic Pay (₹) *', 'basicPay', 'number', '50000'],
-                ['Join Date *', 'joinDate', 'date', ''],
-              ] as [string, keyof AddEmployeePayload, string, string][]).map(([label, field, type, placeholder]) => (
-                <label key={field} className="block">
-                  <span className="mb-1 block text-xs font-medium text-slate-700">{label}</span>
-                  <input
-                    type={type}
-                    placeholder={placeholder}
-                    value={String(form[field] ?? '')}
-                    onChange={(e) => setForm((prev) => ({ ...prev, [field]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-              ))}
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-700">Department *</span>
-                <select value={form.department} onChange={(e) => setForm((prev) => ({ ...prev, department: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none focus:border-blue-300">
-                  {departments.filter((d) => d !== 'All').map((d) => <option className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white" key={d}>{d}</option>)}
-                </select>
-              </label>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setShowModal(false)} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">Cancel</button>
-              <button type="button" onClick={() => void handleSave()} disabled={saving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-70">
-                {saving && <Icon name="spinner" />}
-                {editTarget ? 'Save Changes' : 'Add Employee'}
-              </button>
-            </div>
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+            <h2 className="mb-5 text-lg font-bold text-slate-950 dark:text-white">{editTarget ? 'Edit Employee' : 'Add New Employee'}</h2>
+            {formError && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">{formError}</p>}
+            <form onSubmit={(e) => { e.preventDefault(); void handleSave(); }}>
+              <div className="grid grid-cols-2 gap-4">
+                {([
+                  ['Full Name *', 'name', 'text', 'e.g. John Doe'],
+                  ['Employee ID *', 'employeeId', 'text', 'e.g. EMP011'],
+                  ['Email *', 'email', 'email', 'john@company.com'],
+                  ['Phone', 'phone', 'tel', '+91 98765 43210'],
+                  ['Role *', 'role', 'text', 'Software Developer'],
+                  ['Basic Pay (₹) *', 'basicPay', 'number', '50000'],
+                  ['Join Date *', 'joinDate', 'date', ''],
+                ] as [string, keyof EmployeeFormData, string, string][]).map(([label, field, type, placeholder]) => (
+                  <label key={field} className="block">
+                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                    <input
+                      type={type}
+                      placeholder={placeholder}
+                      {...register(field, { valueAsNumber: type === 'number' })}
+                      className={`w-full rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none focus:ring-2 dark:bg-white/5 dark:text-white [color-scheme:light] dark:[color-scheme:dark] ${errors[field] ? 'border-red-300 focus:border-red-400 focus:ring-red-100 dark:border-red-500/50 dark:focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-300 focus:ring-blue-100 dark:border-white/10 dark:focus:border-blue-500 dark:focus:ring-blue-500/20'}`}
+                    />
+                    {errors[field] && (
+                      <p className="mt-1 text-xs text-red-500 dark:text-red-400">
+                        {errors[field]?.message}
+                      </p>
+                    )}
+                  </label>
+                ))}
+                <div className="block relative">
+                  <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">Department *</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsFormDeptOpen(!isFormDeptOpen)}
+                    className={`flex items-center justify-between gap-2 w-full rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none dark:bg-white/5 dark:text-white ${errors.department ? 'border-red-300 focus:border-red-400 focus:ring-red-100 dark:border-red-500/50 dark:focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-300 dark:border-white/10 dark:focus:border-blue-500'}`}
+                  >
+                    <span className={watch('department') ? '' : 'text-slate-400 dark:text-slate-500'}>
+                      {watch('department') || 'Select Department'}
+                    </span>
+                    <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isFormDeptOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  {isFormDeptOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsFormDeptOpen(false)} />
+                      <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-none">
+                        {departments.filter((d) => d !== 'All').map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => { setValue('department', d, { shouldValidate: true, shouldDirty: true }); setIsFormDeptOpen(false); }}
+                            className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+                              watch('department') === d
+                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                                : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {errors.department && (
+                    <p className="mt-1 text-xs text-red-500 dark:text-red-400">
+                      {errors.department.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" onClick={() => { setShowModal(false); reset(emptyForm); setIsFormDeptOpen(false); }} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">Cancel</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-70 dark:bg-blue-500 dark:hover:bg-blue-600">
+                  {saving && <Icon name="spinner" />}
+                  {editTarget ? 'Save Changes' : 'Add Employee'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -315,14 +441,14 @@ export default function EmployeeManagement() {
       {/* ── Delete Confirm ── */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
-            <h2 className="mb-2 text-lg font-bold text-slate-950">Deactivate Employee?</h2>
-            <p className="mb-5 text-sm text-slate-500">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+            <h2 className="mb-2 text-lg font-bold text-slate-950 dark:text-white">Deactivate Employee?</h2>
+            <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
               This will mark <strong>{deleteTarget.name}</strong> as Inactive. They can be re-activated later.
             </p>
             <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setDeleteTarget(null)} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">Cancel</button>
-              <button type="button" onClick={() => void handleDelete()} disabled={deleting} className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-70">
+              <button type="button" onClick={() => setDeleteTarget(null)} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">Cancel</button>
+              <button type="button" onClick={() => void handleDelete()} disabled={deleting} className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-70 dark:bg-red-500 dark:hover:bg-red-600">
                 {deleting && <Icon name="spinner" />} Deactivate
               </button>
             </div>
