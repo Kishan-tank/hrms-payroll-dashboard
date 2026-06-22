@@ -26,16 +26,17 @@ type LeaveFormData = z.infer<typeof leaveSchema>;
 export default function LeavePage() {
   const { user } = useAuth();
   const { success, info } = useToast();
-  
-  const isEmployee = user?.role === 'employee';
+  // Safely check role regardless of casing
+  const normalizedRole = user?.role?.toLowerCase() || '';
+  const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
   const displayName = user?.name || 'HR Manager';
 
   const [leaveRequests, setLeaveRequests] = useState<ApiLeave[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [filter, setFilter] = useState('All');
-  
+
   // Employee Form State
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<LeaveFormData>({
     resolver: zodResolver(leaveSchema),
@@ -44,7 +45,6 @@ export default function LeavePage() {
 
   const [isFormLeaveTypeOpen, setIsFormLeaveTypeOpen] = useState(false);
   const leaveTypeOptions = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Work From Home', 'Optional Holiday'];
-  
   const filters = ['All', 'Pending', 'Approved', 'Rejected'];
 
   const fetchLeaves = useCallback(async () => {
@@ -75,36 +75,54 @@ export default function LeavePage() {
   }, [fetchLeaves]);
 
   const filtered = useMemo(() => (filter === 'All' ? leaveRequests : leaveRequests.filter((item) => item.status === filter)), [filter, leaveRequests]);
-  
+
   const counts = {
     Pending: leaveRequests.filter((item) => item.status === 'Pending').length,
     Approved: leaveRequests.filter((item) => item.status === 'Approved').length,
     Rejected: leaveRequests.filter((item) => item.status === 'Rejected').length,
   };
-  
+
   const totalRequests = leaveRequests.length;
 
-  const handleApplyLeave = handleSubmit((data: LeaveFormData) => {
-    // Optimistic UI update
-    const newLeave = {
-      _id: `NEW-${Date.now()}`,
-      employeeId: { _id: (user as any)?._id || '1', name: user?.name || 'Employee', department: (user as any)?.department || 'Engineering' },
-      type: data.leaveType,
-      days: 1,
-      fromDate: data.fromDate,
-      toDate: data.toDate,
-      status: 'Pending',
-      reason: data.reason
-    } as ApiLeave;
-    setLeaveRequests(prev => [newLeave, ...prev]);
-    success('Leave request submitted successfully');
-    reset();
+  const handleApplyLeave = handleSubmit(async (data: LeaveFormData) => {
+    try {
+      // Calculate days
+      const start = new Date(data.fromDate);
+      const end = new Date(data.toDate);
+      const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
+
+      await leaveService.apply({
+        employeeId: (user as any)?._id || 'placeholder', // Backend will auto-resolve if employee
+        type: data.leaveType,
+        fromDate: data.fromDate,
+        toDate: data.toDate,
+        days,
+        reason: data.reason
+      });
+
+      success('Leave request submitted successfully');
+      reset();
+      
+      // Refetch from backend to get the real saved data
+      await fetchLeaves();
+    } catch (err: any) {
+      setError(err.message || 'Failed to apply for leave');
+    }
   });
 
   const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
-    // Optimistic UI
-    setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
-    success(`Leave request ${newStatus}`);
+    try {
+      // 1. Send the request to the backend
+      await leaveService.updateStatus(id, newStatus);
+
+      // 2. Update the UI only on success
+      setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
+      success(`Leave request ${newStatus}`);
+    } catch (err: any) {
+      console.error(err);
+      // Let the user know if they don't have permission or if it fails
+      success(err.response?.data?.message || 'Failed to update leave status');
+    }
   }, [success]);
 
   // ── Columns defined inside component — Actions column closes over
@@ -156,7 +174,7 @@ export default function LeavePage() {
       header: 'Dates',
       render: (row) => {
         const fromStr = row.fromDate?.split('T')[0] || (row as any).from;
-        const toStr   = row.toDate?.split('T')[0]   || (row as any).to;
+        const toStr = row.toDate?.split('T')[0] || (row as any).to;
         return (
           <span className="text-sm text-slate-500 dark:text-slate-400">
             {fromStr} <span className="px-1 text-slate-400">→</span> {toStr}
@@ -233,8 +251,8 @@ export default function LeavePage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           {[
-            ['Pending',  counts.Pending,  'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20', isEmployee ? 'Your pending requests' : 'Needs approval', 'PE'],
-            ['Approved', counts.Approved, 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20', isEmployee ? 'Your approved leaves' : 'This month',     'AP'],
+            ['Pending', counts.Pending, 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20', isEmployee ? 'Your pending requests' : 'Needs approval', 'PE'],
+            ['Approved', counts.Approved, 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20', isEmployee ? 'Your approved leaves' : 'This month', 'AP'],
             ['Rejected', counts.Rejected, 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20', isEmployee ? 'Your rejected leaves' : 'Policy conflicts', 'RJ'],
           ].map(([label, value, classes, sub, abbr]) => (
             <div
@@ -353,11 +371,10 @@ export default function LeavePage() {
                 key={item}
                 type="button"
                 onClick={() => setFilter(item)}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 ${
-                  isActive
-                    ? 'border-transparent text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400'
-                    : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white'
-                }`}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 ${isActive
+                  ? 'border-transparent text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400'
+                  : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white'
+                  }`}
                 style={isActive ? { boxShadow: 'inset 0 0 0 1px rgba(59,130,246,0.2)' } : {}}
               >
                 {item}

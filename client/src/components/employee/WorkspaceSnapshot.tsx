@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, animate } from 'framer-motion';
 import { Clock, Umbrella, DollarSign, CheckSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import type { EmployeeSummary } from '../../services/hrmsApi';
 
 function CountUp({ end, suffix = "", prefix = "" }: { end: number | string, suffix?: string, prefix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -149,18 +150,18 @@ function KpiCard({ icon, iconGradient, glowColor, label, value, suffix, sub, ind
   );
 }
 
-export default function WorkspaceSnapshot() {
+export default function WorkspaceSnapshot({ summary }: { summary?: EmployeeSummary | null }) {
   const cards: KpiCardProps[] = [
     {
       icon: <Clock size={18} className="text-white" />,
       iconGradient: "linear-gradient(135deg, #3b82f6, #2563eb)",
       glowColor: "rgba(59,130,246,0.3)",
       label: "Attendance Rate",
-      value: 94,
+      value: summary?.workspace.attendanceRate || 0,
       suffix: "%",
-      sub: "This month · 22 of 23 days",
-      indicator: "up",
-      progress: 94,
+      sub: "This month",
+      indicator: "neutral",
+      progress: summary?.workspace.attendanceRate || 0,
       badgeColor: "#3b82f6",
       sparklineData: [88, 90, 89, 92, 94, 94, 94],
       route: '/attendance',
@@ -170,11 +171,11 @@ export default function WorkspaceSnapshot() {
       iconGradient: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
       glowColor: "rgba(139,92,246,0.3)",
       label: "Leave Balance",
-      value: 18,
+      value: summary?.payrollLeave.leaveBalance || 0,
       sub: "Days remaining · Annual",
-      badge: "Healthy",
+      badge: (summary?.payrollLeave.leaveBalance || 0) > 5 ? "Healthy" : "Low",
       badgeColor: "#10b981",
-      progress: 50,
+      progress: Math.min(100, Math.round(((summary?.payrollLeave.leaveBalance || 0) / 24) * 100)),
       sparklineData: [22, 22, 20, 20, 18, 18],
       route: '/leave',
     },
@@ -183,11 +184,11 @@ export default function WorkspaceSnapshot() {
       iconGradient: "linear-gradient(135deg, #10b981, #059669)",
       glowColor: "rgba(16,185,129,0.3)",
       label: "Payroll Status",
-      value: "✓",
-      sub: "Last updated Jun 1 · On time",
-      badge: "Updated",
-      badgeColor: "#10b981",
-      progress: 100,
+      value: summary?.payrollLeave.payrollStatus === 'Paid' ? "✓" : (summary?.payrollLeave.payrollStatus || "Pending"),
+      sub: `Current Month · ${summary?.payrollLeave.payrollStatus || "Pending"}`,
+      badge: summary?.payrollLeave.payrollStatus === 'Paid' ? "Paid" : "Action",
+      badgeColor: summary?.payrollLeave.payrollStatus === 'Paid' ? "#10b981" : "#f59e0b",
+      progress: summary?.payrollLeave.payrollStatus === 'Paid' ? 100 : 50,
       route: '/payroll',
     },
     {
