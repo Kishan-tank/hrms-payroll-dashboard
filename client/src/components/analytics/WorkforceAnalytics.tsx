@@ -47,8 +47,8 @@ export default function WorkforceAnalytics({ employees, loading, CustomTooltip }
         {/* Employees by Department */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Employees by Department</h2>
-          {loading ? <div className="h-72 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
-            <div className="h-72">
+          {loading ? <div className="h-[300px] min-h-[300px] w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
+            <div className="h-[300px] min-h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={deptData} layout="vertical" margin={{ left: 30 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
@@ -69,8 +69,8 @@ export default function WorkforceAnalytics({ employees, loading, CustomTooltip }
         {/* Employees by Role */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Top Roles</h2>
-          {loading ? <div className="h-72 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
-            <div className="h-72">
+          {loading ? <div className="h-[300px] min-h-[300px] w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
+            <div className="h-[300px] min-h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={roleData} margin={{ bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
@@ -87,8 +87,8 @@ export default function WorkforceAnalytics({ employees, loading, CustomTooltip }
         {/* Active vs Inactive */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Workforce Status</h2>
-          {loading ? <div className="h-72 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
-            <div className="h-72">
+          {loading ? <div className="h-[300px] min-h-[300px] w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
+            <div className="h-[300px] min-h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

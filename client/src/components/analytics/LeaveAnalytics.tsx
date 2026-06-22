@@ -50,8 +50,8 @@ export default function LeaveAnalytics({ leaveRecords, leaveByType, loading, Cus
         {/* Leave Type Distribution */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Type Distribution</h2>
-          {loading ? <div className="h-72 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
-            <div className="h-72">
+          {loading ? <div className="h-[300px] min-h-[300px] w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
+            <div className="h-[300px] min-h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -79,8 +79,8 @@ export default function LeaveAnalytics({ leaveRecords, leaveByType, loading, Cus
         {/* Leave Trend */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Leave Trend</h2>
-          {loading ? <div className="h-72 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
-            <div className="h-72">
+          {loading ? <div className="h-[300px] min-h-[300px] w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
+            <div className="h-[300px] min-h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={leaveTrend}>
                   <defs>
@@ -103,8 +103,8 @@ export default function LeaveAnalytics({ leaveRecords, leaveByType, loading, Cus
         {/* Department Leave Usage */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Department Usage</h2>
-          {loading ? <div className="h-72 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
-            <div className="h-72">
+          {loading ? <div className="h-[300px] min-h-[300px] w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" /> : (
+            <div className="h-[300px] min-h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={deptLeave} layout="vertical" margin={{ left: 30 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
@@ -124,7 +124,7 @@ export default function LeaveAnalytics({ leaveRecords, leaveByType, loading, Cus
             <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-400">Approval Rate</h2>
             <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-inset ring-white/10">MOCK</span>
           </div>
-          <div className="h-72">
+          <div className="h-[300px] min-h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={mockApprovalRateTrend}>
                 <defs>

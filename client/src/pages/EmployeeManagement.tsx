@@ -418,36 +418,101 @@ export default function EmployeeManagement() {
           </div>
         )}
 
-        {/* Table */}
-        <DataTable
-          columns={columns}
-          data={employees}
-          rowKey={(row) => row._id}
-          loading={loading}
-          searchable
-          searchPlaceholder="Search employees..."
-          onSearch={(q) => { setSearch(q); setPage(1); }}
-          onPageChange={(p) => setPage(p)}
-          totalItems={total}
-          currentPage={page}
-          pageSize={perPage}
-          onRowClick={(emp) => setSelectedEmployee(emp)}
-          minWidth={900}
-          emptyState={
-            <EmptyState
-              icon={<Icon name="search" />}
-              title="No Employees Found"
-              description="Try adjusting your filters or add a new employee."
-              actionLabel="Add Employee"
-              onAction={openAdd}
-            />
-          }
-        />
+        {/* Table - Desktop Only */}
+        <div className="hidden md:block">
+          <DataTable
+            columns={columns}
+            data={employees}
+            rowKey={(row) => row._id}
+            loading={loading}
+            searchable
+            searchPlaceholder="Search employees..."
+            onSearch={(q) => { setSearch(q); setPage(1); }}
+            onPageChange={(p) => setPage(p)}
+            totalItems={total}
+            currentPage={page}
+            pageSize={perPage}
+            onRowClick={(emp) => setSelectedEmployee(emp)}
+            minWidth={900}
+            emptyState={
+              <EmptyState
+                icon={<Icon name="search" />}
+                title="No Employees Found"
+                description="Try adjusting your filters or add a new employee."
+                actionLabel="Add Employee"
+                onAction={openAdd}
+              />
+            }
+          />
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="flex flex-col gap-3 md:hidden">
+          {employees.map((emp) => (
+            <div 
+              key={emp._id} 
+              className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]"
+              onClick={() => setSelectedEmployee(emp)}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow-sm">
+                    {emp.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">{emp.name}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{emp.employeeId}</p>
+                  </div>
+                </div>
+                <StatusBadge status={emp.status} />
+              </div>
+              <div className="grid grid-cols-2 gap-y-2 text-xs mb-4">
+                <div>
+                  <p className="text-slate-400">Department</p>
+                  <p className="font-semibold text-slate-700 dark:text-slate-300">{emp.department}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Role</p>
+                  <p className="font-semibold text-slate-700 dark:text-slate-300">{emp.role}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Join Date</p>
+                  <p className="font-semibold text-slate-700 dark:text-slate-300">{new Date(emp.joinDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Basic Pay</p>
+                  <p className="font-semibold text-slate-700 dark:text-slate-300">₹{emp.basicPay.toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openEdit(emp); }}
+                  className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(emp); }}
+                  className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+                >
+                  Deactivate
+                </button>
+              </div>
+            </div>
+          ))}
+          {employees.length === 0 && !loading && (
+            <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+              <p className="text-sm font-semibold text-slate-500">No employees found.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Floating Bulk Action Bar ── */}
       {selectedRowIds.size > 0 && (
-        <div className="fixed bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-full border border-slate-200 bg-white/90 px-6 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md dark:border-white/10 dark:bg-[#0B1121]/90 dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
+        <div className="fixed bottom-8 left-1/2 z-50 hidden -translate-x-1/2 md:flex items-center gap-4 rounded-full border border-slate-200 bg-white/90 px-6 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md dark:border-white/10 dark:bg-[#0B1121]/90 dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
           <div className="flex items-center gap-2 border-r border-slate-200 pr-4 dark:border-white/10">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
               {selectedRowIds.size}

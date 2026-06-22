@@ -368,42 +368,120 @@ export default function LeavePage() {
 
         {/* ── Leave Requests DataTable ── */}
         {/* data={filtered} — receives the pill-filtered slice, not raw leaveRequests */}
-        <DataTable<ApiLeave>
-          columns={columns}
-          data={filtered}
-          rowKey={(row, i) => row._id ?? i}
-          loading={loading}
-          searchable
-          searchPlaceholder="Search by name, department, or leave type…"
-          getSearchText={(row) =>
-            [
-              row.employeeId?.name,
-              row.employeeId?.department,
-              row.type,
-              row.status,
-            ]
-              .filter(Boolean)
-              .join(' ')
-          }
-          pageSize={10}
-          minWidth={900}
-          emptyState={
-            <EmptyState
-              icon={
-                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              }
-              title="No leave requests found"
-              description={
-                filter === 'All'
-                  ? 'No leave requests have been submitted yet.'
-                  : `No ${filter.toLowerCase()} requests found.`
-              }
-            />
-          }
-        />
+        {/* Table - Desktop */}
+        <div className="hidden md:block">
+          <DataTable<ApiLeave>
+            columns={columns}
+            data={filtered}
+            rowKey={(row, i) => row._id ?? i}
+            loading={loading}
+            searchable
+            searchPlaceholder="Search by name, department, or leave type…"
+            getSearchText={(row) =>
+              [
+                row.employeeId?.name,
+                row.employeeId?.department,
+                row.type,
+                row.status,
+              ]
+                .filter(Boolean)
+                .join(' ')
+            }
+            pageSize={10}
+            minWidth={900}
+            emptyState={
+              <EmptyState
+                icon={
+                  <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                }
+                title="No leave requests found"
+                description={
+                  filter === 'All'
+                    ? 'No leave requests have been submitted yet.'
+                    : `No ${filter.toLowerCase()} requests found.`
+                }
+              />
+            }
+          />
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="flex flex-col gap-3 md:hidden">
+          {filtered.map((leave, i) => {
+            const empName = leave.employeeId?.name || (leave as any).name || 'Unknown';
+            const empDept = leave.employeeId?.department || (leave as any).department || 'Engineering';
+            const fromStr = leave.fromDate?.split('T')[0] || (leave as any).from;
+            const toStr   = leave.toDate?.split('T')[0]   || (leave as any).to;
+            const st = leave.status || 'Pending';
+
+            return (
+              <div 
+                key={leave._id ?? i} 
+                className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+                      style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+                    >
+                      {empName.charAt(0)}
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{empName}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{empDept}</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={st} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-y-2 text-xs mb-4">
+                  <div>
+                    <p className="text-slate-400">Leave Type</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">{leave.type}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Duration</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">{leave.days}d</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-400">Dates</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">
+                      {fromStr} <span className="text-slate-400 mx-1">&rarr;</span> {toStr}
+                    </p>
+                  </div>
+                </div>
+
+                {!isEmployee && st === 'Pending' && (
+                  <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus(leave._id as string, 'Approved')}
+                      className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus(leave._id as string, 'Rejected')}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {filtered.length === 0 && !loading && (
+            <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+              <p className="text-sm font-semibold text-slate-500">No leave requests found.</p>
+            </div>
+          )}
+        </div>
 
       </div>
     </DashboardLayout>

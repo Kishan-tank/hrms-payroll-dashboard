@@ -350,24 +350,63 @@ export default function EmployeeAttendanceWorkspace({
 
         {/* My History Table */}
         <div className="lg:col-span-3">
-          <DataTable<ApiAttendance>
-            columns={MY_COLUMNS}
-            data={myRecords}
-            rowKey={(row, i) => row._id ?? i}
-            loading={loading}
-            searchable
-            searchPlaceholder="Search history..."
-            getSearchText={(record) => [record.status, record.date].filter(Boolean).join(' ')}
-            pageSize={5}
-            minWidth={600}
-            emptyState={
-              <EmptyState
-                icon={<CalendarDays className="h-8 w-8" />}
-                title="No attendance records"
-                description="Your attendance history will appear here once you start checking in."
-              />
-            }
-          />
+          <div className="hidden md:block">
+            <DataTable<ApiAttendance>
+              columns={MY_COLUMNS}
+              data={myRecords}
+              rowKey={(row, i) => row._id ?? i}
+              loading={loading}
+              searchable
+              searchPlaceholder="Search history..."
+              getSearchText={(record) => [record.status, record.date].filter(Boolean).join(' ')}
+              pageSize={5}
+              minWidth={600}
+              emptyState={
+                <EmptyState
+                  icon={<CalendarDays className="h-8 w-8" />}
+                  title="No attendance records"
+                  description="Your attendance history will appear here once you start checking in."
+                />
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-3 md:hidden">
+            {myRecords.map((record, i) => (
+              <div 
+                key={record._id ?? i} 
+                className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      {record.date ? new Date(record.date).toLocaleDateString() : '—'}
+                    </h3>
+                  </div>
+                  <StatusBadge status={record.status ?? 'Present'} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-y-2 text-xs">
+                  <div>
+                    <p className="text-slate-400">Check In</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">{record.checkIn ?? '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Check Out</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">{record.checkOut ?? '-'}</p>
+                  </div>
+                  <div className="col-span-2 mt-1">
+                    <p className="text-slate-400">Hours</p>
+                    <p className="font-bold text-slate-900 dark:text-white">{calculateHours(record.checkIn, record.checkOut)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {myRecords.length === 0 && !loading && (
+              <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+                <p className="text-sm font-semibold text-slate-500">Your attendance history will appear here once you start checking in.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
