@@ -116,11 +116,13 @@ export interface EmployeeSummary {
   workspace: {
     attendanceStatus: string;
     checkInTime: string | null;
+    attendanceRate?: number;
   };
   payrollLeave: {
     leavesTaken: number;
     leaveBalance: number;
     latestNetPay: number;
+    payrollStatus?: string;
   };
 }
 

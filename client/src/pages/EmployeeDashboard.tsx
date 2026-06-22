@@ -164,7 +164,7 @@ export default function EmployeeDashboard() {
         
         {/* ROW 2: Snapshot Cards */}
         <motion.div custom={0.05} variants={fade} initial="hidden" animate="visible">
-          <WorkspaceSnapshot />
+          <WorkspaceSnapshot summary={summary} />
         </motion.div>
 
         {/* ROW 2.5: Productivity Overview */}
@@ -174,7 +174,7 @@ export default function EmployeeDashboard() {
 
         {/* ROW 3: Payroll & Leave Analytics */}
         <motion.div custom={0.10} variants={fade} initial="hidden" animate="visible">
-          <PayrollAndLeave />
+          <PayrollAndLeave summary={summary} />
         </motion.div>
 
         {/* ROW 4: Skills & Achievements */}

@@ -28,13 +28,23 @@ export const getLeaves = async (req, res) => {
 // Employee applies for a new leave
 export const applyLeave = async (req, res) => {
   try {
-    const { employeeId, type, fromDate, toDate, days } = req.body;
+    let { employeeId, type, fromDate, toDate, days, reason } = req.body;
 
-    // Validation (Jyoti's QA Task #10)
+    // Auto-resolve employeeId for employees to prevent spoofing
+    if (req.user?.role === "employee") {
+      const userId = req.user?._id || req.user?.id;
+      const employee = await Employee.findOne({ userId });
+      if (!employee) {
+        return res.status(404).json({ success: false, message: "Employee profile not found" });
+      }
+      employeeId = employee._id;
+    }
+
+    // Validation
     if (!employeeId || !type || !fromDate || !toDate || !days) {
       return res.status(400).json({ 
         success: false, 
-        message: "Missing required fields. Please provide employeeId, type, fromDate, toDate, and days." 
+        message: "Missing required fields. Please provide type, fromDate, toDate, and days." 
       });
     }
 
@@ -42,7 +52,7 @@ export const applyLeave = async (req, res) => {
       return res.status(400).json({ success: false, message: "Leave days must be greater than zero." });
     }
 
-    const newLeave = await Leave.create(req.body);
+    const newLeave = await Leave.create({ employeeId, type, fromDate, toDate, days, reason, status: 'Pending' });
     res.status(201).json({ success: true, message: "Leave applied successfully.", leave: newLeave });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to apply leave.", error: error.message });

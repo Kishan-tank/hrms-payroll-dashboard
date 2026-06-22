@@ -68,24 +68,33 @@ export default function LeavePage() {
 
   const totalRequests = leaveRequests.length;
 
-  const handleApplyLeave = (e: React.FormEvent) => {
+  const handleApplyLeave = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Optimistic UI update
-    const newLeave = {
-      _id: `NEW-${Date.now()}`,
-      employeeId: { _id: (user as any)?._id || '1', name: user?.name || 'Employee', department: (user as any)?.department || 'Engineering' },
-      type: leaveType,
-      days: 1,
-      fromDate,
-      toDate,
-      status: 'Pending',
-      reason
-    } as ApiLeave;
-    setLeaveRequests(prev => [newLeave, ...prev]);
-    success('Leave request submitted successfully');
-    setFromDate('');
-    setToDate('');
-    setReason('');
+    try {
+      // Calculate days
+      const start = new Date(fromDate);
+      const end = new Date(toDate);
+      const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
+
+      await leaveService.apply({
+        employeeId: (user as any)?._id || 'placeholder', // Backend will auto-resolve if employee
+        type: leaveType,
+        fromDate,
+        toDate,
+        days,
+        reason
+      });
+
+      success('Leave request submitted successfully');
+      setFromDate('');
+      setToDate('');
+      setReason('');
+      
+      // Refetch from backend to get the real saved data
+      await fetchLeaves();
+    } catch (err: any) {
+      setError(err.message || 'Failed to apply for leave');
+    }
   };
 
   const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Download, DollarSign, Calendar, TrendingUp, ArrowUpRight, FileText, Shield, Info } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Sector } from 'recharts';
+import type { EmployeeSummary } from '../../services/hrmsApi';
 
 const salaryTrend = [
   { month: 'Jan', salary: 82000 },
@@ -11,12 +12,8 @@ const salaryTrend = [
   { month: 'Jun', salary: 95000 },
 ];
 
-const leaveData = [
-  { name: 'Annual Leave', value: 12, color: '#3b82f6' },
-  { name: 'Sick Leave', value: 3, color: '#8b5cf6' },
-  { name: 'Casual Leave', value: 3, color: '#06b6d4' },
-  { name: 'Remaining', value: 18, color: 'rgba(255,255,255,0.06)' },
-];
+// Fallback data for the trend chart
+
 
 function SalaryTooltip({ active, payload, label }: any) {
   if (active && payload?.length) {
@@ -58,19 +55,30 @@ const renderActiveShape = (props: any) => {
 
 const AnyPie = Pie as any;
 
-export default function PayrollAndLeave() {
+export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary | null }) {
   const [activeIndex, setActiveIndex] = useState(3); // Default to 'Remaining'
-  
+
   const onPieEnter = (_: any, index: number) => {
     setActiveIndex(index);
   };
+
+  const leavesTaken = summary?.payrollLeave.leavesTaken || 0;
+  const leaveBalance = summary?.payrollLeave.leaveBalance || 0;
+
+  // We map the total leaves taken into some dummy breakdown for the pie chart, but use the real total
+  const leaveData = useMemo(() => [
+    { name: 'Leaves Taken', value: leavesTaken, color: '#3b82f6' },
+    { name: 'Sick Leave', value: 0, color: '#8b5cf6' }, // Phase 2
+    { name: 'Casual Leave', value: 0, color: '#06b6d4' }, // Phase 2
+    { name: 'Remaining', value: leaveBalance, color: 'rgba(255,255,255,0.06)' },
+  ], [leavesTaken, leaveBalance]);
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <div className="flex flex-col gap-3 rounded-[20px] border border-slate-200 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden hover:border-emerald-500/30 transition-colors duration-300 dark:border-white/5 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-emerald-500/20">
         {/* Ambient Glow */}
         <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-40 transition-opacity duration-300 hover:opacity-60"
-             style={{ background: "radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 65%)" }} />
+          style={{ background: "radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 65%)" }} />
 
         <div className="flex items-start justify-between z-10">
           <div>
@@ -87,15 +95,17 @@ export default function PayrollAndLeave() {
           <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 shadow-sm hover:bg-slate-100 transition-colors dark:border-white/5 dark:bg-white/[0.02] dark:hover:bg-white/[0.03]">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg shadow-[0_4px_12px_rgba(16,185,129,0.25)]"
-                   style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
+                style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
                 <DollarSign size={15} className="text-white" />
               </div>
               <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">Net Salary</span>
             </div>
             <div>
-              <div className="text-[26px] font-extrabold tracking-tight text-slate-900 dark:text-white">₹95,000</div>
+              <div className="text-[26px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                ₹{((summary?.payrollLeave.latestNetPay || 0)).toLocaleString()}
+              </div>
               <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-500">
-                <ArrowUpRight size={12} /> +₹5,500 from last month
+                <ArrowUpRight size={12} /> Real-time tracking
               </div>
             </div>
           </div>
@@ -104,7 +114,7 @@ export default function PayrollAndLeave() {
           <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 shadow-sm hover:bg-slate-100 transition-colors dark:border-white/5 dark:bg-white/[0.02] dark:hover:bg-white/[0.03]">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg shadow-[0_4px_12px_rgba(59,130,246,0.25)]"
-                   style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}>
+                style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}>
                 <Calendar size={15} className="text-white" />
               </div>
               <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">Next Credit</span>
@@ -164,7 +174,7 @@ export default function PayrollAndLeave() {
       <div className="flex flex-col gap-3 rounded-[20px] border border-slate-200 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden hover:border-purple-500/30 transition-colors duration-300 dark:border-white/5 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-purple-500/20">
         {/* Ambient Glow */}
         <div className="pointer-events-none absolute -left-16 -top-16 h-64 w-64 rounded-full opacity-40 transition-opacity duration-300 hover:opacity-60"
-             style={{ background: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 65%)" }} />
+          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 65%)" }} />
 
         <div className="flex items-start justify-between z-10">
           <div>
@@ -180,16 +190,16 @@ export default function PayrollAndLeave() {
           <div className="relative shrink-0 w-[150px] h-[150px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <AnyPie 
-                  data={leaveData.slice(0, 3)} 
-                  cx="50%" 
-                  cy="75%" 
-                  innerRadius={60} 
-                  outerRadius={75} 
+                <AnyPie
+                  data={leaveData.slice(0, 3)}
+                  cx="50%"
+                  cy="75%"
+                  innerRadius={60}
+                  outerRadius={75}
                   startAngle={0}
                   endAngle={180}
-                  paddingAngle={4} 
-                  dataKey="value" 
+                  paddingAngle={4}
+                  dataKey="value"
                   strokeWidth={0}
                   activeIndex={activeIndex > 2 ? -1 : activeIndex}
                   activeShape={renderActiveShape}
@@ -205,7 +215,7 @@ export default function PayrollAndLeave() {
             {(activeIndex === -1 || activeIndex === 3) && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end pb-8">
                 <div className="text-[26px] font-extrabold text-slate-900 tracking-tight dark:text-white">
-                  {activeIndex === 3 ? 18 : 18}
+                  {activeIndex === 3 ? leaveBalance : leaveBalance}
                 </div>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   {activeIndex === 3 ? 'Days Available' : 'Total Used'}
@@ -216,8 +226,8 @@ export default function PayrollAndLeave() {
 
           <div className="flex flex-1 flex-col justify-center gap-3">
             {leaveData.slice(0, 3).map((item, idx) => (
-              <div 
-                key={item.name} 
+              <div
+                key={item.name}
                 className={`flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer ${activeIndex === idx ? 'bg-slate-100 border border-slate-200 dark:bg-white/10 dark:border-white/5' : 'hover:bg-slate-50 border border-transparent dark:hover:bg-white/5'}`}
                 onMouseEnter={() => setActiveIndex(idx)}
               >
@@ -229,7 +239,7 @@ export default function PayrollAndLeave() {
               </div>
             ))}
             <div className="h-px w-full bg-slate-200 my-1 dark:bg-white/5" />
-            <div 
+            <div
               className={`flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer ${activeIndex === 3 ? 'bg-slate-100 border border-slate-200 dark:bg-white/10 dark:border-white/5' : 'hover:bg-slate-50 border border-transparent dark:hover:bg-white/5'}`}
               onMouseEnter={() => setActiveIndex(3)}
             >
@@ -237,7 +247,7 @@ export default function PayrollAndLeave() {
                 <div className="h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-600" />
                 <span className={`text-[13px] font-bold ${activeIndex === 3 ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-500'}`}>Remaining</span>
               </div>
-              <span className={`text-[14px] font-extrabold ${activeIndex === 3 ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>18d</span>
+              <span className={`text-[14px] font-extrabold ${activeIndex === 3 ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{leaveBalance}d</span>
             </div>
           </div>
         </div>
