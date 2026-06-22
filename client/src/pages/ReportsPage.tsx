@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BarChart2, Users, Clock, Umbrella, Coins, Download, Calendar, ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { reportsService, employeeService, attendanceService, leaveService } from '../services/hrmsApi';
 import type { ApiEmployee, ApiAttendance, ApiLeave } from '../services/hrmsApi';
@@ -29,17 +30,18 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const TABS = [
-  { id: 'executive', label: 'Executive Overview', icon: '📊' },
-  { id: 'workforce', label: 'Workforce', icon: '👥' },
-  { id: 'attendance', label: 'Attendance', icon: '⏱️' },
-  { id: 'leave', label: 'Leave', icon: '🏖️' },
-  { id: 'payroll', label: 'Payroll', icon: '💰' },
-  { id: 'export', label: 'Export Center', icon: '📥' },
+  { id: 'executive', label: 'Executive Overview', icon: BarChart2 },
+  { id: 'workforce', label: 'Workforce', icon: Users },
+  { id: 'attendance', label: 'Attendance', icon: Clock },
+  { id: 'leave', label: 'Leave', icon: Umbrella },
+  { id: 'payroll', label: 'Payroll', icon: Coins },
+  { id: 'export', label: 'Export Center', icon: Download },
 ];
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState('executive');
   const [loading, setLoading] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Existing ReportsService Data
   const [headcountData, setHeadcountData] = useState<any[]>([]);
@@ -106,18 +108,36 @@ export default function ReportsPage() {
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Enterprise intelligence and workforce insights.</p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-white/10 dark:bg-slate-900">
-              <span className="text-slate-400">📅</span>
-              <select 
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="bg-transparent text-sm font-bold text-slate-700 outline-none dark:text-slate-200"
+            <div className="relative">
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <option>Last 30 Days</option>
-                <option>Last 6 Months</option>
-                <option>Year to Date</option>
-                <option>All Time</option>
-              </select>
+                <Calendar className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                {dateRange}
+                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                  <div className="absolute right-0 z-50 mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+                    {['Last 30 Days', 'Last 6 Months', 'Year to Date', 'All Time'].map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => { setDateRange(option); setIsDropdownOpen(false); }}
+                        className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                          dateRange === option
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -125,7 +145,9 @@ export default function ReportsPage() {
         {/* Tab Navigation */}
         <div className="overflow-x-auto no-scrollbar">
           <div className="flex w-max gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
-            {TABS.map((tab) => (
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -135,9 +157,10 @@ export default function ReportsPage() {
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
                 }`}
               >
-                <span>{tab.icon}</span> {tab.label}
+                <Icon className="h-4 w-4" /> {tab.label}
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 

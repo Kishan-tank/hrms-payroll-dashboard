@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { payrollService } from '../services/hrmsApi';
 import type { PayrollRecord, PayrollSummary } from '../services/hrmsApi';
@@ -27,6 +28,8 @@ export default function PayrollPage() {
   const toast = useToast();
   const isEmployee = user?.role === 'employee';
 
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [records, setRecords] = useState<PayrollRecord[]>([]);
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -398,13 +401,36 @@ export default function PayrollPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            <select 
-              value={filterMonth} 
-              onChange={(e) => setFilterMonth(e.target.value)} 
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-            >
-              {MONTHS.map((m) => <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" key={m}>{m}</option>)}
-            </select>
+            <div className="relative">
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center justify-between gap-2 w-36 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                {filterMonth}
+                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                  <div className="absolute right-0 z-50 mt-2 w-48 max-h-64 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+                    {MONTHS.map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => { setFilterMonth(m); setIsDropdownOpen(false); }}
+                        className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                          filterMonth === m
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             {!isEmployee && (
               <button
                 type="button"

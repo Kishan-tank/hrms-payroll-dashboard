@@ -219,10 +219,10 @@ export default function EmployeeManagement() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-slate-400"><Icon name="filter" /></span>
           <select value={department} onChange={(e) => { setDepartment(e.target.value); setPage(1); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none">
-            {departments.map((d) => <option key={d}>{d}</option>)}
+            {departments.map((d) => <option className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white" key={d}>{d}</option>)}
           </select>
           <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none">
-            {statuses.map((s) => <option key={s}>{s}</option>)}
+            {statuses.map((s) => <option className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white" key={s}>{s}</option>)}
           </select>
         </div>
 
@@ -297,7 +297,7 @@ export default function EmployeeManagement() {
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-700">Department *</span>
                 <select value={form.department} onChange={(e) => setForm((prev) => ({ ...prev, department: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none focus:border-blue-300">
-                  {departments.filter((d) => d !== 'All').map((d) => <option key={d}>{d}</option>)}
+                  {departments.filter((d) => d !== 'All').map((d) => <option className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white" key={d}>{d}</option>)}
                 </select>
               </label>
             </div>
