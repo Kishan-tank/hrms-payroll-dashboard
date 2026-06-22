@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { leaveService, ApiLeave } from '../services/hrmsApi';
 import { useAuth } from '../hooks/useAuth';
@@ -8,11 +11,23 @@ import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import EmptyState from '../components/common/EmptyState';
 
+const leaveSchema = z.object({
+  leaveType: z.string().min(1),
+  fromDate: z.string().min(1, 'Start date is required'),
+  toDate: z.string().min(1, 'End date is required'),
+  reason: z.string().min(3, 'Please provide a reason (min 3 characters)'),
+}).refine(
+  (data) => !data.fromDate || !data.toDate || new Date(data.toDate) >= new Date(data.fromDate),
+  { message: 'End date must be on or after start date', path: ['toDate'] }
+);
+
+type LeaveFormData = z.infer<typeof leaveSchema>;
+
 export default function LeavePage() {
   const { user } = useAuth();
   const { success, info } = useToast();
   
-  const isEmployee = user?.role === 'Employee';
+  const isEmployee = user?.role === 'employee';
   const displayName = user?.name || 'HR Manager';
 
   const [leaveRequests, setLeaveRequests] = useState<ApiLeave[]>([]);
@@ -22,10 +37,13 @@ export default function LeavePage() {
   const [filter, setFilter] = useState('All');
   
   // Employee Form State
-  const [leaveType, setLeaveType] = useState('Casual Leave');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [reason, setReason] = useState('');
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<LeaveFormData>({
+    resolver: zodResolver(leaveSchema),
+    defaultValues: { leaveType: 'Casual Leave', fromDate: '', toDate: '', reason: '' }
+  });
+
+  const [isFormLeaveTypeOpen, setIsFormLeaveTypeOpen] = useState(false);
+  const leaveTypeOptions = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Work From Home', 'Optional Holiday'];
   
   const filters = ['All', 'Pending', 'Approved', 'Rejected'];
 
@@ -66,25 +84,22 @@ export default function LeavePage() {
   
   const totalRequests = leaveRequests.length;
 
-  const handleApplyLeave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleApplyLeave = handleSubmit((data: LeaveFormData) => {
     // Optimistic UI update
     const newLeave = {
       _id: `NEW-${Date.now()}`,
       employeeId: { _id: (user as any)?._id || '1', name: user?.name || 'Employee', department: (user as any)?.department || 'Engineering' },
-      type: leaveType,
+      type: data.leaveType,
       days: 1,
-      fromDate,
-      toDate,
+      fromDate: data.fromDate,
+      toDate: data.toDate,
       status: 'Pending',
-      reason
+      reason: data.reason
     } as ApiLeave;
     setLeaveRequests(prev => [newLeave, ...prev]);
     success('Leave request submitted successfully');
-    setFromDate('');
-    setToDate('');
-    setReason('');
-  };
+    reset();
+  });
 
   const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
     // Optimistic UI
@@ -251,50 +266,70 @@ export default function LeavePage() {
           >
             <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">Apply for Leave</h2>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 relative">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Leave Type</label>
-                <select
-                  value={leaveType}
-                  onChange={(e) => setLeaveType(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-                >
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Casual Leave">Casual Leave</option>
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Sick Leave">Sick Leave</option>
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Earned Leave">Earned Leave</option>
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Work From Home">Work From Home</option>
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Optional Holiday">Optional Holiday</option>
-                </select>
+                <div className="block relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsFormLeaveTypeOpen(!isFormLeaveTypeOpen)}
+                    className={`flex items-center justify-between gap-2 w-full rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none dark:bg-[#111827] dark:text-white ${errors.leaveType ? 'border-red-300' : 'border-slate-200 dark:border-white/10 focus:border-blue-500'}`}
+                  >
+                    <span className={watch('leaveType') ? '' : 'text-slate-400 dark:text-slate-500'}>
+                      {watch('leaveType') || 'Select Leave Type'}
+                    </span>
+                    <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isFormLeaveTypeOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  {isFormLeaveTypeOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsFormLeaveTypeOpen(false)} />
+                      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-48 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-none">
+                        {leaveTypeOptions.map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => { setValue('leaveType', type, { shouldValidate: true, shouldDirty: true }); setIsFormLeaveTypeOpen(false); }}
+                            className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+                              watch('leaveType') === type
+                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                                : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {errors.leaveType && <span className="mt-1 block text-xs text-red-500">{errors.leaveType.message}</span>}
+                </div>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">From Date</label>
                 <input
                   type="date"
-                  required
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                  {...register('fromDate')}
+                  className={`rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark] ${errors.fromDate ? 'border-red-300' : 'border-slate-200 dark:border-white/10'}`}
                 />
+                {errors.fromDate && <span className="mt-1 text-xs text-red-500">{errors.fromDate.message}</span>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">To Date</label>
                 <input
                   type="date"
-                  required
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                  {...register('toDate')}
+                  className={`rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark] ${errors.toDate ? 'border-red-300' : 'border-slate-200 dark:border-white/10'}`}
                 />
+                {errors.toDate && <span className="mt-1 text-xs text-red-500">{errors.toDate.message}</span>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Reason</label>
                 <input
                   type="text"
-                  required
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
                   placeholder="e.g. Medical appointment"
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                  {...register('reason')}
+                  className={`rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:bg-[#111827] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 ${errors.reason ? 'border-red-300' : 'border-slate-200 dark:border-white/10'}`}
                 />
+                {errors.reason && <span className="mt-1 text-xs text-red-500">{errors.reason.message}</span>}
               </div>
             </div>
             <div className="mt-5 flex justify-end">
