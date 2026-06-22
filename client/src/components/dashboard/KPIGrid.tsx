@@ -1,5 +1,6 @@
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { HrSummary } from '../../services/hrmsApi';
 
 // ─── CountUp Component ────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ export interface KPIItem {
   gradient: string;
   sparkline: number[];
   icon: React.ReactNode;
+  route: string;
 }
 
 // ─── Icon helpers ─────────────────────────────────────────────────────────────
@@ -117,6 +119,8 @@ function SkeletonCard() {
 
 // ─── KPIGrid ─────────────────────────────────────────────────────────────────
 export default function KPIGrid({ summary, loading }: { summary: HrSummary | null; loading: boolean }) {
+  const navigate = useNavigate();
+
   if (loading || !summary) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -140,6 +144,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       gradient: 'from-blue-600 to-indigo-600',
       sparkline: [940, 980, 1020, 1080, 1180, 1248],
       icon: <UsersIcon color="#ffffff" />,
+      route: '/employees',
     },
     {
       id: 'attendance',
@@ -154,6 +159,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       gradient: 'from-emerald-500 to-emerald-700',
       sparkline: [91, 93, 90, 94, 96, 97.8],
       icon: <ClockCheckIcon color="#ffffff" />,
+      route: '/attendance',
     },
     {
       id: 'payroll',
@@ -170,6 +176,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       gradient: 'from-violet-500 to-purple-600',
       sparkline: [3.2, 3.6, 3.8, 3.9, 4.0, 4.12],
       icon: <RupeeIcon color="#ffffff" />,
+      route: '/payroll',
     },
     {
       id: 'approvals',
@@ -184,6 +191,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       gradient: 'from-amber-400 to-orange-500',
       sparkline: [4, 8, 12, 9, 14, 18],
       icon: <BellAlertIcon color="#ffffff" />,
+      route: '/leave?filter=Pending',
     },
   ];
 
@@ -195,7 +203,8 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: idx * 0.1, duration: 0.5, ease: 'easeOut' }}
-          className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:shadow-2xl"
+          onClick={() => navigate(card.route)}
+          className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:shadow-2xl cursor-pointer"
         >
           {/* Subtle gradient glow behind the icon */}
           <div
@@ -235,9 +244,14 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
           </div>
           
           <div className="mt-auto pt-4">
-            <div className="border-t border-slate-100 pt-3 dark:border-white/5">
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{card.label}</p>
-              <p className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-500">{card.sub}</p>
+            <div className="border-t border-slate-100 pt-3 dark:border-white/5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{card.label}</p>
+                <p className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-500">{card.sub}</p>
+              </div>
+              <span className="text-xs font-bold text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                View details &rarr;
+              </span>
             </div>
           </div>
         </motion.div>

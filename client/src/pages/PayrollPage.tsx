@@ -1,28 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { payrollService } from '../services/hrmsApi';
 import type { PayrollRecord, PayrollSummary } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import EmptyState from '../components/common/EmptyState';
-
-const statusClass: Record<string, string> = {
-  Paid: 'bg-blue-50 text-blue-600',
-  Processing: 'bg-teal-50 text-teal-600',
-  Pending: 'bg-amber-50 text-amber-600',
-};
-
-const darkStatusClass: Record<string, string> = {
-  Paid: 'dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30 border',
-  Processing: 'dark:bg-teal-500/20 dark:text-teal-400 dark:border-teal-500/30 border',
-  Pending: 'dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30 border',
-};
-
-const statusDot: Record<string, string> = {
-  Paid: 'bg-blue-500 dark:bg-blue-400',
-  Processing: 'bg-teal-500 dark:bg-teal-400',
-  Pending: 'bg-amber-500 dark:bg-amber-400',
-};
+import DataTable from '../components/common/DataTable';
+import type { DataTableColumn } from '../components/common/DataTable';
+import StatusBadge from '../components/common/StatusBadge';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const CURRENT_MONTH = MONTHS[new Date().getMonth()];
@@ -42,6 +28,8 @@ export default function PayrollPage() {
   const toast = useToast();
   const isEmployee = user?.role === 'employee';
 
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [records, setRecords] = useState<PayrollRecord[]>([]);
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -272,6 +260,124 @@ export default function PayrollPage() {
       ]
     : null;
 
+  const hrColumns = useMemo<DataTableColumn<PayrollRecord>[]>(() => [
+    {
+      key: 'employee',
+      header: 'Employee',
+      sortable: true,
+      sortValue: (row) => row.employeeId?.name ?? '',
+      render: (row) => (
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white dark:bg-slate-800">
+            {row.employeeId?.name?.charAt(0) ?? '?'}
+          </span>
+          <span>
+            <span className="block text-sm font-bold text-slate-950 dark:text-white">{row.employeeId?.name ?? '—'}</span>
+            <span className="block text-xs text-slate-400">{row.employeeId?.employeeId ?? '—'}</span>
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      sortable: true,
+      sortValue: (row) => row.employeeId?.department ?? '',
+      render: (row) => <span className="text-sm text-slate-600 dark:text-slate-400">{row.employeeId?.department ?? '—'}</span>,
+    },
+    {
+      key: 'basicPay',
+      header: 'Basic Pay',
+      sortable: true,
+      sortValue: (row) => row.basicPay ?? 0,
+      render: (row) => <span className="text-sm font-bold text-slate-950 dark:text-white">{fmt(row.basicPay)}</span>,
+    },
+    {
+      key: 'deductions',
+      header: 'Deductions',
+      sortable: true,
+      sortValue: (row) => row.deductions ?? 0,
+      render: (row) => <span className="text-sm text-red-500 dark:text-red-400">{fmt(row.deductions)}</span>,
+    },
+    {
+      key: 'netPay',
+      header: 'Net Pay',
+      sortable: true,
+      sortValue: (row) => row.netPay ?? 0,
+      render: (row) => <span className="text-sm font-bold text-slate-950 dark:text-white">{fmt(row.netPay)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (row) => row.status ?? '',
+      render: (row) => <StatusBadge status={row.status ?? 'Pending'} />,
+    },
+  ], []);
+
+  const employeeColumns = useMemo<DataTableColumn<PayrollRecord>[]>(() => [
+    {
+      key: 'month',
+      header: 'Month',
+      sortable: true,
+      sortValue: (row) => `${row.month} ${row.year}`,
+      render: (row) => <span className="text-sm font-bold text-slate-900 dark:text-white">{row.month} {row.year}</span>,
+    },
+    {
+      key: 'payDate',
+      header: 'Pay Date',
+      sortable: true,
+      sortValue: (row) => row.processedAt ?? '',
+      render: (row) => <span className="text-sm text-slate-600 dark:text-slate-400">{row.processedAt ? new Date(row.processedAt).toLocaleDateString() : '—'}</span>,
+    },
+    {
+      key: 'grossPay',
+      header: 'Gross Pay',
+      sortable: true,
+      sortValue: (row) => row.basicPay ?? 0,
+      render: (row) => <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmt(row.basicPay)}</span>,
+    },
+    {
+      key: 'deductions',
+      header: 'Deductions',
+      sortable: true,
+      sortValue: (row) => row.deductions ?? 0,
+      render: (row) => <span className="text-sm text-red-500 dark:text-red-400">{fmt(row.deductions)}</span>,
+    },
+    {
+      key: 'netPay',
+      header: 'Net Pay',
+      sortable: true,
+      sortValue: (row) => row.netPay ?? 0,
+      render: (row) => <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmt(row.netPay)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (row) => row.status ?? '',
+      render: (row) => <StatusBadge status={row.status ?? 'Pending'} />,
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row) => (
+        <div className="flex gap-2">
+          <button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
+            View
+          </button>
+          <button 
+            type="button" 
+            onClick={() => handleDownloadPayslip(row)}
+            className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+          >
+            Download
+          </button>
+        </div>
+      ),
+    },
+  ], [toast, currentEmployeeId, user]); // Added dependencies to satisfy linter, though handleDownloadPayslip uses them implicitly
+
   return (
     <DashboardLayout title={isEmployee ? "My Payslips" : "Payroll Management"}>
       {/* Ambient glows for dark mode */}
@@ -295,13 +401,36 @@ export default function PayrollPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            <select 
-              value={filterMonth} 
-              onChange={(e) => setFilterMonth(e.target.value)} 
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-            >
-              {MONTHS.map((m) => <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" key={m}>{m}</option>)}
-            </select>
+            <div className="relative">
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center justify-between gap-2 w-36 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                {filterMonth}
+                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                  <div className="absolute right-0 z-50 mt-2 w-48 max-h-64 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+                    {MONTHS.map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => { setFilterMonth(m); setIsDropdownOpen(false); }}
+                        className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                          filterMonth === m
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             {!isEmployee && (
               <button
                 type="button"
@@ -318,7 +447,7 @@ export default function PayrollPage() {
 
         {/* HR Messages */}
         {!isEmployee && runMsg && (
-          <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${runMsg.startsWith('✅') ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
+          <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${runMsg.startsWith('✅') ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-400' : 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400'}`}>
             {runMsg}
           </div>
         )}
@@ -361,76 +490,71 @@ export default function PayrollPage() {
             </div>
 
             {/* Payslip List */}
-            {myRecords.length === 0 && !loading ? (
-              <EmptyState
-                icon={
-                  <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
+            <div className="hidden md:block">
+              <DataTable<PayrollRecord>
+                columns={employeeColumns}
+                data={myRecords}
+                rowKey={(row, i) => row._id ?? i}
+                loading={loading}
+                searchable={false}
+                pageSize={10}
+                minWidth={900}
+                emptyState={
+                  <EmptyState
+                    icon={
+                      <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    }
+                    title="No payslips available yet"
+                    description={`Your payslips for ${filterMonth} ${filterYear} will appear here once payroll is processed by your HR team.`}
+                  />
                 }
-                title="No payslips available yet"
-                description={`Your payslips for ${filterMonth} ${filterYear} will appear here once payroll is processed by your HR team.`}
               />
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
-                  <h2 className="font-bold text-slate-950 dark:text-white">Payslips</h2>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                    {myRecords.length} records
-                  </span>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="flex flex-col gap-3 md:hidden">
+              {myRecords.map((record, i) => (
+                <div key={record._id ?? i} className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{record.month} {record.year}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Processed: {record.processedAt ? new Date(record.processedAt).toLocaleDateString() : '—'}</p>
+                    </div>
+                    <StatusBadge status={record.status} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-y-2 text-xs mb-4">
+                    <div>
+                      <p className="text-slate-400">Gross Pay</p>
+                      <p className="font-semibold text-slate-700 dark:text-slate-300">{fmt(record.basicPay)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Deductions</p>
+                      <p className="font-semibold text-red-500 dark:text-red-400">{fmt(record.deductions)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-slate-400">Net Pay</p>
+                      <p className="font-bold text-slate-900 dark:text-white text-base">{fmt(record.netPay)}</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end border-t border-slate-100 pt-3 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPayslip(record)}
+                      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-300 dark:hover:bg-white/5"
+                    >
+                      Download PDF
+                    </button>
+                  </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px]">
-                    <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.02]">
-                        {['Month', 'Pay Date', 'Gross Pay', 'Deductions', 'Net Pay', 'Status', 'Action'].map((col) => (
-                          <th key={col} className="px-5 py-4 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr><td colSpan={7} className="px-5 py-10 text-center text-sm text-slate-500">Loading payslips...</td></tr>
-                      ) : (
-                        myRecords.map((rec, index) => (
-                          <tr key={rec._id} className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${index < myRecords.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''}`}>
-                            <td className="px-5 py-4 text-sm font-bold text-slate-900 dark:text-white">{rec.month} {rec.year}</td>
-                            <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
-                              {rec.processedAt ? new Date(rec.processedAt).toLocaleDateString() : '—'}
-                            </td>
-                            <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">{fmt(rec.basicPay)}</td>
-                            <td className="px-5 py-4 text-sm text-red-500 dark:text-red-400">{fmt(rec.deductions)}</td>
-                            <td className="px-5 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmt(rec.netPay)}</td>
-                            <td className="px-5 py-4">
-                              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[rec.status] || ''} ${darkStatusClass[rec.status] || ''}`}>
-                                <span className={`h-1.5 w-1.5 rounded-full ${statusDot[rec.status] || 'bg-slate-400'}`} />
-                                {rec.status}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="flex gap-2">
-                                <button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
-                                  View
-                                </button>
-                                <button 
-                                  type="button" 
-                                  onClick={() => handleDownloadPayslip(rec)}
-                                  className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
-                                >
-                                  Download
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+              ))}
+              {myRecords.length === 0 && !loading && (
+                <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+                  <p className="text-sm font-semibold text-slate-500">No payslips available yet.</p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         ) : (
           /* =========================================
@@ -442,11 +566,11 @@ export default function PayrollPage() {
               {loading || !hrSummaryCards
                 ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)
                 : hrSummaryCards.map(([label, value, sub, color, icon]) => (
-                    <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:hover:border-white/20">
                       <div className="mb-4 flex items-center justify-between">
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${color}18`, color: String(color) }}>{icon}</span>
                       </div>
-                      <p className="text-2xl font-bold text-slate-950">{value}</p>
+                      <p className="text-2xl font-bold text-slate-950 dark:text-white">{value}</p>
                       <p className="mt-1 text-xs text-slate-400">{sub}</p>
                       <p className="mt-2 text-xs font-bold text-slate-500">{label}</p>
                     </div>
@@ -454,52 +578,77 @@ export default function PayrollPage() {
             </div>
 
             {/* Records table */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                <h2 className="font-bold text-slate-950">{filterMonth} {filterYear} Payroll</h2>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">{records.length} records</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[860px]">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50">
-                      {['Employee', 'Department', 'Basic Pay', 'Deductions', 'Net Pay', 'Status'].map((col) => (
-                        <th key={col} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-400">{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">Loading payroll records...</td></tr>
-                    ) : records.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
-                        No payroll records for {filterMonth} {filterYear}. Click "Run Payroll" to generate.
-                      </td></tr>
-                    ) : records.map((rec) => (
-                      <tr key={rec._id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">
-                              {rec.employeeId?.name?.charAt(0) ?? '?'}
-                            </span>
-                            <span>
-                              <span className="block text-sm font-bold text-slate-950">{rec.employeeId?.name ?? '—'}</span>
-                              <span className="block text-xs text-slate-400">{rec.employeeId?.employeeId ?? '—'}</span>
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{rec.employeeId?.department ?? '—'}</td>
-                        <td className="px-4 py-3 text-sm font-bold text-slate-950">{fmt(rec.basicPay)}</td>
-                        <td className="px-4 py-3 text-sm text-red-500">{fmt(rec.deductions)}</td>
-                        <td className="px-4 py-3 text-sm font-bold text-slate-950">{fmt(rec.netPay)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[rec.status] ?? 'bg-slate-100 text-slate-500'}`}>{rec.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="hidden md:block">
+              <DataTable<PayrollRecord>
+                columns={hrColumns}
+                data={records}
+                rowKey={(row, i) => row._id ?? i}
+                loading={loading}
+                searchable={true}
+                searchPlaceholder="Search by name, ID, department or status..."
+                getSearchText={(row) =>
+                  [
+                    row.employeeId?.name,
+                    row.employeeId?.employeeId,
+                    row.employeeId?.department,
+                    row.status,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                }
+                pageSize={10}
+                minWidth={860}
+                emptyState={
+                  <EmptyState
+                    icon={
+                      <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    }
+                    title={`No payroll records for ${filterMonth} ${filterYear}`}
+                    description="Click 'Run Payroll' to generate records."
+                  />
+                }
+              />
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="flex flex-col gap-3 md:hidden">
+              {records.map((record, i) => (
+                <div key={record._id ?? i} className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white dark:bg-slate-800">
+                        {record.employeeId?.name?.charAt(0) ?? '?'}
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">{record.employeeId?.name ?? '—'}</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{record.employeeId?.department ?? '—'}</p>
+                      </div>
+                    </div>
+                    <StatusBadge status={record.status} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-y-2 text-xs mb-4">
+                    <div>
+                      <p className="text-slate-400">Basic Pay</p>
+                      <p className="font-semibold text-slate-700 dark:text-slate-300">{fmt(record.basicPay)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Deductions</p>
+                      <p className="font-semibold text-red-500 dark:text-red-400">{fmt(record.deductions)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-slate-400">Net Pay</p>
+                      <p className="font-bold text-slate-900 dark:text-white text-base">{fmt(record.netPay)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {records.length === 0 && !loading && (
+                <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+                  <p className="text-sm font-semibold text-slate-500">No payroll records generated.</p>
+                </div>
+              )}
             </div>
           </>
         )}

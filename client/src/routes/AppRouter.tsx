@@ -1,25 +1,30 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import ProtectedRoute from './ProtectedRoute';
+import PageLoader from '../components/common/PageLoader';
 
-// Pages
+// Eagerly loaded (critical path)
 import LoginPage from '../pages/Login/LoginPage';
 import RegisterPage from '../pages/Register/RegisterPage';
 import Home from '../pages/Home';
-import DesignSystemPage from '../pages/DesignSystemPage';
-import EmployeeDashboard from '../pages/EmployeeDashboard';
-import HRDashboard from '../pages/HRDashboard';
-import EmployeeManagement from '../pages/EmployeeManagement';
-import AttendancePage from '../pages/AttendancePage';
-import PayrollPage from '../pages/PayrollPage';
-import LeavePage from '../pages/LeavePage';
-import ReportsPage from '../pages/ReportsPage';
-import SettingsPage from '../pages/SettingsPage';
-import ProfilePage from '../pages/ProfilePage';
 import NotFoundPage from '../pages/NotFoundPage';
-import NotificationsPage from '../pages/NotificationsPage';
-import DocumentsPage from '../pages/DocumentsPage';
-import HelpCenterPage from '../pages/HelpCenterPage';
+
+// Lazy loaded (heavy pages)
+const DesignSystemPage = lazy(() => import('../pages/DesignSystemPage'));
+const EmployeeDashboard = lazy(() => import('../pages/EmployeeDashboard'));
+const HRDashboard = lazy(() => import('../pages/HRDashboard'));
+const EmployeeManagement = lazy(() => import('../pages/EmployeeManagement'));
+const AttendancePage = lazy(() => import('../pages/AttendancePage'));
+const PayrollPage = lazy(() => import('../pages/PayrollPage'));
+const LeavePage = lazy(() => import('../pages/LeavePage'));
+const ReportsPage = lazy(() => import('../pages/ReportsPage'));
+const SettingsPage = lazy(() => import('../pages/SettingsPage'));
+const ProfilePage = lazy(() => import('../pages/ProfilePage'));
+const OrgChartPage = lazy(() => import('../pages/OrgChartPage'));
+const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
+const DocumentsPage = lazy(() => import('../pages/DocumentsPage'));
+const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
 
 export default function AppRouter() {
   return (
@@ -29,46 +34,50 @@ export default function AppRouter() {
         ProtectedRoute reads localStorage directly so it needs no context.
       */}
       <AuthProvider>
-        <Routes>
-          {/* ── Public routes – no login required ── */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          {/* /design-system is a dev-only tool — unreachable in production builds */}
-          {import.meta.env.DEV && (
-            <Route path="/design-system" element={<DesignSystemPage />} />
-          )}
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* ── Public routes – no login required ── */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            {/* /design-system is a dev-only tool — unreachable in production builds */}
+            {import.meta.env.DEV && (
+              <Route path="/design-system" element={<DesignSystemPage />} />
+            )}
 
-          {/* ── Any logged-in user ── */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/help" element={<HelpCenterPage />} />
-            <Route path="/attendance" element={<AttendancePage />} />
-            <Route path="/leave" element={<LeavePage />} />
-            <Route path="/payroll" element={<PayrollPage />} />
-          </Route>
+            {/* ── Any logged-in user ── */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/help" element={<HelpCenterPage />} />
+              <Route path="/attendance" element={<AttendancePage />} />
+              <Route path="/leave" element={<LeavePage />} />
+              <Route path="/payroll" element={<PayrollPage />} />
+            </Route>
 
-          {/* ── Employee-only routes ── */}
-          <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
-            <Route path="/dashboard" element={<EmployeeDashboard />} />
-            <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
-            <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
-          </Route>
+            {/* ── Employee-only routes ── */}
+            <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
+              <Route path="/dashboard" element={<EmployeeDashboard />} />
+              <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
+              <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
+            </Route>
 
-          {/* ── HR / Admin / Manager-only routes ── */}
-          <Route element={<ProtectedRoute allowedRoles={['hr-manager']} />}>
-            <Route path="/hr-dashboard" element={<HRDashboard />} />
-            <Route path="/dashboard/hr" element={<HRDashboard />} />
-            <Route path="/employees" element={<EmployeeManagement />} />
-            <Route path="/reports" element={<ReportsPage />} />
-          </Route>
+            {/* ── HR / Admin / Manager-only routes ── */}
+            <Route element={<ProtectedRoute allowedRoles={['hr-manager']} />}>
+              <Route path="/hr-dashboard" element={<HRDashboard />} />
+              <Route path="/dashboard/hr" element={<HRDashboard />} />
+              <Route path="/employees" element={<EmployeeManagement />} />
+              <Route path="/org-chart" element={<OrgChartPage />} />
+              <Route path="/attendance" element={<AttendancePage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+            </Route>
 
-          {/* ── Catch-all: proper 404 instead of silent redirect ── */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            {/* ── Catch-all: proper 404 instead of silent redirect ── */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuthContext } from '../../context/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
@@ -39,6 +39,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
 
   useFocusTrap(open, onClose, paletteRef, { initialFocusRef: inputRef });
 
@@ -150,10 +151,10 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
             aria-modal="true"
             aria-labelledby="cmd-palette-title"
             tabIndex={-1}
-            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+            initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.95, y: shouldReduceMotion ? 0 : -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            exit={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.95, y: shouldReduceMotion ? 0 : -20 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.15, ease: 'easeOut' }}
             className="w-full max-w-2xl overflow-hidden rounded-2xl shadow-[0_32px_80px_rgba(0,0,0,0.6)] outline-none"
             style={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.1)' }}
             onClick={(e) => e.stopPropagation()}
@@ -167,13 +168,17 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search employees, payroll, reports, or type a command..."
+                role="combobox"
+                aria-expanded="true"
+                aria-controls="command-palette-results"
+                aria-autocomplete="list"
                 className="flex-1 bg-transparent text-base font-medium text-white outline-none placeholder:text-slate-500"
               />
               <kbd className="hidden rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-bold text-slate-400 sm:block">ESC</kbd>
             </div>
             
             {/* Results */}
-            <div ref={listRef} className="max-h-[60vh] overflow-y-auto p-2 sm:max-h-[400px]">
+            <div id="command-palette-results" role="listbox" ref={listRef} className="max-h-[60vh] overflow-y-auto p-2 sm:max-h-[400px]">
               {filtered.length === 0 ? (
                 <div className="px-4 py-12 text-center">
                   <p className="text-sm font-medium text-white">No results found</p>
@@ -186,6 +191,8 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
                     <button
                       key={cmd.id}
                       type="button"
+                      role="option"
+                      aria-selected={isSelected}
                       onMouseEnter={() => setSelectedIndex(idx)}
                       onClick={() => {
                         if (cmd.path) navigate(cmd.path);

@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell, Legend
-} from 'recharts';
+import { BarChart2, Users, Clock, Umbrella, Coins, Download, Calendar, ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { reportsService } from '../services/hrmsApi';
-import { ChartSkeleton } from '../components/common/Skeletons';
+import { reportsService, employeeService, attendanceService, leaveService } from '../services/hrmsApi';
+import type { ApiEmployee, ApiAttendance, ApiLeave } from '../services/hrmsApi';
 
-// Custom Tooltip for Recharts
+import ExecutiveOverview from '../components/analytics/ExecutiveOverview';
+import WorkforceAnalytics from '../components/analytics/WorkforceAnalytics';
+import AttendanceAnalytics from '../components/analytics/AttendanceAnalytics';
+import LeaveAnalytics from '../components/analytics/LeaveAnalytics';
+import PayrollAnalytics from '../components/analytics/PayrollAnalytics';
+import ExportCenter from '../components/analytics/ExportCenter';
+
+// Custom Tooltip for Recharts (Shared across all charts)
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -16,7 +20,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         {payload.map((p: any) => (
           <p key={p.name} className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
             <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
-            {p.name}: {p.value.toLocaleString()}
+            {p.name}: {p.value?.toLocaleString() ?? p.value}
           </p>
         ))}
       </div>
@@ -25,12 +29,30 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+const TABS = [
+  { id: 'executive', label: 'Executive Overview', icon: BarChart2 },
+  { id: 'workforce', label: 'Workforce', icon: Users },
+  { id: 'attendance', label: 'Attendance', icon: Clock },
+  { id: 'leave', label: 'Leave', icon: Umbrella },
+  { id: 'payroll', label: 'Payroll', icon: Coins },
+  { id: 'export', label: 'Export Center', icon: Download },
+];
+
 export default function ReportsPage() {
+  const [activeTab, setActiveTab] = useState('executive');
+  const [loading, setLoading] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Existing ReportsService Data
   const [headcountData, setHeadcountData] = useState<any[]>([]);
   const [payrollTrend, setPayrollTrend] = useState<any[]>([]);
   const [leaveByType, setLeaveByType] = useState<any[]>([]);
   const [deptAttn, setDeptAttn] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // Raw API Data for advanced analytics
+  const [employees, setEmployees] = useState<ApiEmployee[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<ApiAttendance[]>([]);
+  const [leaveRecords, setLeaveRecords] = useState<ApiLeave[]>([]);
 
   // Filters
   const [dateRange, setDateRange] = useState('Last 6 Months');
@@ -38,190 +60,155 @@ export default function ReportsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [hc, pt, lb, da] = await Promise.allSettled([
-        reportsService.getHeadcountTrend(),
-        reportsService.getPayrollTrend(),
-        reportsService.getLeaveBreakdown(),
-        reportsService.getDeptAttendance(),
-      ]);
-      
-      if (hc.status === 'fulfilled') {
-        setHeadcountData(hc.value.trend.map(([name, headcount]) => ({ name, headcount })));
+      try {
+        const [hc, pt, lb, da, empRes, attRes, levRes] = await Promise.allSettled([
+          reportsService.getHeadcountTrend(),
+          reportsService.getPayrollTrend(),
+          reportsService.getLeaveBreakdown(),
+          reportsService.getDeptAttendance(),
+          employeeService.getAll({ limit: 1000 }),
+          attendanceService.getAll(),
+          leaveService.getAll(),
+        ]);
+        
+        if (hc.status === 'fulfilled') setHeadcountData(hc.value.trend.map(([name, headcount]) => ({ name, headcount })));
+        if (pt.status === 'fulfilled') setPayrollTrend(pt.value.trend.map(([name, amount]) => ({ name, amount })));
+        if (lb.status === 'fulfilled') setLeaveByType(lb.value.breakdown.map(([name, value, color]) => ({ name, value, color })));
+        if (da.status === 'fulfilled') setDeptAttn(da.value.attendance.map(([name, attendance]) => ({ name, attendance })));
+        if (empRes.status === 'fulfilled') setEmployees(empRes.value.employees);
+        if (attRes.status === 'fulfilled') setAttendanceRecords(attRes.value.records);
+        if (levRes.status === 'fulfilled') setLeaveRecords(levRes.value.leaves);
+      } catch (err) {
+        console.error("Failed to load analytics data", err);
+      } finally {
+        setLoading(false);
       }
-      if (pt.status === 'fulfilled') {
-        setPayrollTrend(pt.value.trend.map(([name, amount]) => ({ name, amount })));
-      }
-      if (lb.status === 'fulfilled') {
-        setLeaveByType(lb.value.breakdown.map(([name, value, color]) => ({ name, value, color })));
-      }
-      if (da.status === 'fulfilled') {
-        setDeptAttn(da.value.attendance.map(([name, attendance]) => ({ name, attendance })));
-      }
-      
-      setLoading(false);
     }
     void load();
-  }, []);
+  }, [dateRange]); // Reload if global filter changes (even if mocked for now)
 
   const latestHeadcount = headcountData.length > 0 ? headcountData[headcountData.length - 1].headcount : 0;
   const latestPayroll = payrollTrend.length > 0 ? payrollTrend[payrollTrend.length - 1].amount : 0;
 
-  const summaryCards = [
+  // Real data KPI summaries passed to Executive
+  const summaryCards: [string, string | number, string, string, string][] = [
     ['Total Headcount', latestHeadcount > 0 ? String(latestHeadcount) : '—', '+12%', 'text-blue-500', 'bg-blue-50 dark:bg-blue-500/10'],
-    ['Avg Attendance', '94.2%', '+2.1%', 'text-emerald-500', 'bg-emerald-50 dark:bg-emerald-500/10'],
+    ['Avg Attendance', '94.2%', '+2.1%', 'text-emerald-500', 'bg-emerald-50 dark:bg-emerald-500/10'], // Still hardcoded % as per original, or could be computed
     ['Total Payroll', latestPayroll > 0 ? `₹${latestPayroll}L` : '—', '+8.4%', 'text-purple-500', 'bg-purple-50 dark:bg-purple-500/10'],
-    ['Leave Rate', '6.2%', '-1.3%', 'text-amber-500', 'bg-amber-50 dark:bg-amber-500/10'],
   ];
 
   return (
     <DashboardLayout title="Reports & Analytics">
-      <div className="space-y-6 pb-12">
-        {/* Header & Actions */}
+      <div className="flex h-full flex-col space-y-6 pb-12">
+        
+        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Reports Center</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Comprehensive analytics, trends, and organizational insights.</p>
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Analytics Center</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Enterprise intelligence and workforce insights.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Date Range Picker Placeholder */}
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-white/10 dark:bg-slate-900">
-              <span className="text-slate-400">📅</span>
-              <select 
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="bg-transparent text-sm font-bold text-slate-700 outline-none dark:text-slate-200"
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <option>Last 30 Days</option>
-                <option>Last 6 Months</option>
-                <option>Year to Date</option>
-                <option>All Time</option>
-              </select>
-            </div>
-            
-            {/* Exports */}
-            <div className="flex items-center gap-2">
-              <button className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:bg-white/10">
-                <span>📄</span> CSV
+                <Calendar className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                {dateRange}
+                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-              <button className="flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
-                <span>⬇️</span> Export PDF
-              </button>
+              
+              {isDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                  <div className="absolute right-0 z-50 mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+                    {['Last 30 Days', 'Last 6 Months', 'Year to Date', 'All Time'].map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => { setDateRange(option); setIsDropdownOpen(false); }}
+                        className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                          dateRange === option
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Executive Summary */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {summaryCards.map(([label, value, trend, colorText, colorBg]) => (
-            <div key={label} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
-              <div className="flex items-center justify-between">
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${colorBg} ${colorText} text-xl`}>
-                  {label.slice(0, 2).toUpperCase()}
-                </span>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${trend.startsWith('+') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
-                  {trend}
-                </span>
-              </div>
-              <p className="mt-6 text-3xl font-extrabold text-slate-900 dark:text-white">{loading ? '—' : value}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</p>
-            </div>
-          ))}
+        {/* Tab Navigation */}
+        <div className="overflow-x-auto no-scrollbar">
+          <div className="flex w-max gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
+                  activeTab === tab.id 
+                    ? 'bg-slate-900 text-white shadow-md dark:bg-blue-500/10 dark:text-blue-400 dark:shadow-none' 
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4" /> {tab.label}
+              </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Main Charts */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Headcount Trend (Area Chart) */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
-            <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Headcount Growth</h2>
-            {loading ? <ChartSkeleton /> : (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={headcountData}>
-                    <defs>
-                      <linearGradient id="colorHc" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dx={-10} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="headcount" name="Headcount" stroke="#2563EB" strokeWidth={3} fillOpacity={1} fill="url(#colorHc)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
-
-          {/* Payroll Trend (Bar Chart) */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
-            <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Payroll Expenditure (₹ Lakhs)</h2>
-            {loading ? <ChartSkeleton /> : (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={payrollTrend} maxBarSize={40}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dx={-10} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
-                    <Bar dataKey="amount" name="Payroll" fill="#8B5CF6" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
+        {/* Dynamic Content Area */}
+        <div className="flex-1">
+          {activeTab === 'executive' && (
+            <ExecutiveOverview 
+              summaryCards={summaryCards} 
+              headcountData={headcountData} 
+              loading={loading} 
+              CustomTooltip={CustomTooltip} 
+            />
+          )}
+          {activeTab === 'workforce' && (
+            <WorkforceAnalytics 
+              employees={employees} 
+              loading={loading} 
+              CustomTooltip={CustomTooltip} 
+            />
+          )}
+          {activeTab === 'attendance' && (
+            <AttendanceAnalytics 
+              attendanceRecords={attendanceRecords} 
+              deptAttn={deptAttn}
+              loading={loading} 
+              CustomTooltip={CustomTooltip} 
+            />
+          )}
+          {activeTab === 'leave' && (
+            <LeaveAnalytics 
+              leaveRecords={leaveRecords} 
+              leaveByType={leaveByType}
+              loading={loading} 
+              CustomTooltip={CustomTooltip} 
+            />
+          )}
+          {activeTab === 'payroll' && (
+            <PayrollAnalytics 
+              payrollTrend={payrollTrend} 
+              loading={loading} 
+              CustomTooltip={CustomTooltip} 
+            />
+          )}
+          {activeTab === 'export' && (
+            <ExportCenter />
+          )}
         </div>
-
-        {/* Secondary Charts */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Department Attendance (Horizontal Bar) */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
-            <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Department Attendance Rate</h2>
-            {loading ? <ChartSkeleton /> : (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={deptAttn} layout="vertical" margin={{ left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
-                    <XAxis type="number" domain={[80, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} dx={-10} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
-                    <Bar dataKey="attendance" name="Attendance %" fill="#10B981" radius={[0, 6, 6, 0]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
-
-          {/* Leave Breakdown (Pie Chart) */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
-            <h2 className="mb-6 text-sm font-extrabold uppercase tracking-widest text-slate-400">Leave Type Breakdown</h2>
-            {loading ? <ChartSkeleton /> : (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={leaveByType}
-                      cx="50%"
-                      cy="45%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={5}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {leaveByType.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
-        </div>
+        
       </div>
     </DashboardLayout>
   );

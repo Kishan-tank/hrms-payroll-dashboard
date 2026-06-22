@@ -6,6 +6,7 @@ import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import EmptyState from '../components/common/EmptyState';
+import EmployeeAttendanceWorkspace from '../components/employee/EmployeeAttendanceWorkspace';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ const COLUMNS: DataTableColumn<ApiAttendance>[] = [
 export default function AttendancePage() {
   const { user } = useAuth();
   const displayName = user?.name || 'HR Manager';
+  const isHR = ['hr-manager', 'admin', 'hr'].includes(user?.role?.toLowerCase() || '');
 
   const [records, setRecords]   = useState<ApiAttendance[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -112,17 +114,7 @@ export default function AttendancePage() {
       setError('');
     } catch (err: any) {
       setError(err.message || 'Failed to fetch attendance');
-      // Mock data fallback if API fails
-      setRecords([
-        {
-          _id: '1',
-          employeeId: { _id: '1', name: 'Anil Kumar', employeeId: 'EMP-001', department: 'Engineering' },
-          checkIn: '09:00 AM',
-          checkOut: '06:00 PM',
-          status: 'Present',
-          date: new Date().toISOString(),
-        } as ApiAttendance,
-      ]);
+      setRecords([]);
     } finally {
       setLoading(false);
     }
@@ -131,6 +123,20 @@ export default function AttendancePage() {
   useEffect(() => {
     void fetchAttendance();
   }, [fetchAttendance]);
+
+  if (!isHR) {
+    return (
+      <DashboardLayout title="My Attendance" userName={user?.name || 'Employee'} userRole={user?.role || 'Employee'}>
+        <EmployeeAttendanceWorkspace
+          records={records}
+          loading={loading}
+          error={error}
+          onRefresh={fetchAttendance}
+          user={user}
+        />
+      </DashboardLayout>
+    );
+  }
 
   const handleCheckIn = async () => {
     try {
@@ -240,38 +246,93 @@ export default function AttendancePage() {
         </div>
 
         {/* ── Attendance DataTable ── */}
-        <DataTable<ApiAttendance>
-          columns={COLUMNS}
-          data={records}
-          rowKey={(row, i) => row._id ?? i}
-          loading={loading}
-          searchable
-          searchPlaceholder="Search by name or department…"
-          getSearchText={(record) =>
-            [
-              record.employeeId?.name,
-              record.employeeId?.department,
-              record.employeeId?.employeeId,
-              record.status,
-            ]
-              .filter(Boolean)
-              .join(' ')
-          }
-          pageSize={10}
-          minWidth={820}
-          emptyState={
-            <EmptyState
-              icon={
-                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              }
-              title="No attendance records"
-              description="No records found for the current filter. Try a different search or check back later."
-            />
-          }
-        />
+        {/* ── Attendance DataTable ── */}
+        <div className="hidden md:block">
+          <DataTable<ApiAttendance>
+            columns={COLUMNS}
+            data={records}
+            rowKey={(row, i) => row._id ?? i}
+            loading={loading}
+            searchable
+            searchPlaceholder="Search by name or department…"
+            getSearchText={(record) =>
+              [
+                record.employeeId?.name,
+                record.employeeId?.department,
+                record.employeeId?.employeeId,
+                record.status,
+              ]
+                .filter(Boolean)
+                .join(' ')
+            }
+            pageSize={10}
+            minWidth={820}
+            emptyState={
+              <EmptyState
+                icon={
+                  <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+                title="No attendance records"
+                description="No records found for the current filter. Try a different search or check back later."
+              />
+            }
+          />
+        </div>
+
+        {/* ── Mobile Cards ── */}
+        <div className="flex flex-col gap-3 md:hidden">
+          {records.map((record, i) => {
+            const name = record.employeeId?.name ?? (record as any).name ?? 'Unknown';
+            const dept = record.employeeId?.department ?? (record as any).department ?? '—';
+            const st = record.status ?? 'Present';
+            
+            return (
+              <div 
+                key={record._id ?? i} 
+                className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+                      style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+                    >
+                      {name.charAt(0)}
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{name}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{dept}</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={st} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-y-2 text-xs">
+                  <div>
+                    <p className="text-slate-400">Check In</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">{record.checkIn ?? '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Check Out</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">{record.checkOut ?? '-'}</p>
+                  </div>
+                  <div className="col-span-2 mt-1">
+                    <p className="text-slate-400">Total Hours</p>
+                    <p className="font-bold text-slate-900 dark:text-white">{calculateHours(record.checkIn, record.checkOut)}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {records.length === 0 && !loading && (
+            <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+              <p className="text-sm font-semibold text-slate-500">No attendance records found.</p>
+            </div>
+          )}
+        </div>
 
       </div>
     </DashboardLayout>

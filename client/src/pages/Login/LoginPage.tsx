@@ -1,9 +1,17 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useAuthContext } from '../../context/AuthContext';
-import { validateField } from '../../utils/validation';
-import type { LoginRequest } from '../../types';
+
+const loginSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Email must be valid format'),
+  password: z.string().min(6, 'Password minimum length should be 6 characters'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 function Icon({ name, className = 'h-4 w-4' }: { name: 'building' | 'mail' | 'lock' | 'eye' | 'eyeOff' | 'arrow' | 'shield' | 'check' | 'users' | 'chart' | 'arrowRight' | 'arrowLeft' | 'calendar' | 'rupee' | 'clock'; className?: string }) {
   const common = { className, fill: 'none', stroke: 'currentColor', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 2, viewBox: '0 0 24 24' };
@@ -29,27 +37,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [role, setRole] = useState<'hr-manager' | 'employee'>('hr-manager');
-  const [form, setForm] = useState<LoginRequest>({ email: '', password: '' });
-  const [errors, setErrors] = useState<Partial<LoginRequest>>({});
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const { register, handleSubmit: hookFormSubmit, formState: { errors } } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onChange',
+    defaultValues: { email: '', password: '' },
+  });
+
+  const onSubmit = useCallback((data: LoginFormData) => {
     clearError();
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
-  }, [clearError]);
-
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    const nextErrors: Partial<LoginRequest> = {};
-    const emailError = validateField('email', form.email);
-    const passwordError = validateField('password', form.password);
-    if (emailError) nextErrors.email = emailError;
-    if (passwordError) nextErrors.password = passwordError;
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
-    void login(form, role);
-  }, [form, role, login]);
+    void login(data, role);
+  }, [role, login, clearError]);
 
   return (
     <div className="flex min-h-screen bg-[#020817] font-sans selection:bg-blue-500/30 selection:text-blue-200">
@@ -265,21 +263,19 @@ export default function LoginPage() {
               </motion.div>
             )}
 
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <form onSubmit={hookFormSubmit(onSubmit)} noValidate className="space-y-4">
               <label className="block">
                 <span className="mb-1.5 block text-sm font-semibold text-slate-300">Email Address</span>
                 <div className="relative group">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-blue-400"><Icon name="mail" /></span>
                   <input 
-                    name="email" 
+                    {...register('email')}
                     type="email" 
-                    value={form.email} 
-                    onChange={handleChange} 
                     placeholder="you@company.com" 
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 py-3 pl-11 pr-4 text-sm font-medium text-white transition-all outline-none placeholder:text-slate-600 focus:border-blue-500/50 focus:bg-slate-900 focus:ring-4 focus:ring-blue-500/20 hover:border-white/20" 
+                    className={`w-full rounded-2xl border bg-slate-950 py-3 pl-11 pr-4 text-sm font-medium text-white transition-all outline-none placeholder:text-slate-600 focus:bg-slate-900 focus:ring-4 hover:border-white/20 ${errors.email ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20'}`} 
                   />
                 </div>
-                {errors.email && <span className="mt-1.5 block text-xs font-semibold text-red-400">{errors.email}</span>}
+                {errors.email && <span className="mt-1.5 block text-xs font-semibold text-red-500">{errors.email.message}</span>}
               </label>
 
               <label className="block">
@@ -287,18 +283,16 @@ export default function LoginPage() {
                 <div className="relative group">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-blue-400"><Icon name="lock" /></span>
                   <input 
-                    name="password" 
+                    {...register('password')}
                     type={showPassword ? 'text' : 'password'} 
-                    value={form.password} 
-                    onChange={handleChange} 
                     placeholder="Enter your password" 
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 py-3 pl-11 pr-11 text-sm font-medium text-white transition-all outline-none placeholder:text-slate-600 focus:border-blue-500/50 focus:bg-slate-900 focus:ring-4 focus:ring-blue-500/20 hover:border-white/20" 
+                    className={`w-full rounded-2xl border bg-slate-950 py-3 pl-11 pr-11 text-sm font-medium text-white transition-all outline-none placeholder:text-slate-600 focus:bg-slate-900 focus:ring-4 hover:border-white/20 ${errors.password ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20'}`} 
                   />
                   <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
                     <Icon name={showPassword ? 'eyeOff' : 'eye'} />
                   </button>
                 </div>
-                {errors.password && <span className="mt-1.5 block text-xs font-semibold text-red-400">{errors.password}</span>}
+                {errors.password && <span className="mt-1.5 block text-xs font-semibold text-red-500">{errors.password.message}</span>}
               </label>
 
               <div className="flex items-center justify-between pt-2">

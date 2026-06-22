@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { leaveService, ApiLeave } from '../services/hrmsApi';
 import { useAuth } from '../hooks/useAuth';
@@ -8,10 +11,21 @@ import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import EmptyState from '../components/common/EmptyState';
 
+const leaveSchema = z.object({
+  leaveType: z.string().min(1),
+  fromDate: z.string().min(1, 'Start date is required'),
+  toDate: z.string().min(1, 'End date is required'),
+  reason: z.string().min(3, 'Please provide a reason (min 3 characters)'),
+}).refine(
+  (data) => !data.fromDate || !data.toDate || new Date(data.toDate) >= new Date(data.fromDate),
+  { message: 'End date must be on or after start date', path: ['toDate'] }
+);
+
+type LeaveFormData = z.infer<typeof leaveSchema>;
+
 export default function LeavePage() {
   const { user } = useAuth();
   const { success, info } = useToast();
-
   // Safely check role regardless of casing
   const normalizedRole = user?.role?.toLowerCase() || '';
   const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
@@ -24,11 +38,13 @@ export default function LeavePage() {
   const [filter, setFilter] = useState('All');
 
   // Employee Form State
-  const [leaveType, setLeaveType] = useState('Casual Leave');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [reason, setReason] = useState('');
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<LeaveFormData>({
+    resolver: zodResolver(leaveSchema),
+    defaultValues: { leaveType: 'Casual Leave', fromDate: '', toDate: '', reason: '' }
+  });
 
+  const [isFormLeaveTypeOpen, setIsFormLeaveTypeOpen] = useState(false);
+  const leaveTypeOptions = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Work From Home', 'Optional Holiday'];
   const filters = ['All', 'Pending', 'Approved', 'Rejected'];
 
   const fetchLeaves = useCallback(async () => {
@@ -68,34 +84,31 @@ export default function LeavePage() {
 
   const totalRequests = leaveRequests.length;
 
-  const handleApplyLeave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleApplyLeave = handleSubmit(async (data: LeaveFormData) => {
     try {
       // Calculate days
-      const start = new Date(fromDate);
-      const end = new Date(toDate);
+      const start = new Date(data.fromDate);
+      const end = new Date(data.toDate);
       const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
 
       await leaveService.apply({
         employeeId: (user as any)?._id || 'placeholder', // Backend will auto-resolve if employee
-        type: leaveType,
-        fromDate,
-        toDate,
+        type: data.leaveType,
+        fromDate: data.fromDate,
+        toDate: data.toDate,
         days,
-        reason
+        reason: data.reason
       });
 
       success('Leave request submitted successfully');
-      setFromDate('');
-      setToDate('');
-      setReason('');
+      reset();
       
       // Refetch from backend to get the real saved data
       await fetchLeaves();
     } catch (err: any) {
       setError(err.message || 'Failed to apply for leave');
     }
-  };
+  });
 
   const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
     try {
@@ -271,50 +284,70 @@ export default function LeavePage() {
           >
             <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">Apply for Leave</h2>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 relative">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Leave Type</label>
-                <select
-                  value={leaveType}
-                  onChange={(e) => setLeaveType(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-                >
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Casual Leave">Casual Leave</option>
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Sick Leave">Sick Leave</option>
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Earned Leave">Earned Leave</option>
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Work From Home">Work From Home</option>
-                  <option className="bg-white dark:bg-[#111827] text-slate-900 dark:text-white" value="Optional Holiday">Optional Holiday</option>
-                </select>
+                <div className="block relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsFormLeaveTypeOpen(!isFormLeaveTypeOpen)}
+                    className={`flex items-center justify-between gap-2 w-full rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none dark:bg-[#111827] dark:text-white ${errors.leaveType ? 'border-red-300' : 'border-slate-200 dark:border-white/10 focus:border-blue-500'}`}
+                  >
+                    <span className={watch('leaveType') ? '' : 'text-slate-400 dark:text-slate-500'}>
+                      {watch('leaveType') || 'Select Leave Type'}
+                    </span>
+                    <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isFormLeaveTypeOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  {isFormLeaveTypeOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsFormLeaveTypeOpen(false)} />
+                      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-48 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-[#0B1121] dark:shadow-none">
+                        {leaveTypeOptions.map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => { setValue('leaveType', type, { shouldValidate: true, shouldDirty: true }); setIsFormLeaveTypeOpen(false); }}
+                            className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+                              watch('leaveType') === type
+                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                                : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {errors.leaveType && <span className="mt-1 block text-xs text-red-500">{errors.leaveType.message}</span>}
+                </div>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">From Date</label>
                 <input
                   type="date"
-                  required
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                  {...register('fromDate')}
+                  className={`rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark] ${errors.fromDate ? 'border-red-300' : 'border-slate-200 dark:border-white/10'}`}
                 />
+                {errors.fromDate && <span className="mt-1 text-xs text-red-500">{errors.fromDate.message}</span>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">To Date</label>
                 <input
                   type="date"
-                  required
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                  {...register('toDate')}
+                  className={`rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:bg-[#111827] dark:text-white [color-scheme:light] dark:[color-scheme:dark] ${errors.toDate ? 'border-red-300' : 'border-slate-200 dark:border-white/10'}`}
                 />
+                {errors.toDate && <span className="mt-1 text-xs text-red-500">{errors.toDate.message}</span>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Reason</label>
                 <input
                   type="text"
-                  required
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
                   placeholder="e.g. Medical appointment"
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                  {...register('reason')}
+                  className={`rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:bg-[#111827] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 ${errors.reason ? 'border-red-300' : 'border-slate-200 dark:border-white/10'}`}
                 />
+                {errors.reason && <span className="mt-1 text-xs text-red-500">{errors.reason.message}</span>}
               </div>
             </div>
             <div className="mt-5 flex justify-end">
@@ -352,42 +385,120 @@ export default function LeavePage() {
 
         {/* ── Leave Requests DataTable ── */}
         {/* data={filtered} — receives the pill-filtered slice, not raw leaveRequests */}
-        <DataTable<ApiLeave>
-          columns={columns}
-          data={filtered}
-          rowKey={(row, i) => row._id ?? i}
-          loading={loading}
-          searchable
-          searchPlaceholder="Search by name, department, or leave type…"
-          getSearchText={(row) =>
-            [
-              row.employeeId?.name,
-              row.employeeId?.department,
-              row.type,
-              row.status,
-            ]
-              .filter(Boolean)
-              .join(' ')
-          }
-          pageSize={10}
-          minWidth={900}
-          emptyState={
-            <EmptyState
-              icon={
-                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              }
-              title="No leave requests found"
-              description={
-                filter === 'All'
-                  ? 'No leave requests have been submitted yet.'
-                  : `No ${filter.toLowerCase()} requests found.`
-              }
-            />
-          }
-        />
+        {/* Table - Desktop */}
+        <div className="hidden md:block">
+          <DataTable<ApiLeave>
+            columns={columns}
+            data={filtered}
+            rowKey={(row, i) => row._id ?? i}
+            loading={loading}
+            searchable
+            searchPlaceholder="Search by name, department, or leave type…"
+            getSearchText={(row) =>
+              [
+                row.employeeId?.name,
+                row.employeeId?.department,
+                row.type,
+                row.status,
+              ]
+                .filter(Boolean)
+                .join(' ')
+            }
+            pageSize={10}
+            minWidth={900}
+            emptyState={
+              <EmptyState
+                icon={
+                  <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                }
+                title="No leave requests found"
+                description={
+                  filter === 'All'
+                    ? 'No leave requests have been submitted yet.'
+                    : `No ${filter.toLowerCase()} requests found.`
+                }
+              />
+            }
+          />
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="flex flex-col gap-3 md:hidden">
+          {filtered.map((leave, i) => {
+            const empName = leave.employeeId?.name || (leave as any).name || 'Unknown';
+            const empDept = leave.employeeId?.department || (leave as any).department || 'Engineering';
+            const fromStr = leave.fromDate?.split('T')[0] || (leave as any).from;
+            const toStr   = leave.toDate?.split('T')[0]   || (leave as any).to;
+            const st = leave.status || 'Pending';
+
+            return (
+              <div 
+                key={leave._id ?? i} 
+                className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+                      style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+                    >
+                      {empName.charAt(0)}
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{empName}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{empDept}</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={st} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-y-2 text-xs mb-4">
+                  <div>
+                    <p className="text-slate-400">Leave Type</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">{leave.type}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Duration</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">{leave.days}d</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-400">Dates</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">
+                      {fromStr} <span className="text-slate-400 mx-1">&rarr;</span> {toStr}
+                    </p>
+                  </div>
+                </div>
+
+                {!isEmployee && st === 'Pending' && (
+                  <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus(leave._id as string, 'Approved')}
+                      className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus(leave._id as string, 'Rejected')}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {filtered.length === 0 && !loading && (
+            <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+              <p className="text-sm font-semibold text-slate-500">No leave requests found.</p>
+            </div>
+          )}
+        </div>
 
       </div>
     </DashboardLayout>

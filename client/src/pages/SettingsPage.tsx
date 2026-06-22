@@ -45,11 +45,11 @@ export default function SettingsPage() {
   return (
     <DashboardLayout title="Settings" userName="Anil Kumar" userRole="HR Manager">
       <div className="space-y-5">
-        <h1 className="text-xl font-bold text-slate-950">Settings</h1>
+        <h1 className="text-xl font-bold text-slate-950 dark:text-white">Settings</h1>
 
         <div className="flex flex-col gap-5 lg:flex-row">
           <aside className="w-full shrink-0 lg:w-56">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
               {tabs.map(({ id, label, icon }) => (
                 <button
                   key={id}
@@ -58,8 +58,8 @@ export default function SettingsPage() {
                   className={[
                     'flex w-full items-center gap-3 border-l-[3px] px-4 py-3 text-left text-sm font-medium transition',
                     activeTab === id
-                      ? 'border-blue-600 bg-blue-50/70 text-blue-600'
-                      : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-950',
+                      ? 'border-blue-600 bg-blue-50/70 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                      : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white',
                   ].join(' ')}
                 >
                   <Icon name={icon} />
@@ -69,16 +69,16 @@ export default function SettingsPage() {
             </div>
           </aside>
 
-          <section className="flex-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="flex-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
             {activeTab === 'profile' && (
               <div>
-                <h2 className="mb-6 text-lg font-semibold text-slate-950">Profile Settings</h2>
-                <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6">
+                <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Profile Settings</h2>
+                <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6 dark:border-white/10">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">A</div>
                   <div>
-                    <div className="font-semibold text-slate-950">Anil Kumar</div>
+                    <div className="font-semibold text-slate-950 dark:text-white">Anil Kumar</div>
                     <div className="text-sm text-slate-400">HR Manager - HRMSPro</div>
-                    <button type="button" className="mt-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600">Change Photo</button>
+                    <button type="button" className="mt-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">Change Photo</button>
                   </div>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
@@ -93,8 +93,8 @@ export default function SettingsPage() {
                     ['Joining Date', 'January 15, 2022'],
                   ].map(([label, value]) => (
                     <label key={label} className="block">
-                      <span className="mb-1.5 block text-xs font-medium text-slate-700">{label}</span>
-                      <input defaultValue={value} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none focus:border-blue-300" />
+                      <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                      <input defaultValue={value} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
                     </label>
                   ))}
                 </div>
@@ -106,22 +106,22 @@ export default function SettingsPage() {
 
             {activeTab === 'security' && (
               <div>
-                <h2 className="mb-6 text-lg font-semibold text-slate-950">Security Settings</h2>
+                <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Security Settings</h2>
                 <div className="space-y-5">
                   <div>
-                    <h3 className="mb-4 text-sm font-semibold text-slate-700">Change Password</h3>
+                    <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Change Password</h3>
                     {['Current Password', 'New Password', 'Confirm New Password'].map((label) => (
                       <label key={label} className="mb-4 block">
-                        <span className="mb-1.5 block text-xs font-medium text-slate-700">{label}</span>
-                        <input type="password" placeholder="********" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300" />
+                        <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                        <input type="password" placeholder="********" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
                       </label>
                     ))}
                   </div>
-                  <div className="border-t border-slate-100 pt-4">
-                    <h3 className="mb-4 text-sm font-semibold text-slate-700">Two-Factor Authentication</h3>
-                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="border-t border-slate-100 pt-4 dark:border-white/10">
+                    <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Two-Factor Authentication</h3>
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/50">
                       <div>
-                        <div className="text-sm font-medium text-slate-950">Authenticator App</div>
+                        <div className="text-sm font-medium text-slate-950 dark:text-white">Authenticator App</div>
                         <div className="text-xs text-slate-400">Use an app like Google Authenticator</div>
                       </div>
                       <span className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-medium text-white">Enabled</span>
@@ -134,18 +134,18 @@ export default function SettingsPage() {
 
             {activeTab === 'notifications' && (
               <div>
-                <h2 className="mb-6 text-lg font-semibold text-slate-950">Notification Preferences</h2>
+                <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Notification Preferences</h2>
                 <div className="space-y-4">
                   {notifications.map((item, index) => (
-                    <div key={item.label} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div key={item.label} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/50">
                       <div>
-                        <div className="text-sm font-medium text-slate-950">{item.label}</div>
+                        <div className="text-sm font-medium text-slate-950 dark:text-white">{item.label}</div>
                         <div className="text-xs text-slate-400">{item.desc}</div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setNotifications((items) => items.map((entry, entryIndex) => entryIndex === index ? { ...entry, enabled: !entry.enabled } : entry))}
-                        className={`relative h-6 w-11 rounded-full transition ${item.enabled ? 'bg-blue-600' : 'bg-slate-200'}`}
+                        className={`relative h-6 w-11 rounded-full transition ${item.enabled ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}
                       >
                         <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${item.enabled ? 'left-[22px]' : 'left-0.5'}`} />
                       </button>
@@ -157,16 +157,16 @@ export default function SettingsPage() {
 
             {activeTab === 'theme' && (
               <div>
-                <h2 className="mb-6 text-lg font-semibold text-slate-950">Theme Preferences</h2>
+                <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Theme Preferences</h2>
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
                   {['light', 'dark', 'system'].map((item) => (
-                    <button key={item} type="button" onClick={() => setTheme(item)} className={`rounded-2xl border-2 p-4 text-center transition ${theme === item ? 'border-blue-600 bg-blue-50/40' : 'border-slate-200 bg-slate-50'}`}>
-                      <div className="mb-3 h-16 rounded-xl border border-slate-200" style={{ background: item === 'dark' ? '#0F172A' : item === 'system' ? 'linear-gradient(135deg,#fff 50%,#0F172A 50%)' : '#fff' }} />
-                      <p className={`text-sm font-medium ${theme === item ? 'text-blue-600' : 'text-slate-500'}`}>{item === 'system' ? 'System Default' : `${item.charAt(0).toUpperCase() + item.slice(1)} Mode`}</p>
+                    <button key={item} type="button" onClick={() => setTheme(item)} className={`rounded-2xl border-2 p-4 text-center transition ${theme === item ? 'border-blue-600 bg-blue-50/40 dark:bg-blue-500/10' : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/50'}`}>
+                      <div className="mb-3 h-16 rounded-xl border border-slate-200 dark:border-white/10" style={{ background: item === 'dark' ? '#0F172A' : item === 'system' ? 'linear-gradient(135deg,#fff 50%,#0F172A 50%)' : '#fff' }} />
+                      <p className={`text-sm font-medium ${theme === item ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{item === 'system' ? 'System Default' : `${item.charAt(0).toUpperCase() + item.slice(1)} Mode`}</p>
                     </button>
                   ))}
                 </div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700">Accent Color</h3>
+                <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">Accent Color</h3>
                 <div className="flex gap-3">
                   {['#2563EB', '#7C3AED', '#DB2777', '#DC2626', '#059669', '#D97706'].map((color) => <button key={color} type="button" className="h-8 w-8 rounded-full border-2" style={{ background: color, borderColor: color === '#2563EB' ? '#0F172A' : 'transparent' }} />)}
                 </div>
@@ -175,17 +175,17 @@ export default function SettingsPage() {
 
             {activeTab === 'permissions' && (
               <div>
-                <h2 className="mb-6 text-lg font-semibold text-slate-950">Role Permissions</h2>
+                <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Role Permissions</h2>
                 <div className="space-y-4">
                   {rolePermissions.map(({ role, permissions }) => (
-                    <div key={role} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div key={role} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/50">
                       <div className="mb-3 flex items-center gap-2">
-                        <span className="text-blue-600"><Icon name="shield" /></span>
-                        <span className="text-sm font-semibold text-slate-950">{role}</span>
-                        <span className="ml-auto rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600">{permissions.length} permissions</span>
+                        <span className="text-blue-600 dark:text-blue-400"><Icon name="shield" /></span>
+                        <span className="text-sm font-semibold text-slate-950 dark:text-white">{role}</span>
+                        <span className="ml-auto rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">{permissions.length} permissions</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {permissions.map((permission) => <span key={permission} className="rounded-full bg-green-50 px-2.5 py-1 text-xs text-green-500">{permission}</span>)}
+                        {permissions.map((permission) => <span key={permission} className="rounded-full bg-green-50 px-2.5 py-1 text-xs text-green-500 dark:bg-green-500/10 dark:text-green-400">{permission}</span>)}
                       </div>
                     </div>
                   ))}

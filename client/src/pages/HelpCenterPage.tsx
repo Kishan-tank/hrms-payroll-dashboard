@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, Search, Mail, Clock, MessageCircle } from 'lucide-react';
+import { ChevronDown, Search, Mail, Clock, MessageCircle, Rocket, Calendar, Coins, Lock } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 
 // ─── FAQ Data ────────────────────────────────────────────────────────────────
@@ -13,7 +13,7 @@ interface FAQItem {
 interface FAQCategory {
   id: string;
   label: string;
-  icon: string;
+  icon: React.ElementType;
   items: FAQItem[];
 }
 
@@ -21,7 +21,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
   {
     id: 'getting-started',
     label: 'Getting Started',
-    icon: '🚀',
+    icon: Rocket,
     items: [
       {
         id: 'gs-1',
@@ -52,7 +52,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
   {
     id: 'leave-attendance',
     label: 'Leave & Attendance',
-    icon: '📅',
+    icon: Calendar,
     items: [
       {
         id: 'la-1',
@@ -89,7 +89,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
   {
     id: 'payroll-payslips',
     label: 'Payroll & Payslips',
-    icon: '💰',
+    icon: Coins,
     items: [
       {
         id: 'pp-1',
@@ -120,7 +120,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
   {
     id: 'account-security',
     label: 'Account & Security',
-    icon: '🔐',
+    icon: Lock,
     items: [
       {
         id: 'as-1',
@@ -252,8 +252,8 @@ export default function HelpCenterPage() {
               searchResults.map((item) => (
                 <div key={item.id}>
                   <div className="border-b border-slate-100 px-5 pt-3 pb-1 dark:border-white/5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                      {item.categoryIcon} {item.categoryLabel}
+                    <span className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      <item.categoryIcon className="h-3 w-3" /> {item.categoryLabel}
                     </span>
                   </div>
                   <AccordionItem
@@ -275,7 +275,7 @@ export default function HelpCenterPage() {
               >
                 {/* Category header */}
                 <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-white/10">
-                  <span className="text-lg">{cat.icon}</span>
+                  <span className="text-slate-400 dark:text-slate-500"><cat.icon className="h-5 w-5" /></span>
                   <h2 className="font-bold text-slate-950 dark:text-white">{cat.label}</h2>
                   <span className="ml-auto rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
                     {cat.items.length} questions
