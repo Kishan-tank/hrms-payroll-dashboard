@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
+import Employee from "../models/employee.js";
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -44,6 +45,18 @@ export const registerUser = async (req, res) => {
       role: role || "employee",
       department: department || "",
       designation: designation || "",
+    });
+
+    // Automatically create a linked Employee profile so check-in/out and attendance work
+    await Employee.create({
+      employeeId: `EMP-${Date.now()}`,
+      name,
+      email,
+      department: department || "General",
+      role: role || "employee",
+      joinDate: new Date(),
+      basicPay: 50000, // Default base pay
+      userId: user._id
     });
 
     const token = generateToken(user);

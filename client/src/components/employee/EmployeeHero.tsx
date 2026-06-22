@@ -141,19 +141,19 @@ export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile
               </h1>
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300">
-                  Frontend Developer
+                  {summary?.employee?.role || 'Employee'}
                 </span>
                 <span className="text-slate-300 text-[11px] dark:text-slate-600">·</span>
                 <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
                   <MapPin size={11} className="text-blue-500 shrink-0 dark:text-blue-400" />
-                  Engineering Dept
+                  {summary?.employee?.department || 'General'} Dept
                 </div>
                 <span className="text-slate-300 text-[11px] dark:text-slate-600">·</span>
-                <span className="text-[11px] text-slate-500">EMP-1024</span>
+                <span className="text-[11px] text-slate-500">Active</span>
                 <span className="text-slate-300 text-[11px] dark:text-slate-600">·</span>
                 <div className="flex items-center gap-1 text-[11px] text-slate-500">
                   <Calendar size={10} className="shrink-0" />
-                  Jan 2024
+                  Since 2024
                 </div>
               </div>
             </div>

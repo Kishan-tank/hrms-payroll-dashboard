@@ -13,10 +13,10 @@ const router = express.Router();
 // All employee routes require authentication
 router.use(verifyToken);
 
-router.post("/", requireRole("admin", "hr"), addEmployee);
-router.get("/", getAllEmployees);
-router.get("/:id", getEmployeeById);
-router.put("/:id", requireRole("admin", "hr"), updateEmployee);
-router.delete("/:id", requireRole("admin", "hr"), deleteEmployee);
+router.post("/", requireRole("admin", "hr", "hr-manager"), addEmployee);
+router.get("/", requireRole("admin", "hr", "hr-manager"), getAllEmployees);
+router.get("/:id", requireRole("admin", "hr", "hr-manager"), getEmployeeById);
+router.put("/:id", requireRole("admin", "hr", "hr-manager"), updateEmployee);
+router.delete("/:id", requireRole("admin", "hr", "hr-manager"), deleteEmployee);
 
 export default router;

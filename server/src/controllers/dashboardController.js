@@ -155,7 +155,33 @@ export const getEmployeeSummary = async (req, res) => {
     const leavesTaken = totalLeaves.length > 0 ? totalLeaves[0].total : 0;
     const leaveBalance = Math.max(0, 24 - leavesTaken);
 
-    const latestPayroll = await Payroll.findOne({ employeeId: employee._id, status: "Paid" }).sort({ paidAt: -1 });
+    // Calculate Attendance Rate for current month
+    const currentYear = new Date().getFullYear();
+    const currentMonthIndex = new Date().getMonth();
+    const startOfMonth = new Date(currentYear, currentMonthIndex, 1).toISOString().split('T')[0];
+    const endOfMonth = new Date(currentYear, currentMonthIndex + 1, 0).toISOString().split('T')[0];
+    
+    const monthAttendance = await Attendance.find({ 
+      employeeId: employee._id, 
+      date: { $gte: startOfMonth, $lte: endOfMonth } 
+    });
+    
+    // Assume 22 working days in a month for simplicity
+    const workingDays = 22;
+    const presentCount = monthAttendance.filter(a => ["Present", "Late"].includes(a.status)).length;
+    const attendanceRate = Math.min(100, Math.round((presentCount / workingDays) * 100));
+
+    // Calculate Payroll Status
+    const currentMonthStr = new Date().toLocaleString('default', { month: 'long' });
+    const latestPayroll = await Payroll.findOne({ employeeId: employee._id }).sort({ createdAt: -1 });
+    let payrollStatus = "Not Started";
+    if (latestPayroll) {
+      if (latestPayroll.month === currentMonthStr && latestPayroll.year === currentYear) {
+        payrollStatus = latestPayroll.status;
+      } else {
+        payrollStatus = "Pending"; // For previous month or waiting for current
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -167,12 +193,14 @@ export const getEmployeeSummary = async (req, res) => {
         },
         workspace: {
           attendanceStatus: todayAttendance ? todayAttendance.status : "Not Checked In",
-          checkInTime: todayAttendance?.checkIn || null
+          checkInTime: todayAttendance?.checkIn || null,
+          attendanceRate: attendanceRate
         },
         payrollLeave: {
           leavesTaken,
           leaveBalance,
-          latestNetPay: latestPayroll?.netPay || 0
+          latestNetPay: latestPayroll?.netPay || 0,
+          payrollStatus: payrollStatus
         }
       }
     });
