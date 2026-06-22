@@ -23,8 +23,8 @@ import { TableSkeleton } from './Skeletons';
 export interface DataTableColumn<T> {
   /** Unique key; also used as the sort key when no `sortValue` is provided. */
   key: string;
-  /** Column header label. */
-  header: string;
+  /** Column header label or element. */
+  header: ReactNode;
   /** If true, clicking the header cycles asc → desc → none. */
   sortable?: boolean;
   /** Custom sort value extractor. Falls back to `row[key]`. */

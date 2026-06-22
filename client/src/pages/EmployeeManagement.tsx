@@ -91,6 +91,72 @@ export default function EmployeeManagement() {
   // drawer
   const [selectedEmployee, setSelectedEmployee] = useState<ApiEmployee | null>(null);
 
+  // bulk actions
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedRowIds((prev) => {
+      const isAllVisible = employees.length > 0 && employees.every((emp) => prev.has(emp._id));
+      const next = new Set(prev);
+      if (isAllVisible) {
+        employees.forEach((emp) => next.delete(emp._id));
+      } else {
+        employees.forEach((emp) => next.add(emp._id));
+      }
+      return next;
+    });
+  }, [employees]);
+
+  const toggleSelectOne = useCallback((id: string) => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleBulkExportCSV = () => {
+    const selected = employees.filter((emp) => selectedRowIds.has(emp._id));
+    if (selected.length === 0) return;
+    const headers = ['Employee ID', 'Name', 'Email', 'Role', 'Department', 'Status', 'Basic Pay'];
+    const rows = selected.map((emp) => [
+      emp.employeeId,
+      `"${emp.name}"`,
+      emp.email,
+      `"${emp.role}"`,
+      `"${emp.department}"`,
+      emp.status,
+      emp.basicPay.toString(),
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `employees_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setSelectedRowIds(new Set());
+  };
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const handleBulkChangeDepartment = () => {
+    showToast('Bulk action endpoint coming soon');
+  };
+
+  const handleBulkDeactivate = () => {
+    if (window.confirm(`Are you sure you want to deactivate ${selectedRowIds.size} selected employee(s)?`)) {
+      showToast('Bulk action endpoint coming soon');
+    }
+  };
+
   // ── fetch ─────────────────────────────────────────────────────────────────
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
@@ -106,7 +172,10 @@ export default function EmployeeManagement() {
     }
   }, [search, department, status, page]);
 
-  useEffect(() => { void fetchEmployees(); }, [fetchEmployees]);
+  useEffect(() => { 
+    void fetchEmployees(); 
+    setSelectedRowIds(new Set()); // Clear selection on filter/page change
+  }, [fetchEmployees]);
 
   // ── open add modal ────────────────────────────────────────────────────────
   function openAdd() {
@@ -173,6 +242,30 @@ export default function EmployeeManagement() {
   // ── helpers ───────────────────────────────────────────────────────────────
   const columns = useMemo<DataTableColumn<ApiEmployee>[]>(() => [
     {
+      key: 'select',
+      header: (
+        <input
+          type="checkbox"
+          checked={employees.length > 0 && employees.every((emp) => selectedRowIds.has(emp._id))}
+          onChange={toggleSelectAll}
+          className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900"
+        />
+      ),
+      render: (emp) => (
+        <input
+          type="checkbox"
+          checked={selectedRowIds.has(emp._id)}
+          onChange={(e) => {
+            e.stopPropagation();
+            toggleSelectOne(emp._id);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900"
+        />
+      ),
+      sortable: false,
+    },
+    {
       key: 'employeeId',
       header: 'Employee ID',
       sortable: true,
@@ -228,10 +321,15 @@ export default function EmployeeManagement() {
         </div>
       ),
     },
-  ], [openEdit, setDeleteTarget]);
+  ], [openEdit, setDeleteTarget, employees, selectedRowIds, toggleSelectAll, toggleSelectOne]);
 
   return (
     <DashboardLayout title="Employee Management">
+      {toastMsg && (
+        <div className="fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white shadow-xl dark:bg-white dark:text-slate-900">
+          {toastMsg}
+        </div>
+      )}
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -346,6 +444,33 @@ export default function EmployeeManagement() {
           }
         />
       </div>
+
+      {/* ── Floating Bulk Action Bar ── */}
+      {selectedRowIds.size > 0 && (
+        <div className="fixed bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-full border border-slate-200 bg-white/90 px-6 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md dark:border-white/10 dark:bg-[#0B1121]/90 dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
+          <div className="flex items-center gap-2 border-r border-slate-200 pr-4 dark:border-white/10">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+              {selectedRowIds.size}
+            </span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={handleBulkExportCSV} className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10">
+              Export CSV
+            </button>
+            <button type="button" onClick={handleBulkChangeDepartment} className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10">
+              Change Dept
+            </button>
+            <button type="button" onClick={handleBulkDeactivate} className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10">
+              Deactivate
+            </button>
+            <div className="mx-2 h-4 w-px bg-slate-200 dark:bg-white/10" />
+            <button type="button" onClick={() => setSelectedRowIds(new Set())} className="text-sm font-medium text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Employee Drawer ── */}
       <EmployeeDrawer
