@@ -6,6 +6,7 @@ import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import EmptyState from '../components/common/EmptyState';
+import EmployeeAttendanceWorkspace from '../components/employee/EmployeeAttendanceWorkspace';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ const COLUMNS: DataTableColumn<ApiAttendance>[] = [
 export default function AttendancePage() {
   const { user } = useAuth();
   const displayName = user?.name || 'HR Manager';
+  const isHR = ['hr-manager', 'admin', 'hr'].includes(user?.role?.toLowerCase() || '');
 
   const [records, setRecords]   = useState<ApiAttendance[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -112,17 +114,7 @@ export default function AttendancePage() {
       setError('');
     } catch (err: any) {
       setError(err.message || 'Failed to fetch attendance');
-      // Mock data fallback if API fails
-      setRecords([
-        {
-          _id: '1',
-          employeeId: { _id: '1', name: 'Anil Kumar', employeeId: 'EMP-001', department: 'Engineering' },
-          checkIn: '09:00 AM',
-          checkOut: '06:00 PM',
-          status: 'Present',
-          date: new Date().toISOString(),
-        } as ApiAttendance,
-      ]);
+      setRecords([]);
     } finally {
       setLoading(false);
     }
@@ -131,6 +123,20 @@ export default function AttendancePage() {
   useEffect(() => {
     void fetchAttendance();
   }, [fetchAttendance]);
+
+  if (!isHR) {
+    return (
+      <DashboardLayout title="My Attendance" userName={user?.name || 'Employee'} userRole={user?.role || 'Employee'}>
+        <EmployeeAttendanceWorkspace
+          records={records}
+          loading={loading}
+          error={error}
+          onRefresh={fetchAttendance}
+          user={user}
+        />
+      </DashboardLayout>
+    );
+  }
 
   const handleCheckIn = async () => {
     try {

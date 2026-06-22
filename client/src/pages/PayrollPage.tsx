@@ -1,28 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { payrollService } from '../services/hrmsApi';
 import type { PayrollRecord, PayrollSummary } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import EmptyState from '../components/common/EmptyState';
-
-const statusClass: Record<string, string> = {
-  Paid: 'bg-blue-50 text-blue-600',
-  Processing: 'bg-teal-50 text-teal-600',
-  Pending: 'bg-amber-50 text-amber-600',
-};
-
-const darkStatusClass: Record<string, string> = {
-  Paid: 'dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30 border',
-  Processing: 'dark:bg-teal-500/20 dark:text-teal-400 dark:border-teal-500/30 border',
-  Pending: 'dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30 border',
-};
-
-const statusDot: Record<string, string> = {
-  Paid: 'bg-blue-500 dark:bg-blue-400',
-  Processing: 'bg-teal-500 dark:bg-teal-400',
-  Pending: 'bg-amber-500 dark:bg-amber-400',
-};
+import DataTable from '../components/common/DataTable';
+import type { DataTableColumn } from '../components/common/DataTable';
+import StatusBadge from '../components/common/StatusBadge';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const CURRENT_MONTH = MONTHS[new Date().getMonth()];
@@ -272,6 +257,124 @@ export default function PayrollPage() {
       ]
     : null;
 
+  const hrColumns = useMemo<DataTableColumn<PayrollRecord>[]>(() => [
+    {
+      key: 'employee',
+      header: 'Employee',
+      sortable: true,
+      sortValue: (row) => row.employeeId?.name ?? '',
+      render: (row) => (
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white dark:bg-slate-800">
+            {row.employeeId?.name?.charAt(0) ?? '?'}
+          </span>
+          <span>
+            <span className="block text-sm font-bold text-slate-950 dark:text-white">{row.employeeId?.name ?? '—'}</span>
+            <span className="block text-xs text-slate-400">{row.employeeId?.employeeId ?? '—'}</span>
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      sortable: true,
+      sortValue: (row) => row.employeeId?.department ?? '',
+      render: (row) => <span className="text-sm text-slate-600 dark:text-slate-400">{row.employeeId?.department ?? '—'}</span>,
+    },
+    {
+      key: 'basicPay',
+      header: 'Basic Pay',
+      sortable: true,
+      sortValue: (row) => row.basicPay ?? 0,
+      render: (row) => <span className="text-sm font-bold text-slate-950 dark:text-white">{fmt(row.basicPay)}</span>,
+    },
+    {
+      key: 'deductions',
+      header: 'Deductions',
+      sortable: true,
+      sortValue: (row) => row.deductions ?? 0,
+      render: (row) => <span className="text-sm text-red-500 dark:text-red-400">{fmt(row.deductions)}</span>,
+    },
+    {
+      key: 'netPay',
+      header: 'Net Pay',
+      sortable: true,
+      sortValue: (row) => row.netPay ?? 0,
+      render: (row) => <span className="text-sm font-bold text-slate-950 dark:text-white">{fmt(row.netPay)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (row) => row.status ?? '',
+      render: (row) => <StatusBadge status={row.status ?? 'Pending'} />,
+    },
+  ], []);
+
+  const employeeColumns = useMemo<DataTableColumn<PayrollRecord>[]>(() => [
+    {
+      key: 'month',
+      header: 'Month',
+      sortable: true,
+      sortValue: (row) => `${row.month} ${row.year}`,
+      render: (row) => <span className="text-sm font-bold text-slate-900 dark:text-white">{row.month} {row.year}</span>,
+    },
+    {
+      key: 'payDate',
+      header: 'Pay Date',
+      sortable: true,
+      sortValue: (row) => row.processedAt ?? '',
+      render: (row) => <span className="text-sm text-slate-600 dark:text-slate-400">{row.processedAt ? new Date(row.processedAt).toLocaleDateString() : '—'}</span>,
+    },
+    {
+      key: 'grossPay',
+      header: 'Gross Pay',
+      sortable: true,
+      sortValue: (row) => row.basicPay ?? 0,
+      render: (row) => <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmt(row.basicPay)}</span>,
+    },
+    {
+      key: 'deductions',
+      header: 'Deductions',
+      sortable: true,
+      sortValue: (row) => row.deductions ?? 0,
+      render: (row) => <span className="text-sm text-red-500 dark:text-red-400">{fmt(row.deductions)}</span>,
+    },
+    {
+      key: 'netPay',
+      header: 'Net Pay',
+      sortable: true,
+      sortValue: (row) => row.netPay ?? 0,
+      render: (row) => <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmt(row.netPay)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (row) => row.status ?? '',
+      render: (row) => <StatusBadge status={row.status ?? 'Pending'} />,
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row) => (
+        <div className="flex gap-2">
+          <button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
+            View
+          </button>
+          <button 
+            type="button" 
+            onClick={() => handleDownloadPayslip(row)}
+            className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+          >
+            Download
+          </button>
+        </div>
+      ),
+    },
+  ], [toast, currentEmployeeId, user]); // Added dependencies to satisfy linter, though handleDownloadPayslip uses them implicitly
+
   return (
     <DashboardLayout title={isEmployee ? "My Payslips" : "Payroll Management"}>
       {/* Ambient glows for dark mode */}
@@ -361,76 +464,26 @@ export default function PayrollPage() {
             </div>
 
             {/* Payslip List */}
-            {myRecords.length === 0 && !loading ? (
-              <EmptyState
-                icon={
-                  <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                }
-                title="No payslips available yet"
-                description={`Your payslips for ${filterMonth} ${filterYear} will appear here once payroll is processed by your HR team.`}
-              />
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
-                  <h2 className="font-bold text-slate-950 dark:text-white">Payslips</h2>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                    {myRecords.length} records
-                  </span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px]">
-                    <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.02]">
-                        {['Month', 'Pay Date', 'Gross Pay', 'Deductions', 'Net Pay', 'Status', 'Action'].map((col) => (
-                          <th key={col} className="px-5 py-4 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr><td colSpan={7} className="px-5 py-10 text-center text-sm text-slate-500">Loading payslips...</td></tr>
-                      ) : (
-                        myRecords.map((rec, index) => (
-                          <tr key={rec._id} className={`transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] ${index < myRecords.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''}`}>
-                            <td className="px-5 py-4 text-sm font-bold text-slate-900 dark:text-white">{rec.month} {rec.year}</td>
-                            <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
-                              {rec.processedAt ? new Date(rec.processedAt).toLocaleDateString() : '—'}
-                            </td>
-                            <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">{fmt(rec.basicPay)}</td>
-                            <td className="px-5 py-4 text-sm text-red-500 dark:text-red-400">{fmt(rec.deductions)}</td>
-                            <td className="px-5 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmt(rec.netPay)}</td>
-                            <td className="px-5 py-4">
-                              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[rec.status] || ''} ${darkStatusClass[rec.status] || ''}`}>
-                                <span className={`h-1.5 w-1.5 rounded-full ${statusDot[rec.status] || 'bg-slate-400'}`} />
-                                {rec.status}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="flex gap-2">
-                                <button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
-                                  View
-                                </button>
-                                <button 
-                                  type="button" 
-                                  onClick={() => handleDownloadPayslip(rec)}
-                                  className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
-                                >
-                                  Download
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+            <DataTable<PayrollRecord>
+              columns={employeeColumns}
+              data={myRecords}
+              rowKey={(row, i) => row._id ?? i}
+              loading={loading}
+              searchable={false}
+              pageSize={10}
+              minWidth={900}
+              emptyState={
+                <EmptyState
+                  icon={
+                    <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  }
+                  title="No payslips available yet"
+                  description={`Your payslips for ${filterMonth} ${filterYear} will appear here once payroll is processed by your HR team.`}
+                />
+              }
+            />
           </>
         ) : (
           /* =========================================
@@ -446,7 +499,7 @@ export default function PayrollPage() {
                       <div className="mb-4 flex items-center justify-between">
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${color}18`, color: String(color) }}>{icon}</span>
                       </div>
-                      <p className="text-2xl font-bold text-slate-950">{value}</p>
+                      <p className="text-2xl font-bold text-slate-950 dark:text-white">{value}</p>
                       <p className="mt-1 text-xs text-slate-400">{sub}</p>
                       <p className="mt-2 text-xs font-bold text-slate-500">{label}</p>
                     </div>
@@ -454,53 +507,37 @@ export default function PayrollPage() {
             </div>
 
             {/* Records table */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                <h2 className="font-bold text-slate-950">{filterMonth} {filterYear} Payroll</h2>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">{records.length} records</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[860px]">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50">
-                      {['Employee', 'Department', 'Basic Pay', 'Deductions', 'Net Pay', 'Status'].map((col) => (
-                        <th key={col} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-400">{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">Loading payroll records...</td></tr>
-                    ) : records.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
-                        No payroll records for {filterMonth} {filterYear}. Click "Run Payroll" to generate.
-                      </td></tr>
-                    ) : records.map((rec) => (
-                      <tr key={rec._id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">
-                              {rec.employeeId?.name?.charAt(0) ?? '?'}
-                            </span>
-                            <span>
-                              <span className="block text-sm font-bold text-slate-950">{rec.employeeId?.name ?? '—'}</span>
-                              <span className="block text-xs text-slate-400">{rec.employeeId?.employeeId ?? '—'}</span>
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{rec.employeeId?.department ?? '—'}</td>
-                        <td className="px-4 py-3 text-sm font-bold text-slate-950">{fmt(rec.basicPay)}</td>
-                        <td className="px-4 py-3 text-sm text-red-500">{fmt(rec.deductions)}</td>
-                        <td className="px-4 py-3 text-sm font-bold text-slate-950">{fmt(rec.netPay)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[rec.status] ?? 'bg-slate-100 text-slate-500'}`}>{rec.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <DataTable<PayrollRecord>
+              columns={hrColumns}
+              data={records}
+              rowKey={(row, i) => row._id ?? i}
+              loading={loading}
+              searchable={true}
+              searchPlaceholder="Search by name, ID, department or status..."
+              getSearchText={(row) =>
+                [
+                  row.employeeId?.name,
+                  row.employeeId?.employeeId,
+                  row.employeeId?.department,
+                  row.status,
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+              }
+              pageSize={10}
+              minWidth={860}
+              emptyState={
+                <EmptyState
+                  icon={
+                    <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  }
+                  title={`No payroll records for ${filterMonth} ${filterYear}`}
+                  description="Click 'Run Payroll' to generate records."
+                />
+              }
+            />
           </>
         )}
       </div>
