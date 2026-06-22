@@ -37,6 +37,7 @@ interface KpiCardProps {
   badgeColor?: string;
   progress: number;
   sparklineData?: number[];
+  route: string;
 }
 
 function MiniSparkline({ data, color }: { data: number[], color: string }) {
@@ -63,10 +64,14 @@ function MiniSparkline({ data, color }: { data: number[], color: string }) {
   );
 }
 
-function KpiCard({ icon, iconGradient, glowColor, label, value, suffix, sub, indicator, badge, badgeColor, progress, sparklineData }: KpiCardProps) {
+import { useNavigate } from 'react-router-dom';
+
+function KpiCard({ icon, iconGradient, glowColor, label, value, suffix, sub, indicator, badge, badgeColor, progress, sparklineData, route }: KpiCardProps) {
+  const navigate = useNavigate();
   return (
     <div
-      className="group relative overflow-hidden rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/30 hover:shadow-[0_8px_30px_rgba(59,130,246,0.1)] dark:border-white/5 dark:bg-white/[0.02] dark:hover:shadow-[0_8px_30px_rgba(59,130,246,0.2)]"
+      onClick={() => navigate(route)}
+      className="group relative overflow-hidden rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/30 hover:shadow-[0_8px_30px_rgba(59,130,246,0.1)] dark:border-white/5 dark:bg-white/[0.02] dark:hover:shadow-[0_8px_30px_rgba(59,130,246,0.2)] cursor-pointer flex flex-col h-full"
       onMouseEnter={(e) => {
         const el = e.currentTarget as HTMLElement;
         el.style.boxShadow = `0 12px 40px ${glowColor}, 0 8px 30px rgba(59,130,246,0.2)`;
@@ -134,6 +139,12 @@ function KpiCard({ icon, iconGradient, glowColor, label, value, suffix, sub, ind
           style={{ width: `${progress}%`, background: iconGradient, boxShadow: `0 0 10px ${glowColor}` }}
         />
       </div>
+
+      <div className="mt-auto pt-3 relative z-10">
+        <span className="text-[11px] font-bold text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end">
+          View details &rarr;
+        </span>
+      </div>
     </div>
   );
 }
@@ -152,6 +163,7 @@ export default function WorkspaceSnapshot() {
       progress: 94,
       badgeColor: "#3b82f6",
       sparklineData: [88, 90, 89, 92, 94, 94, 94],
+      route: '/attendance',
     },
     {
       icon: <Umbrella size={18} className="text-white" />,
@@ -164,6 +176,7 @@ export default function WorkspaceSnapshot() {
       badgeColor: "#10b981",
       progress: 50,
       sparklineData: [22, 22, 20, 20, 18, 18],
+      route: '/leave',
     },
     {
       icon: <DollarSign size={18} className="text-white" />,
@@ -175,6 +188,7 @@ export default function WorkspaceSnapshot() {
       badge: "Updated",
       badgeColor: "#10b981",
       progress: 100,
+      route: '/payroll',
     },
     {
       icon: <CheckSquare size={18} className="text-white" />,
@@ -187,6 +201,7 @@ export default function WorkspaceSnapshot() {
       badgeColor: "#f59e0b",
       progress: 75,
       sparklineData: [8, 7, 5, 6, 4, 4],
+      route: '/',
     },
   ];
 
