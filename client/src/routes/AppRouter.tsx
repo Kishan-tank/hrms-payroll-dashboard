@@ -16,6 +16,7 @@ import LeavePage from '../pages/LeavePage';
 import ReportsPage from '../pages/ReportsPage';
 import SettingsPage from '../pages/SettingsPage';
 import ProfilePage from '../pages/ProfilePage';
+import OrgChartPage from '../pages/OrgChartPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import NotificationsPage from '../pages/NotificationsPage';
 import DocumentsPage from '../pages/DocumentsPage';
@@ -63,6 +64,8 @@ export default function AppRouter() {
             <Route path="/hr-dashboard" element={<HRDashboard />} />
             <Route path="/dashboard/hr" element={<HRDashboard />} />
             <Route path="/employees" element={<EmployeeManagement />} />
+            <Route path="/org-chart" element={<OrgChartPage />} />
+            <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/reports" element={<ReportsPage />} />
           </Route>
 

@@ -13,7 +13,8 @@ type IconName =
   | 'logout'
   | 'building'
   | 'chevron'
-  | 'briefcase';
+  | 'briefcase'
+  | 'orgchart';
 
 interface NavItem {
   label: string;
@@ -41,6 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
     group: 'Team & Organization',
     items: [
       { label: 'Employees', path: '/employees', icon: 'employees', roles: ['HR_MANAGER'] },
+      { label: 'Org Chart', path: '/org-chart', icon: 'orgchart', roles: ['HR_MANAGER'] },
       { label: 'Payroll', path: '/payroll', icon: 'payroll' },
       { label: 'Reports', path: '/reports', icon: 'reports', roles: ['HR_MANAGER'] },
     ]
@@ -73,6 +75,7 @@ function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: str
     case 'logout': return <svg {...c}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>;
     case 'chevron': return <svg {...c}><path d="m15 18-6-6 6-6" /></svg>;
     case 'briefcase': return <svg {...c}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>;
+    case 'orgchart': return <svg {...c}><rect x="8" y="3" width="8" height="6" rx="1" /><path d="M12 9v4" /><path d="M6 13h12" /><path d="M6 13v2" /><path d="M18 13v2" /><rect x="2" y="15" width="8" height="6" rx="1" /><rect x="14" y="15" width="8" height="6" rx="1" /></svg>;
     default: return null;
   }
 }
