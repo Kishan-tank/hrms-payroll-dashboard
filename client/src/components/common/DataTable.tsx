@@ -1,8 +1,13 @@
 /**
  * DataTable — reusable, client-side sortable/searchable/paginated table.
  *
- * All filtering, sorting, and pagination is computed in-component via useMemo.
- * No API calls are made from this component.
+ * Client-side mode (default): omit onSearch, totalItems,
+ * currentPage, onPageChange. DataTable handles all filtering,
+ * sorting, and pagination internally.
+ *
+ * Server-side mode: provide onSearch and/or the three
+ * pagination props. DataTable renders controls but defers
+ * logic to the caller.
  *
  * Loading state: reuses TableSkeleton from Skeletons.tsx.
  * Empty state: renders EmptyState from EmptyState.tsx inside a <td>.
@@ -78,6 +83,24 @@ export interface DataTableProps<T> {
   className?: string;
   /** Min width for the inner table (for horizontal scroll). Default: 700px. */
   minWidth?: number;
+  /**
+   * Server-side search callback.
+   * When provided, DataTable renders the search input but calls
+   * onSearch(query) on change instead of filtering internally.
+   * The internal useMemo search is bypassed entirely.
+   */
+  onSearch?: (query: string) => void;
+  /** Server-side pagination: total items across all pages. */
+  totalItems?: number;
+  /** Server-side pagination: current active page. */
+  currentPage?: number;
+  /**
+   * Server-side pagination callback.
+   * When provided alongside totalItems and currentPage, DataTable renders
+   * pagination controls using these values instead of computing them from the
+   * local sorted/filtered array.
+   */
+  onPageChange?: (page: number) => void;
 }
 
 // ─── Sort direction ──────────────────────────────────────────────────────────
@@ -109,6 +132,10 @@ export default function DataTable<T extends object>({
   onRowClick,
   className = '',
   minWidth = 700,
+  onSearch,
+  totalItems,
+  currentPage,
+  onPageChange,
 }: DataTableProps<T>) {
   const searchId = useId();
 
@@ -120,6 +147,7 @@ export default function DataTable<T extends object>({
 
   // ── Search ───────────────────────────────────────────────────────────────
   const searched = useMemo(() => {
+    if (onSearch) return data;
     const q = query.trim().toLowerCase();
     if (!q) return data;
     return data.filter((row) => {
@@ -152,9 +180,27 @@ export default function DataTable<T extends object>({
   }, [searched, sortKey, sortDir, columns]);
 
   // ── Pagination ───────────────────────────────────────────────────────────
-  const totalPages   = pageSize > 0 ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
-  const safePage     = Math.min(page, totalPages);
-  const paginated    = pageSize > 0 ? sorted.slice((safePage - 1) * pageSize, safePage * pageSize) : sorted;
+  const isServerSidePagination = totalItems !== undefined && currentPage !== undefined && onPageChange !== undefined;
+
+  const totalPages = isServerSidePagination && pageSize > 0
+    ? Math.max(1, Math.ceil(totalItems! / pageSize))
+    : pageSize > 0 ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
+
+  const safePage = isServerSidePagination
+    ? Math.min(currentPage!, totalPages)
+    : Math.min(page, totalPages);
+
+  const paginated = isServerSidePagination
+    ? sorted
+    : pageSize > 0 ? sorted.slice((safePage - 1) * pageSize, safePage * pageSize) : sorted;
+
+  function handlePageChange(newPage: number) {
+    if (isServerSidePagination) {
+      onPageChange?.(newPage);
+    } else {
+      setPage(newPage);
+    }
+  }
 
   // ── Column header click ──────────────────────────────────────────────────
   function handleSort(col: DataTableColumn<T>) {
@@ -166,8 +212,13 @@ export default function DataTable<T extends object>({
   }
 
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
-    setQuery(e.target.value);
-    setPage(1);
+    const q = e.target.value;
+    setQuery(q);
+    if (onSearch) {
+      onSearch(q);
+    } else {
+      setPage(1);
+    }
   }
 
   // ── Default empty state ──────────────────────────────────────────────────
@@ -289,15 +340,22 @@ export default function DataTable<T extends object>({
           <p className="text-xs text-slate-400 dark:text-slate-500">
             Showing{' '}
             <span className="font-semibold text-slate-600 dark:text-slate-300">
-              {sorted.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, sorted.length)}
+              {isServerSidePagination
+                ? (totalItems === 0 ? 0 : (safePage - 1) * pageSize + 1)
+                : (sorted.length === 0 ? 0 : (safePage - 1) * pageSize + 1)}–{
+              isServerSidePagination
+                ? Math.min(safePage * pageSize, totalItems ?? 0)
+                : Math.min(safePage * pageSize, sorted.length)}
             </span>{' '}
             of{' '}
-            <span className="font-semibold text-slate-600 dark:text-slate-300">{sorted.length}</span>
+            <span className="font-semibold text-slate-600 dark:text-slate-300">
+              {isServerSidePagination ? totalItems : sorted.length}
+            </span>
           </p>
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setPage((v) => Math.max(1, v - 1))}
+              onClick={() => handlePageChange(Math.max(1, safePage - 1))}
               disabled={safePage === 1}
               aria-label="Previous page"
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/[0.04]"
@@ -321,7 +379,7 @@ export default function DataTable<T extends object>({
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setPage(n as number)}
+                    onClick={() => handlePageChange(n as number)}
                     aria-label={`Page ${n}`}
                     aria-current={safePage === n ? 'page' : undefined}
                     className={`h-7 min-w-[28px] rounded-lg px-1.5 text-xs font-semibold transition ${
@@ -337,7 +395,7 @@ export default function DataTable<T extends object>({
 
             <button
               type="button"
-              onClick={() => setPage((v) => Math.min(totalPages, v + 1))}
+              onClick={() => handlePageChange(Math.min(totalPages, safePage + 1))}
               disabled={safePage === totalPages}
               aria-label="Next page"
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/[0.04]"
