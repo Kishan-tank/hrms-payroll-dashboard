@@ -1,10 +1,24 @@
 import Leave from "../models/leave.js";
+import Employee from "../models/employee.js";
 
 // Get all leave requests
 export const getLeaves = async (req, res) => {
   try {
-    // Populate replaces the employeeId with actual employee details (name, dept)
-    const leaves = await Leave.find().populate("employeeId", "name department");
+    const userRole = req.user?.role;
+    let query = {};
+
+    if (userRole === "employee") {
+      const userId = req.user?._id || req.user?.id;
+      const employee = await Employee.findOne({ userId });
+      if (!employee) {
+        return res.status(404).json({ success: false, message: "Employee profile not found" });
+      }
+      query.employeeId = employee._id;
+    } else if (!["admin", "hr", "hr-manager"].includes(userRole)) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    const leaves = await Leave.find(query).populate("employeeId", "name department");
     res.status(200).json({ success: true, leaves });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch leaves.", error: error.message });
@@ -35,6 +49,28 @@ export const applyLeave = async (req, res) => {
   }
 };
 
+// Update leave status (HR/Admin only)
+export const updateLeaveStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
 
+    if (!["Approved", "Rejected", "Pending"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status value." });
+    }
 
+    const leave = await Leave.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true, runValidators: true }
+    );
 
+    if (!leave) {
+      return res.status(404).json({ success: false, message: "Leave request not found." });
+    }
+
+    res.status(200).json({ success: true, message: `Leave ${status.toLowerCase()} successfully.`, leave });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update leave status.", error: error.message });
+  }
+};

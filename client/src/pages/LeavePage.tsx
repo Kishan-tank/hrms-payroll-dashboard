@@ -11,22 +11,24 @@ import EmptyState from '../components/common/EmptyState';
 export default function LeavePage() {
   const { user } = useAuth();
   const { success, info } = useToast();
-  
-  const isEmployee = user?.role === 'Employee';
+
+  // Safely check role regardless of casing
+  const normalizedRole = user?.role?.toLowerCase() || '';
+  const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
   const displayName = user?.name || 'HR Manager';
 
   const [leaveRequests, setLeaveRequests] = useState<ApiLeave[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [filter, setFilter] = useState('All');
-  
+
   // Employee Form State
   const [leaveType, setLeaveType] = useState('Casual Leave');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
-  
+
   const filters = ['All', 'Pending', 'Approved', 'Rejected'];
 
   const fetchLeaves = useCallback(async () => {
@@ -57,13 +59,13 @@ export default function LeavePage() {
   }, [fetchLeaves]);
 
   const filtered = useMemo(() => (filter === 'All' ? leaveRequests : leaveRequests.filter((item) => item.status === filter)), [filter, leaveRequests]);
-  
+
   const counts = {
     Pending: leaveRequests.filter((item) => item.status === 'Pending').length,
     Approved: leaveRequests.filter((item) => item.status === 'Approved').length,
     Rejected: leaveRequests.filter((item) => item.status === 'Rejected').length,
   };
-  
+
   const totalRequests = leaveRequests.length;
 
   const handleApplyLeave = (e: React.FormEvent) => {
@@ -87,9 +89,18 @@ export default function LeavePage() {
   };
 
   const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
-    // Optimistic UI
-    setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
-    success(`Leave request ${newStatus}`);
+    try {
+      // 1. Send the request to the backend
+      await leaveService.updateStatus(id, newStatus);
+
+      // 2. Update the UI only on success
+      setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
+      success(`Leave request ${newStatus}`);
+    } catch (err: any) {
+      console.error(err);
+      // Let the user know if they don't have permission or if it fails
+      success(err.response?.data?.message || 'Failed to update leave status');
+    }
   }, [success]);
 
   // ── Columns defined inside component — Actions column closes over
@@ -141,7 +152,7 @@ export default function LeavePage() {
       header: 'Dates',
       render: (row) => {
         const fromStr = row.fromDate?.split('T')[0] || (row as any).from;
-        const toStr   = row.toDate?.split('T')[0]   || (row as any).to;
+        const toStr = row.toDate?.split('T')[0] || (row as any).to;
         return (
           <span className="text-sm text-slate-500 dark:text-slate-400">
             {fromStr} <span className="px-1 text-slate-400">→</span> {toStr}
@@ -218,8 +229,8 @@ export default function LeavePage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           {[
-            ['Pending',  counts.Pending,  'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20', isEmployee ? 'Your pending requests' : 'Needs approval', 'PE'],
-            ['Approved', counts.Approved, 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20', isEmployee ? 'Your approved leaves' : 'This month',     'AP'],
+            ['Pending', counts.Pending, 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/20', isEmployee ? 'Your pending requests' : 'Needs approval', 'PE'],
+            ['Approved', counts.Approved, 'text-emerald-500 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/20', isEmployee ? 'Your approved leaves' : 'This month', 'AP'],
             ['Rejected', counts.Rejected, 'text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-500/20', isEmployee ? 'Your rejected leaves' : 'Policy conflicts', 'RJ'],
           ].map(([label, value, classes, sub, abbr]) => (
             <div
@@ -318,11 +329,10 @@ export default function LeavePage() {
                 key={item}
                 type="button"
                 onClick={() => setFilter(item)}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 ${
-                  isActive
-                    ? 'border-transparent text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400'
-                    : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white'
-                }`}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 ${isActive
+                  ? 'border-transparent text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400'
+                  : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white'
+                  }`}
                 style={isActive ? { boxShadow: 'inset 0 0 0 1px rgba(59,130,246,0.2)' } : {}}
               >
                 {item}

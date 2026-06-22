@@ -4,7 +4,21 @@ import Employee from "../models/employee.js";
 // Fetch all attendance records
 export const getAttendance = async (req, res) => {
   try {
-    const records = await Attendance.find().populate("employeeId", "name department employeeId");
+    const userRole = req.user?.role;
+    let query = {};
+
+    if (userRole === "employee") {
+      const userId = req.user?._id || req.user?.id;
+      const employee = await Employee.findOne({ userId });
+      if (!employee) {
+        return res.status(404).json({ success: false, message: "Employee profile not found" });
+      }
+      query.employeeId = employee._id;
+    } else if (!["admin", "hr", "hr-manager"].includes(userRole)) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    const records = await Attendance.find(query).populate("employeeId", "name department employeeId");
     res.status(200).json({ success: true, records });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error", error: error.message });
