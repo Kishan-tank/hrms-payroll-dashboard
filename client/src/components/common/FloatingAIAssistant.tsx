@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Bot, X, Sparkles, Send, User } from 'lucide-react';
 import { aiService } from '../../services/hrmsApi';
 
@@ -18,6 +18,7 @@ export default function FloatingAIAssistant() {
     { role: 'ai', text: 'Hello! I am your AI Assistant. How can I help you today?' },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -59,10 +60,10 @@ export default function FloatingAIAssistant() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 20, scale: shouldReduceMotion ? 1 : 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            exit={{ opacity: 0, y: shouldReduceMotion ? 0 : 20, scale: shouldReduceMotion ? 1 : 0.95 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: "easeOut" }}
             className="absolute bottom-20 right-0 mb-4 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white/95 shadow-[0_20px_80px_rgba(0,0,0,0.15)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0B1121]/70 dark:shadow-[0_20px_80px_rgba(0,0,0,0.8)]"
           >
             {/* Header */}
@@ -81,6 +82,7 @@ export default function FloatingAIAssistant() {
               </div>
               <button
                 onClick={() => setIsOpen(false)}
+                aria-label="Close AI Assistant"
                 className="rounded-lg p-1.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
               >
                 <X size={20} />
@@ -126,6 +128,7 @@ export default function FloatingAIAssistant() {
                     <button
                       key={suggestion}
                       onClick={() => handleSend(suggestion)}
+                      aria-label={`Ask AI: ${suggestion}`}
                       className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[12px] font-semibold text-blue-700 transition-all hover:bg-blue-100 hover:border-blue-300 shadow-sm text-left dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:hover:border-blue-500/50 dark:hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] dark:backdrop-blur-md"
                     >
                       {suggestion}
@@ -144,11 +147,13 @@ export default function FloatingAIAssistant() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
                   placeholder="Ask me anything..."
+                  aria-label="AI message input"
                   className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-5 pr-12 text-[14px] text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 shadow-inner dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-blue-500/50 dark:focus:bg-white/10 dark:focus:ring-blue-500/10"
                 />
                 <button
                   onClick={() => handleSend(input)}
                   disabled={!input.trim()}
+                  aria-label="Send message"
                   className="absolute right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md transition-all disabled:opacity-50 disabled:grayscale hover:scale-105"
                 >
                   <Send size={16} className="ml-0.5" />
@@ -167,9 +172,11 @@ export default function FloatingAIAssistant() {
         </div>
 
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={shouldReduceMotion ? {} : { scale: 1.05 }}
+          whileTap={shouldReduceMotion ? {} : { scale: 0.95 }}
           onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? "Close AI Assistant" : "Open AI Assistant"}
+          aria-expanded={isOpen}
           className="group flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_8px_30px_rgba(59,130,246,0.5)] transition-all hover:shadow-[0_8px_40px_rgba(59,130,246,0.7)] ring-4 ring-white dark:ring-[#0B1121]"
         >
           {isOpen ? (

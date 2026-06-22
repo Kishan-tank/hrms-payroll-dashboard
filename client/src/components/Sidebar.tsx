@@ -158,12 +158,13 @@ export default function Sidebar() {
                     {sectionLabel}
                   </h3>
                 )}
-                <nav className="flex flex-col gap-1.5">
+                <nav id={`sidebar-nav-${group.group.replace(/\s+/g, '-').toLowerCase()}`} className="flex flex-col gap-1.5">
                   {visibleItems.map((item) => (
                     <NavLink
                       key={item.path}
                       to={item.path}
                       title={collapsed ? item.label : undefined}
+                      aria-label={item.label}
                       className={({ isActive }) =>
                         [
                           `group relative flex h-10 items-center text-sm font-semibold transition-all duration-300 ${collapsed ? 'justify-center w-12 mx-auto px-0 rounded-xl' : 'px-3 gap-3 w-full rounded-xl hover:translate-x-1'}`,
@@ -195,6 +196,7 @@ export default function Sidebar() {
             type="button"
             onClick={onToggleCollapse}
             aria-label="Toggle sidebar"
+            aria-expanded={!collapsed}
             className={`hidden lg:flex h-10 items-center text-sm font-semibold transition-all duration-300 hover:bg-slate-50 hover:text-slate-900 border border-transparent dark:hover:bg-white/[0.04] dark:text-slate-400 dark:hover:text-slate-200 ${collapsed ? 'justify-center w-12 mx-auto px-0 rounded-xl' : 'w-full gap-3 rounded-xl px-3 hover:translate-x-1'}`}
             title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >

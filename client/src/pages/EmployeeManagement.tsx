@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { employeeService } from '../services/hrmsApi';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { ApiEmployee } from '../services/hrmsApi';
 import EmployeeDrawer from '../components/employees/EmployeeDrawer';
 import EmptyState from '../components/common/EmptyState';
@@ -87,9 +88,18 @@ export default function EmployeeManagement() {
   // delete confirm
   const [deleteTarget, setDeleteTarget] = useState<ApiEmployee | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const deleteModalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(!!deleteTarget, () => setDeleteTarget(null), deleteModalRef);
 
   // drawer
   const [selectedEmployee, setSelectedEmployee] = useState<ApiEmployee | null>(null);
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(showModal, () => {
+    setShowModal(false);
+    reset(emptyForm);
+    setIsFormDeptOpen(false);
+  }, modalRef);
 
   // bulk actions
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
@@ -451,8 +461,16 @@ export default function EmployeeManagement() {
           {employees.map((emp) => (
             <div 
               key={emp._id} 
-              className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]"
+              className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm cursor-pointer hover:shadow-md transition outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-white/10 dark:bg-[#0B1121]"
               onClick={() => setSelectedEmployee(emp)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedEmployee(emp);
+                }
+              }}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -547,8 +565,15 @@ export default function EmployeeManagement() {
       {/* ── Add / Edit Modal ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
-            <h2 className="mb-5 text-lg font-bold text-slate-950 dark:text-white">{editTarget ? 'Edit Employee' : 'Add New Employee'}</h2>
+          <div 
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-modal-title"
+            tabIndex={-1}
+            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] outline-none dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+          >
+            <h2 id="employee-modal-title" className="mb-5 text-lg font-bold text-slate-950 dark:text-white">{editTarget ? 'Edit Employee' : 'Add New Employee'}</h2>
             {formError && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">{formError}</p>}
             <form onSubmit={(e) => { e.preventDefault(); void handleSave(); }}>
               <div className="grid grid-cols-2 gap-4">
@@ -631,8 +656,15 @@ export default function EmployeeManagement() {
       {/* ── Delete Confirm ── */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
-            <h2 className="mb-2 text-lg font-bold text-slate-950 dark:text-white">Deactivate Employee?</h2>
+          <div 
+            ref={deleteModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-employee-modal"
+            tabIndex={-1}
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] outline-none dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+          >
+            <h2 id="delete-employee-modal" className="mb-2 text-lg font-bold text-slate-950 dark:text-white">Deactivate Employee?</h2>
             <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
               This will mark <strong>{deleteTarget.name}</strong> as Inactive. They can be re-activated later.
             </p>
