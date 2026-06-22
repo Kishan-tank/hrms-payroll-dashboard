@@ -1,18 +1,15 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { employeeService } from '../services/hrmsApi';
 import type { ApiEmployee, AddEmployeePayload } from '../services/hrmsApi';
 import EmployeeDrawer from '../components/employees/EmployeeDrawer';
 import EmptyState from '../components/common/EmptyState';
+import DataTable from '../components/common/DataTable';
+import type { DataTableColumn } from '../components/common/DataTable';
+import StatusBadge from '../components/common/StatusBadge';
 
 const departments = ['All', 'Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations'];
 const statuses = ['All', 'Active', 'On Leave', 'Inactive'];
-
-const statusStyle: Record<string, string> = {
-  Active: 'text-green-500',
-  'On Leave': 'text-amber-500',
-  Inactive: 'text-red-500',
-};
 
 const emptyForm: AddEmployeePayload = {
   employeeId: '',
@@ -40,7 +37,6 @@ function Icon({ name }: { name: 'search' | 'filter' | 'plus' | 'edit' | 'trash' 
 export default function EmployeeManagement() {
   const [employees, setEmployees] = useState<ApiEmployee[]>([]);
   const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +69,6 @@ export default function EmployeeManagement() {
       const res = await employeeService.getAll({ search, department, status, page, limit: perPage });
       setEmployees(res.employees);
       setTotal(res.total);
-      setTotalPages(res.totalPages);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -92,7 +87,7 @@ export default function EmployeeManagement() {
   }
 
   // ── open edit modal ───────────────────────────────────────────────────────
-  function openEdit(emp: ApiEmployee) {
+  const openEdit = useCallback((emp: ApiEmployee) => {
     setEditTarget(emp);
     setForm({
       employeeId: emp.employeeId,
@@ -106,7 +101,7 @@ export default function EmployeeManagement() {
     });
     setFormError(null);
     setShowModal(true);
-  }
+  }, []);
 
   // ── save (add or update) ─────────────────────────────────────────────────
   async function handleSave() {
@@ -147,10 +142,64 @@ export default function EmployeeManagement() {
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
-  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setSearch(e.target.value);
-    setPage(1);
-  }
+  const columns = useMemo<DataTableColumn<ApiEmployee>[]>(() => [
+    {
+      key: 'employeeId',
+      header: 'Employee ID',
+      sortable: true,
+      className: 'font-mono text-sm text-blue-600',
+    },
+    {
+      key: 'name',
+      header: 'Employee Name',
+      sortable: true,
+      render: (emp) => (
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{emp.name.charAt(0)}</span>
+          <span className="text-sm font-medium text-slate-950">{emp.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      sortable: true,
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      sortable: true,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      render: (emp) => <StatusBadge status={emp.status} />,
+    },
+    {
+      key: 'joinDate',
+      header: 'Join Date',
+      sortable: true,
+      render: (emp) => new Date(emp.joinDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+    },
+    {
+      key: 'basicPay',
+      header: 'Basic Pay',
+      sortable: true,
+      className: 'font-bold text-slate-950',
+      render: (emp) => `₹${emp.basicPay.toLocaleString('en-IN')}`,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (emp) => (
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={(e) => { e.stopPropagation(); openEdit(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" title="Edit"><Icon name="edit" /></button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTarget(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" title="Deactivate"><Icon name="trash" /></button>
+        </div>
+      ),
+    },
+  ], [openEdit, setDeleteTarget]);
 
   return (
     <DashboardLayout title="Employee Management">
@@ -168,10 +217,6 @@ export default function EmployeeManagement() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative max-w-sm flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="search" /></span>
-            <input value={search} onChange={handleSearchChange} placeholder="Search by name or ID..." className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm text-slate-950 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100" />
-          </div>
           <span className="text-slate-400"><Icon name="filter" /></span>
           <select value={department} onChange={(e) => { setDepartment(e.target.value); setPage(1); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none">
             {departments.map((d) => <option key={d}>{d}</option>)}
@@ -189,75 +234,30 @@ export default function EmployeeManagement() {
         )}
 
         {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[920px]">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                {['Employee ID', 'Employee Name', 'Department', 'Role', 'Status', 'Join Date', 'Basic Pay', 'Actions'].map((col) => (
-                  <th key={col} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
-                  <span className="inline-flex items-center gap-2"><Icon name="spinner" /> Loading employees...</span>
-                </td></tr>
-              ) : employees.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-4">
-                    <EmptyState
-                      icon={<Icon name="search" />}
-                      title="No Employees Found"
-                      description="Try adjusting your filters or add a new employee."
-                      actionLabel="Add Employee"
-                      onAction={openAdd}
-                    />
-                  </td>
-                </tr>
-              ) : employees.map((emp) => (
-                <tr
-                  key={emp._id}
-                  onClick={() => setSelectedEmployee(emp)}
-                  className="cursor-pointer border-b border-slate-100 transition hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/[0.03] last:border-b-0"
-                >
-                  <td className="px-4 py-3 font-mono text-sm text-blue-600">{emp.employeeId}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{emp.name.charAt(0)}</span>
-                      <span className="text-sm font-medium text-slate-950">{emp.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{emp.department}</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{emp.role}</td>
-                  <td className={`px-4 py-3 text-sm font-semibold ${statusStyle[emp.status] ?? 'text-slate-500'}`}>{emp.status}</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{new Date(emp.joinDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-slate-950">₹{emp.basicPay.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); openEdit(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" title="Edit"><Icon name="edit" /></button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTarget(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" title="Deactivate"><Icon name="trash" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-            <p className="text-xs text-slate-400">
-              Showing {employees.length === 0 ? 0 : (page - 1) * perPage + 1}–{Math.min(page * perPage, total)} of {total}
-            </p>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setPage((v) => Math.max(1, v - 1))} disabled={page === 1} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 disabled:opacity-40"><Icon name="chevronLeft" /></button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                <button key={n} type="button" onClick={() => setPage(n)} className={`h-8 w-8 rounded-lg text-xs font-medium ${page === n ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-500'}`}>{n}</button>
-              ))}
-              <button type="button" onClick={() => setPage((v) => Math.min(totalPages, v + 1))} disabled={page === totalPages} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 disabled:opacity-40"><Icon name="chevronRight" /></button>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          columns={columns}
+          data={employees}
+          rowKey={(row) => row._id}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search employees..."
+          onSearch={(q) => { setSearch(q); setPage(1); }}
+          onPageChange={(p) => setPage(p)}
+          totalItems={total}
+          currentPage={page}
+          pageSize={perPage}
+          onRowClick={(emp) => setSelectedEmployee(emp)}
+          minWidth={900}
+          emptyState={
+            <EmptyState
+              icon={<Icon name="search" />}
+              title="No Employees Found"
+              description="Try adjusting your filters or add a new employee."
+              actionLabel="Add Employee"
+              onAction={openAdd}
+            />
+          }
+        />
       </div>
 
       {/* ── Employee Drawer ── */}

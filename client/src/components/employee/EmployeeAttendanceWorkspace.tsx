@@ -183,7 +183,7 @@ export default function EmployeeAttendanceWorkspace({
         </div>
       </div>
 
-      {error && (
+      {error && myRecords.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl bg-red-50 p-4 text-red-600 dark:bg-red-500/10 dark:text-red-400 gap-4">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 shrink-0" />
@@ -198,115 +198,135 @@ export default function EmployeeAttendanceWorkspace({
         </div>
       )}
 
-      {/* Grid Top: Hero & Actions */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Today Status Hero Card */}
-        <div className="relative overflow-hidden rounded-[24px] border border-blue-500/30 bg-white p-6 shadow-xl dark:border-blue-400/20 dark:bg-[#0B1121] lg:col-span-2">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/10 blur-[80px]" />
-          <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px]" />
-          
-          <div className="relative z-10 flex flex-col justify-between h-full gap-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Today's Status</h2>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${todayRecord?.checkIn ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'} ${todayRecord?.checkIn && !todayRecord?.checkOut ? 'animate-pulse' : ''}`} />
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                    {todayRecord?.checkIn && !todayRecord?.checkOut ? 'Currently Checked In' : todayRecord?.checkIn ? 'Shift Completed' : 'Not Checked In'}
-                  </span>
-                </div>
-              </div>
-              {todayRecord?.status && (
-                <StatusBadge status={todayRecord.status} />
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Check In</p>
-                <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{todayRecord?.checkIn || '--:--'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Check Out</p>
-                <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{todayRecord?.checkOut || '--:--'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Hours</p>
-                <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{calculateHours(todayRecord?.checkIn, todayRecord?.checkOut)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Shift</p>
-                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white mt-2">09:00 - 18:00</p>
-              </div>
-            </div>
+      {error && myRecords.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-[24px] border border-red-500/20 bg-white p-12 text-center shadow-xl dark:border-red-400/10 dark:bg-[#0B1121]">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 dark:bg-red-500/10">
+            <AlertCircle className="h-8 w-8 text-red-500" />
           </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3 h-full">
-            <button onClick={handleCheckIn} className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-lg transition hover:scale-[1.02] hover:shadow-emerald-500/25">
-              <LogIn className="h-6 w-6" />
-              <span className="font-bold text-sm">Check In</span>
-            </button>
-            <button onClick={handleCheckOut} className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg transition hover:scale-[1.02] hover:shadow-blue-500/25">
-              <LogOut className="h-6 w-6" />
-              <span className="font-bold text-sm">Check Out</span>
-            </button>
-          </div>
-          <button onClick={handleRegularize} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
-            <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-amber-500" />
-              <span className="font-bold text-sm">Missed Punch?</span>
-            </div>
-            <ArrowRight className="h-4 w-4 opacity-50" />
-          </button>
-          <button onClick={handleReport} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-purple-500" />
-              <span className="font-bold text-sm">Monthly Report</span>
-            </div>
-            <ArrowRight className="h-4 w-4 opacity-50" />
+          <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">Unable to Load Dashboard</h2>
+          <p className="mb-6 max-w-md text-sm text-slate-500 dark:text-slate-400">
+            {error}
+          </p>
+          <button 
+            onClick={onRefresh}
+            className="rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+          >
+            Retry Connection
           </button>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Grid Top: Hero & Actions */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Today Status Hero Card */}
+            <div className="relative overflow-hidden rounded-[24px] border border-blue-500/30 bg-white p-6 shadow-xl dark:border-blue-400/20 dark:bg-[#0B1121] lg:col-span-2">
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/10 blur-[80px]" />
+              <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px]" />
+              
+              <div className="relative z-10 flex flex-col justify-between h-full gap-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Today's Status</h2>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${todayRecord?.checkIn ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'} ${todayRecord?.checkIn && !todayRecord?.checkOut ? 'animate-pulse' : ''}`} />
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                        {todayRecord?.checkIn && !todayRecord?.checkOut ? 'Currently Checked In' : todayRecord?.checkIn ? 'Shift Completed' : 'Not Checked In'}
+                      </span>
+                    </div>
+                  </div>
+                  {todayRecord?.status && (
+                    <StatusBadge status={todayRecord.status} />
+                  )}
+                </div>
 
-      {/* Grid Middle: KPI & Trend */}
-      <div className="grid gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {[
-            { label: 'Present', val: presentCount, c: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-            { label: 'Late', val: lateCount, c: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-            { label: 'Absent', val: absentCount, c: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' },
-            { label: 'Leave', val: leaveCount, c: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10' },
-            { label: 'Avg. Hours', val: '7.8h', c: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-            { label: 'Attendance', val: `${attendanceRate}%`, c: 'text-slate-800 dark:text-slate-200', bg: 'bg-slate-100 dark:bg-white/10' },
-          ].map((item, i) => (
-            <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{item.label}</p>
-              <div className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 ${item.bg}`}>
-                <span className={`text-xl font-extrabold ${item.c}`}>{item.val}</span>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Check In</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{todayRecord?.checkIn || '--:--'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Check Out</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{todayRecord?.checkOut || '--:--'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Hours</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{calculateHours(todayRecord?.checkIn, todayRecord?.checkOut)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Shift</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white mt-2">09:00 - 18:00</p>
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* Weekly Trend */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-4">Weekly Trend</h3>
-          <div className="flex items-end justify-between h-20">
-            {last7Days.map((day, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 group relative">
-                <div className="absolute -top-8 hidden rounded bg-slate-800 px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap">
-                  {day.status}
-                </div>
-                <div className={`w-3 rounded-full ${getStatusColor(day.status)}`} style={{ height: day.status === 'Present' ? '100%' : day.status === 'Late' ? '70%' : '30%' }} />
-                <span className="text-[10px] font-medium text-slate-500">{day.dayName.charAt(0)}</span>
+            {/* Quick Actions */}
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3 h-full">
+                <button onClick={handleCheckIn} className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-lg transition hover:scale-[1.02] hover:shadow-emerald-500/25">
+                  <LogIn className="h-6 w-6" />
+                  <span className="font-bold text-sm">Check In</span>
+                </button>
+                <button onClick={handleCheckOut} className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg transition hover:scale-[1.02] hover:shadow-blue-500/25">
+                  <LogOut className="h-6 w-6" />
+                  <span className="font-bold text-sm">Check Out</span>
+                </button>
               </div>
-            ))}
+              <button onClick={handleRegularize} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
+                <div className="flex items-center gap-3">
+                  <Clock className="h-5 w-5 text-amber-500" />
+                  <span className="font-bold text-sm">Missed Punch?</span>
+                </div>
+                <ArrowRight className="h-4 w-4 opacity-50" />
+              </button>
+              <button onClick={handleReport} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-purple-500" />
+                  <span className="font-bold text-sm">Monthly Report</span>
+                </div>
+                <ArrowRight className="h-4 w-4 opacity-50" />
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
+
+          {/* Grid Middle: KPI & Trend */}
+          <div className="grid gap-6 lg:grid-cols-4">
+            <div className="lg:col-span-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {[
+                { label: 'Present', val: presentCount, c: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+                { label: 'Late', val: lateCount, c: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+                { label: 'Absent', val: absentCount, c: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' },
+                { label: 'Leave', val: leaveCount, c: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+                { label: 'Avg. Hours', val: '7.8h', c: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+                { label: 'Attendance', val: `${attendanceRate}%`, c: 'text-slate-800 dark:text-slate-200', bg: 'bg-slate-100 dark:bg-white/10' },
+              ].map((item, i) => (
+                <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{item.label}</p>
+                  <div className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 ${item.bg}`}>
+                    <span className={`text-xl font-extrabold ${item.c}`}>{item.val}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Weekly Trend */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-4">Weekly Trend</h3>
+              <div className="flex items-end justify-between h-20">
+                {last7Days.map((day, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 group relative">
+                    <div className="absolute -top-8 hidden rounded bg-slate-800 px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap">
+                      {day.status}
+                    </div>
+                    <div className={`w-3 rounded-full ${getStatusColor(day.status)}`} style={{ height: day.status === 'Present' ? '100%' : day.status === 'Late' ? '70%' : '30%' }} />
+                    <span className="text-[10px] font-medium text-slate-500">{day.dayName.charAt(0)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Grid Bottom: Calendar & History */}
       <div className="grid gap-6 lg:grid-cols-4">
