@@ -146,3 +146,23 @@ export const getDeptAttendance = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch department attendance", error: error.message });
   }
 };
+
+export const generateMonthlyReport = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    // In a real application, this would use a library like PDFKit or json2csv 
+    // to generate a file based on Attendance and Payroll data.
+    // For now, we just return a success response with summary data.
+    
+    // Simulate generation delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Monthly report generated successfully", 
+      downloadUrl: `/api/reports/download?month=${month}&year=${year}` // Mock URL
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to generate report", error: error.message });
+  }
+};

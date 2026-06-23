@@ -8,8 +8,8 @@ export const getAttendance = async (req, res) => {
     let query = {};
 
     if (userRole === "employee") {
-      const userId = req.user?._id || req.user?.id;
-      const employee = await Employee.findOne({ userId });
+      const email = req.user?.email;
+      const employee = await Employee.findOne({ email });
       if (!employee) {
         return res.status(404).json({ success: false, message: "Employee profile not found" });
       }
@@ -18,7 +18,7 @@ export const getAttendance = async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden" });
     }
 
-    const records = await Attendance.find(query).populate("employeeId", "name department employeeId");
+    const records = await Attendance.find(query).populate("employeeId", "name department employeeId email userId");
     res.status(200).json({ success: true, records });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error", error: error.message });
@@ -27,10 +27,10 @@ export const getAttendance = async (req, res) => {
 
 export const checkIn = async (req, res) => {
   try {
-    const userId = req.user?._id || req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized." });
+    const email = req.user?.email;
+    if (!email) return res.status(401).json({ success: false, message: "Unauthorized." });
 
-    const employee = await Employee.findOne({ userId });
+    const employee = await Employee.findOne({ email });
     if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
     const today = new Date().toISOString().split('T')[0];
@@ -58,10 +58,10 @@ export const checkIn = async (req, res) => {
 
 export const checkOut = async (req, res) => {
   try {
-    const userId = req.user?._id || req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized." });
+    const email = req.user?.email;
+    if (!email) return res.status(401).json({ success: false, message: "Unauthorized." });
 
-    const employee = await Employee.findOne({ userId });
+    const employee = await Employee.findOne({ email });
     if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
     const today = new Date().toISOString().split('T')[0];
@@ -81,5 +81,61 @@ export const checkOut = async (req, res) => {
     res.status(200).json({ success: true, message: "Checked out successfully", record });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to check out", error: error.message });
+  }
+};
+
+export const regularizeAttendance = async (req, res) => {
+  try {
+    const { date, reason, checkIn, checkOut } = req.body;
+    const email = req.user?.email;
+    if (!email) return res.status(401).json({ success: false, message: "Unauthorized." });
+
+    const employee = await Employee.findOne({ email });
+    if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
+
+    let record = await Attendance.findOne({ employeeId: employee._id, date });
+    if (!record) {
+      record = new Attendance({
+        employeeId: employee._id,
+        date,
+        status: 'Pending'
+      });
+    }
+
+    if (checkIn) record.checkIn = checkIn;
+    if (checkOut) record.checkOut = checkOut;
+    record.status = "Pending"; // Needs HR approval
+    // In a real system, we might add a notes field or separate Regularization Request collection
+    // For now, updating the record to Pending state.
+
+    await record.save();
+
+    res.status(200).json({ success: true, message: "Regularization request submitted", record });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to submit request", error: error.message });
+  }
+};
+
+export const updateAttendanceStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const userRole = req.user?.role;
+    if (!["admin", "hr", "hr-manager"].includes(userRole)) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    const record = await Attendance.findById(id);
+    if (!record) {
+      return res.status(404).json({ success: false, message: "Attendance record not found" });
+    }
+
+    record.status = status;
+    await record.save();
+
+    res.status(200).json({ success: true, message: "Status updated successfully", record });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update status", error: error.message });
   }
 };

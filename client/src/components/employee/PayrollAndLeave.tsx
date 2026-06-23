@@ -12,7 +12,6 @@ const salaryTrend = [
   { month: 'Jun', salary: 95000 },
 ];
 
-// Fallback data for the trend chart
 
 
 function SalaryTooltip({ active, payload, label }: any) {

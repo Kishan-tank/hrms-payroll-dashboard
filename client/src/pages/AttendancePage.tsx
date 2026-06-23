@@ -12,90 +12,31 @@ import EmployeeAttendanceWorkspace from '../components/employee/EmployeeAttendan
 
 function calculateHours(checkIn?: string, checkOut?: string): string {
   if (!checkIn || !checkOut) return '-';
-  return '8h 00m'; // Placeholder — replace with real calculation when backend provides timestamps
+  try {
+    const parseTime = (t: string) => {
+      const [time, modifier] = t.split(' ');
+      let [hours, minutes] = time.split(':');
+      if (hours === '12') {
+        hours = '00';
+      }
+      if (modifier && modifier.toUpperCase() === 'PM') {
+        hours = parseInt(hours, 10) + 12 + '';
+      }
+      return new Date(1970, 0, 1, parseInt(hours, 10), parseInt(minutes, 10), 0);
+    };
+    
+    const start = parseTime(checkIn);
+    const end = parseTime(checkOut);
+    let diff = (end.getTime() - start.getTime()) / 1000 / 60; // in minutes
+    if (diff < 0) diff += 24 * 60; // handle cross-midnight
+    
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    return `${h}h ${m.toString().padStart(2, '0')}m`;
+  } catch(e) {
+    return '-';
+  }
 }
-
-// ─── Column definitions ───────────────────────────────────────────────────────
-
-/**
- * We define columns outside the component so the reference is stable
- * and DataTable doesn't re-compute on every render.
- */
-const COLUMNS: DataTableColumn<ApiAttendance>[] = [
-  {
-    key: 'employee',
-    header: 'Employee',
-    sortable: true,
-    sortValue: (row) => row.employeeId?.name ?? '',
-    render: (row) => {
-      const name = row.employeeId?.name ?? (row as any).name ?? 'Unknown';
-      const id   = row.employeeId?.employeeId ?? row.employeeId?._id ?? (row as any).id ?? '—';
-      return (
-        <div className="flex items-center gap-2.5">
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
-            style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
-          >
-            {name.charAt(0)}
-          </span>
-          <span>
-            <span className="block text-sm font-bold text-slate-900 dark:text-white">{name}</span>
-            <span className="block text-xs text-slate-500">{id}</span>
-          </span>
-        </div>
-      );
-    },
-  },
-  {
-    key: 'department',
-    header: 'Department',
-    sortable: true,
-    sortValue: (row) => row.employeeId?.department ?? '',
-    render: (row) => (
-      <span className="text-sm text-slate-600 dark:text-slate-400">
-        {row.employeeId?.department ?? (row as any).department ?? '—'}
-      </span>
-    ),
-  },
-  {
-    key: 'checkIn',
-    header: 'Check In',
-    sortable: true,
-    sortValue: (row) => row.checkIn ?? '',
-    render: (row) => (
-      <span className="text-sm font-semibold text-slate-900 dark:text-slate-300">
-        {row.checkIn ?? '-'}
-      </span>
-    ),
-  },
-  {
-    key: 'checkOut',
-    header: 'Check Out',
-    render: (row) => (
-      <span className="text-sm text-slate-600 dark:text-slate-400">
-        {row.checkOut ?? '-'}
-      </span>
-    ),
-  },
-  {
-    key: 'hours',
-    header: 'Hours',
-    render: (row) => (
-      <span className="text-sm text-slate-600 dark:text-slate-400">
-        {calculateHours(row.checkIn, row.checkOut)}
-      </span>
-    ),
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    sortable: true,
-    sortValue: (row) => row.status ?? '',
-    render: (row) => <StatusBadge status={row.status ?? 'Present'} />,
-  },
-];
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AttendancePage() {
   const { user } = useAuth();
@@ -120,9 +61,119 @@ export default function AttendancePage() {
     }
   }, []);
 
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    try {
+      await attendanceService.updateStatus(id, newStatus);
+      void fetchAttendance();
+    } catch (err: any) {
+      alert(err.message || "Failed to update status");
+    }
+  };
+
+  const COLUMNS: DataTableColumn<ApiAttendance>[] = [
+    {
+      key: 'employee',
+      header: 'Employee',
+      sortable: true,
+      sortValue: (row) => row.employeeId?.name ?? '',
+      render: (row) => {
+        const name = row.employeeId?.name ?? (row as any).name ?? 'Unknown';
+        const id   = row.employeeId?.employeeId ?? row.employeeId?._id ?? (row as any).id ?? '—';
+        return (
+          <div className="flex items-center gap-2.5">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+            >
+              {name.charAt(0)}
+            </span>
+            <span>
+              <span className="block text-sm font-bold text-slate-900 dark:text-white">{name}</span>
+              <span className="block text-xs text-slate-500">{id}</span>
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      sortable: true,
+      sortValue: (row) => row.employeeId?.department ?? '',
+      render: (row) => (
+        <span className="text-sm text-slate-600 dark:text-slate-400">
+          {row.employeeId?.department ?? (row as any).department ?? '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'checkIn',
+      header: 'Check In',
+      sortable: true,
+      sortValue: (row) => row.checkIn ?? '',
+      render: (row) => (
+        <span className="text-sm font-semibold text-slate-900 dark:text-slate-300">
+          {row.checkIn ?? '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'checkOut',
+      header: 'Check Out',
+      render: (row) => (
+        <span className="text-sm text-slate-600 dark:text-slate-400">
+          {row.checkOut ?? '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'hours',
+      header: 'Hours',
+      render: (row) => (
+        <span className="text-sm text-slate-600 dark:text-slate-400">
+          {calculateHours(row.checkIn, row.checkOut)}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (row) => row.status ?? '',
+      render: (row) => <StatusBadge status={row.status ?? 'Present'} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => {
+        if (row.status === 'Pending') {
+          return (
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => handleStatusUpdate(row._id, 'Present')}
+                className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+              >
+                Approve
+              </button>
+              <button 
+                onClick={() => handleStatusUpdate(row._id, 'Rejected')}
+                className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+              >
+                Reject
+              </button>
+            </div>
+          );
+        }
+        return null;
+      }
+    }
+  ];
+
   useEffect(() => {
     void fetchAttendance();
   }, [fetchAttendance]);
+
+  const [activeTab, setActiveTab] = useState<'company' | 'personal'>('company');
 
   if (!isHR) {
     return (
@@ -137,24 +188,6 @@ export default function AttendancePage() {
       </DashboardLayout>
     );
   }
-
-  const handleCheckIn = async () => {
-    try {
-      await attendanceService.checkIn();
-      void fetchAttendance();
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const handleCheckOut = async () => {
-    try {
-      await attendanceService.checkOut();
-      void fetchAttendance();
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
 
   // ── KPI cards ──────────────────────────────────────────────────────────────
   const presentCount = records.filter((r) => r.status === 'Present').length;
@@ -189,25 +222,21 @@ export default function AttendancePage() {
             </h1>
             <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
               Welcome,{' '}
-              <span className="font-semibold text-slate-700 dark:text-slate-300">{displayName}</span>{' '}
-              — track daily check-ins, absences, and shift completion.
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{displayName}</span>
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex rounded-lg bg-slate-100 p-1 dark:bg-white/5">
             <button
-              onClick={handleCheckIn}
-              type="button"
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-300 dark:hover:bg-white/[0.06]"
+              onClick={() => setActiveTab('company')}
+              className={`rounded-md px-4 py-2 text-sm font-bold transition-all ${activeTab === 'company' ? 'bg-white text-blue-600 shadow-sm dark:bg-[#0B1121] dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
             >
-              Check In
+              Company View
             </button>
             <button
-              onClick={handleCheckOut}
-              type="button"
-              className="rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+              onClick={() => setActiveTab('personal')}
+              className={`rounded-md px-4 py-2 text-sm font-bold transition-all ${activeTab === 'personal' ? 'bg-white text-blue-600 shadow-sm dark:bg-[#0B1121] dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
             >
-              Check Out
+              My Attendance
             </button>
           </div>
         </div>
@@ -218,6 +247,17 @@ export default function AttendancePage() {
             {error}
           </div>
         )}
+
+        {activeTab === 'personal' ? (
+          <EmployeeAttendanceWorkspace
+            records={records}
+            loading={loading}
+            error={error}
+            onRefresh={fetchAttendance}
+            user={user}
+          />
+        ) : (
+          <>
 
         {/* ── KPI Cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -323,6 +363,22 @@ export default function AttendancePage() {
                     <p className="text-slate-400">Total Hours</p>
                     <p className="font-bold text-slate-900 dark:text-white">{calculateHours(record.checkIn, record.checkOut)}</p>
                   </div>
+                  {st === 'Pending' && (
+                    <div className="col-span-2 mt-3 flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-white/10">
+                      <button 
+                        onClick={() => handleStatusUpdate(record._id, 'Present')}
+                        className="flex-1 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                      >
+                        Approve
+                      </button>
+                      <button 
+                        onClick={() => handleStatusUpdate(record._id, 'Rejected')}
+                        className="flex-1 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -333,7 +389,8 @@ export default function AttendancePage() {
             </div>
           )}
         </div>
-
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

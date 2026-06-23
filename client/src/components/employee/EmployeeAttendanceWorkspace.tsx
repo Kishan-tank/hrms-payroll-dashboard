@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { ApiAttendance } from '../../services/hrmsApi';
 import { attendanceService } from '../../services/hrmsApi';
 import DataTable from '../common/DataTable';
@@ -18,7 +18,30 @@ interface EmployeeAttendanceWorkspaceProps {
 
 function calculateHours(checkIn?: string, checkOut?: string): string {
   if (!checkIn || !checkOut) return '-';
-  return '8h 00m';
+  try {
+    const parseTime = (t: string) => {
+      const [time, modifier] = t.split(' ');
+      let [hours, minutes] = time.split(':');
+      if (hours === '12') {
+        hours = '00';
+      }
+      if (modifier && modifier.toUpperCase() === 'PM') {
+        hours = parseInt(hours, 10) + 12 + '';
+      }
+      return new Date(1970, 0, 1, parseInt(hours, 10), parseInt(minutes, 10), 0);
+    };
+    
+    const start = parseTime(checkIn);
+    const end = parseTime(checkOut);
+    let diff = (end.getTime() - start.getTime()) / 1000 / 60; // in minutes
+    if (diff < 0) diff += 24 * 60; // handle cross-midnight
+    
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    return `${h}h ${m.toString().padStart(2, '0')}m`;
+  } catch(e) {
+    return '-';
+  }
 }
 
 const MY_COLUMNS: DataTableColumn<ApiAttendance>[] = [
@@ -74,15 +97,25 @@ export default function EmployeeAttendanceWorkspace({
     user?._id,
   ].filter(Boolean).map(String);
 
+  const currentUserEmail = user?.email?.toLowerCase();
+
   const myRecords = useMemo(() => {
     return records.filter((r) => {
+      // 1. Check by email
+      if (currentUserEmail && r.employeeId?.email?.toLowerCase() === currentUserEmail) {
+        return true;
+      }
+      
+      // 2. Check by various ID fields
       const recordIds = [
         r.employeeId?._id,
         r.employeeId?.employeeId,
+        r.employeeId?.userId,
       ].filter(Boolean).map(String);
+      
       return recordIds.some((id) => currentUserIds.includes(id));
     });
-  }, [records, currentUserIds]);
+  }, [records, currentUserIds, currentUserEmail]);
 
   const todayRecord = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -109,8 +142,49 @@ export default function EmployeeAttendanceWorkspace({
     }
   };
 
-  const handleRegularize = () => toast.info("Regularization request feature coming soon");
-  const handleReport = () => toast.info("Monthly report generation coming soon");
+  const [showRegModal, setShowRegModal] = useState(false);
+  const [regForm, setRegForm] = useState({ date: '', reason: '', checkIn: '', checkOut: '' });
+  const [regSubmitting, setRegSubmitting] = useState(false);
+
+  const handleRegularizeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setRegSubmitting(true);
+      await attendanceService.regularize(regForm);
+      toast.success("Regularization request submitted");
+      setShowRegModal(false);
+      setRegForm({ date: '', reason: '', checkIn: '', checkOut: '' });
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit request");
+    } finally {
+      setRegSubmitting(false);
+    }
+  };
+
+  const handleReport = async () => {
+    try {
+      toast.info("Generating report...");
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      
+      // Since it's a mock report, reportsService is generated from backend or might be imported
+      // We need to import reportsService here. Let's assume it's imported at the top or we can import dynamically.
+      const { reportsService } = await import('../../services/hrmsApi');
+      const res = await reportsService.generateMonthlyReport(month, year);
+      
+      if (res.downloadUrl) {
+        const fullUrl = import.meta.env.VITE_API_URL 
+          ? import.meta.env.VITE_API_URL.replace('/api', '') + res.downloadUrl
+          : 'http://localhost:5000' + res.downloadUrl;
+        window.open(fullUrl, '_blank');
+        toast.success("Report downloaded");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate report");
+    }
+  };
 
   if (currentUserIds.length === 0) {
     return (
@@ -272,7 +346,7 @@ export default function EmployeeAttendanceWorkspace({
                   <span className="font-bold text-sm">Check Out</span>
                 </button>
               </div>
-              <button onClick={handleRegularize} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
+              <button onClick={() => setShowRegModal(true)} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
                 <div className="flex items-center gap-3">
                   <Clock className="h-5 w-5 text-amber-500" />
                   <span className="font-bold text-sm">Missed Punch?</span>
@@ -288,6 +362,39 @@ export default function EmployeeAttendanceWorkspace({
               </button>
             </div>
           </div>
+
+          {/* Regularization Modal */}
+          {showRegModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl dark:bg-[#0B1121] dark:border dark:border-white/10">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Regularize Attendance</h3>
+                <form onSubmit={handleRegularizeSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Date *</label>
+                    <input required type="date" className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white" value={regForm.date} onChange={e => setRegForm({...regForm, date: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Check In</label>
+                      <input type="time" className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white" value={regForm.checkIn} onChange={e => setRegForm({...regForm, checkIn: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Check Out</label>
+                      <input type="time" className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white" value={regForm.checkOut} onChange={e => setRegForm({...regForm, checkOut: e.target.value})} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Reason *</label>
+                    <textarea required className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white" rows={2} value={regForm.reason} onChange={e => setRegForm({...regForm, reason: e.target.value})} placeholder="Why missed punch?"></textarea>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => setShowRegModal(false)} className="flex-1 rounded-xl bg-slate-100 p-3 font-bold text-slate-600 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">Cancel</button>
+                    <button type="submit" disabled={regSubmitting} className="flex-1 rounded-xl bg-blue-600 p-3 font-bold text-white shadow-lg transition hover:bg-blue-700 disabled:opacity-50">{regSubmitting ? 'Submitting...' : 'Submit Request'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* Grid Middle: KPI & Trend */}
           <div className="grid gap-6 lg:grid-cols-4">

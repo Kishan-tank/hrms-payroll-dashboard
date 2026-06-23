@@ -146,6 +146,15 @@ export interface ApiLeave {
   reason?: string;
 }
 
+export interface ApiDocument {
+  _id: string;
+  employeeId?: string;
+  title: string;
+  type: string;
+  fileUrl: string;
+  createdAt: string;
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export const authService = {
@@ -188,6 +197,12 @@ export const employeeService = {
 
   deactivate: (id: string) =>
     request<{ success: boolean; message: string }>('DELETE', `/employees/${id}`),
+
+  bulkDeactivate: (employeeIds: string[]) =>
+    request<{ success: boolean; message: string }>('POST', '/employees/bulk-deactivate', { employeeIds }),
+
+  bulkChangeDepartment: (employeeIds: string[], department: string) =>
+    request<{ success: boolean; message: string }>('POST', '/employees/bulk-department', { employeeIds, department }),
 };
 
 // ─── Payroll ─────────────────────────────────────────────────────────────────
@@ -241,6 +256,9 @@ export const reportsService = {
 
   getDeptAttendance: () =>
     request<{ success: boolean; attendance: [string, number][] }>('GET', '/reports/dept-attendance'),
+
+  generateMonthlyReport: (month: string, year: number) =>
+    request<{ success: boolean; message: string; downloadUrl: string }>('GET', `/reports/monthly-report?month=${month}&year=${year}`),
 };
 
 // ─── Attendance ──────────────────────────────────────────────────────────────
@@ -249,6 +267,10 @@ export const attendanceService = {
   getAll: () => request<{ success: boolean; records: ApiAttendance[] }>('GET', '/attendance'),
   checkIn: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-in'),
   checkOut: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-out'),
+  regularize: (payload: { date: string; reason: string; checkIn?: string; checkOut?: string }) => 
+    request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/regularize', payload),
+  updateStatus: (id: string, status: string) => 
+    request<{ success: boolean; message: string; record: ApiAttendance }>('PUT', `/attendance/${id}/status`, { status }),
 };
 
 // ─── Leave ───────────────────────────────────────────────────────────────────
@@ -265,4 +287,32 @@ export const leaveService = {
 
 export const aiService = {
   ask: (prompt: string) => request<{ success: boolean; response: string }>('POST', '/ai/ask', { prompt }),
+};
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+export const analyticsService = {
+  getAttendanceHeatmap: () => request<{ success: boolean; heatmap: any[] }>('GET', '/analytics/attendance-heatmap'),
+  getAttritionRisk: () => request<{ success: boolean; attritionRisk: any[] }>('GET', '/analytics/attrition-risk'),
+  getLeaveApprovalTrend: () => request<{ success: boolean; trend: any[] }>('GET', '/analytics/leave-approval-trend'),
+  getPayrollDistribution: () => request<{ success: boolean; salaryDistribution: any[]; departmentPayrollCost: any[]; compensationBreakdown: any[] }>('GET', '/analytics/payroll-distribution'),
+};
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+export const documentService = {
+  getAll: (employeeId?: string) => request<{ success: boolean; documents: ApiDocument[] }>('GET', employeeId ? `/documents?employeeId=${employeeId}` : '/documents'),
+  upload: async (formData: FormData) => {
+    // FormData requires different fetch logic because of multipart/form-data
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${BASE}/documents/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Upload failed');
+    return data;
+  },
+  delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/documents/${id}`),
 };

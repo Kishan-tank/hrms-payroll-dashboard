@@ -10,9 +10,12 @@ import payrollRoutes from "./routes/payrollRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+import documentRoutes from "./routes/documentRoutes.js";
 const app = express();
 
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
   credentials: true,
@@ -46,5 +49,7 @@ app.use("/api/payroll", payrollRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/documents", documentRoutes);
 
 export default app;

@@ -95,3 +95,39 @@ export const deleteEmployee = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to delete employee", error: error.message });
   }
 };
+
+export const bulkDeactivate = async (req, res) => {
+  try {
+    const { employeeIds } = req.body;
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+      return res.status(400).json({ success: false, message: "Invalid employee IDs provided" });
+    }
+
+    const result = await Employee.updateMany(
+      { _id: { $in: employeeIds } },
+      { $set: { status: "Inactive" } }
+    );
+
+    res.status(200).json({ success: true, message: `${result.modifiedCount} employees deactivated successfully` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to bulk deactivate employees", error: error.message });
+  }
+};
+
+export const bulkChangeDepartment = async (req, res) => {
+  try {
+    const { employeeIds, department } = req.body;
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0 || !department) {
+      return res.status(400).json({ success: false, message: "Invalid payload provided" });
+    }
+
+    const result = await Employee.updateMany(
+      { _id: { $in: employeeIds } },
+      { $set: { department } }
+    );
+
+    res.status(200).json({ success: true, message: `Department updated for ${result.modifiedCount} employees` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to bulk change department", error: error.message });
+  }
+};
