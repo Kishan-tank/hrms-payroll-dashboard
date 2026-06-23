@@ -97,16 +97,25 @@ export default function EmployeeAttendanceWorkspace({
     user?._id,
   ].filter(Boolean).map(String);
 
+  const currentUserEmails = [user?.email].filter(Boolean).map(e => String(e).toLowerCase());
+
   const myRecords = useMemo(() => {
     return records.filter((r) => {
       const recordIds = [
         r.employeeId?._id,
         r.employeeId?.employeeId,
+        r.employeeId?.userId,
       ].filter(Boolean).map(String);
       
-      return recordIds.some((id) => currentUserIds.includes(id));
+      const recordEmails = [
+        r.employeeId?.email,
+        (r as any).email
+      ].filter(Boolean).map(e => String(e).toLowerCase());
+
+      return recordIds.some((id) => currentUserIds.includes(id)) || 
+             recordEmails.some((email) => currentUserEmails.includes(email));
     });
-  }, [records, currentUserIds]);
+  }, [records, currentUserIds, currentUserEmails]);
 
   const todayRecord = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
