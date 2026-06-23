@@ -3,7 +3,8 @@ import {
   getHeadcountTrend,
   getPayrollTrend,
   getLeaveBreakdown,
-  getDeptAttendance
+  getDeptAttendance,
+  generateMonthlyReport
 } from "../controllers/reportsController.js";
 import { verifyToken, requireRole } from "../middleware/authMiddleware.js";
 
@@ -16,5 +17,6 @@ router.get("/headcount", getHeadcountTrend);
 router.get("/payroll-trend", getPayrollTrend);
 router.get("/leave-breakdown", getLeaveBreakdown);
 router.get("/dept-attendance", getDeptAttendance);
+router.get("/monthly-report", generateMonthlyReport);
 
 export default router;
