@@ -143,7 +143,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       accent: '#3b82f6',
       gradient: 'from-blue-600 to-indigo-600',
       sparkline: [940, 980, 1020, 1080, 1180, 1248],
-      icon: <UsersIcon color="#ffffff" />,
+      icon: <UsersIcon color="currentColor" />,
       route: '/employees',
     },
     {
@@ -158,7 +158,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       accent: '#10b981',
       gradient: 'from-emerald-500 to-emerald-700',
       sparkline: [91, 93, 90, 94, 96, 97.8],
-      icon: <ClockCheckIcon color="#ffffff" />,
+      icon: <ClockCheckIcon color="currentColor" />,
       route: '/attendance',
     },
     {
@@ -175,7 +175,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       accent: '#8b5cf6',
       gradient: 'from-violet-500 to-purple-600',
       sparkline: [3.2, 3.6, 3.8, 3.9, 4.0, 4.12],
-      icon: <RupeeIcon color="#ffffff" />,
+      icon: <RupeeIcon color="currentColor" />,
       route: '/payroll',
     },
     {
@@ -190,7 +190,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       accent: '#f59e0b',
       gradient: 'from-amber-400 to-orange-500',
       sparkline: [4, 8, 12, 9, 14, 18],
-      icon: <BellAlertIcon color="#ffffff" />,
+      icon: <BellAlertIcon color="currentColor" />,
       route: '/leave?filter=Pending',
     },
   ];
@@ -214,7 +214,8 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
 
           <div className="mb-6 flex items-start justify-between">
             <div
-              className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${card.gradient} shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+              style={{ background: `${card.accent}20`, color: card.accent }}
             >
               {card.icon}
             </div>
