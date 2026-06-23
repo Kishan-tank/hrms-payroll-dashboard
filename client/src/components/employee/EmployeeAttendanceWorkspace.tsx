@@ -97,16 +97,25 @@ export default function EmployeeAttendanceWorkspace({
     user?._id,
   ].filter(Boolean).map(String);
 
+  const currentUserEmails = [user?.email].filter(Boolean).map(e => String(e).toLowerCase());
+
   const myRecords = useMemo(() => {
     return records.filter((r) => {
       const recordIds = [
         r.employeeId?._id,
         r.employeeId?.employeeId,
+        r.employeeId?.userId,
       ].filter(Boolean).map(String);
       
-      return recordIds.some((id) => currentUserIds.includes(id));
+      const recordEmails = [
+        r.employeeId?.email,
+        (r as any).email
+      ].filter(Boolean).map(e => String(e).toLowerCase());
+
+      return recordIds.some((id) => currentUserIds.includes(id)) || 
+             recordEmails.some((email) => currentUserEmails.includes(email));
     });
-  }, [records, currentUserIds]);
+  }, [records, currentUserIds, currentUserEmails]);
 
   const todayRecord = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -120,6 +129,9 @@ export default function EmployeeAttendanceWorkspace({
       onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to check in");
+      if (err.message?.toLowerCase().includes("already")) {
+        onRefresh();
+      }
     }
   };
 
@@ -130,6 +142,9 @@ export default function EmployeeAttendanceWorkspace({
       onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to check out");
+      if (err.message?.toLowerCase().includes("already")) {
+        onRefresh();
+      }
     }
   };
 
@@ -328,11 +343,19 @@ export default function EmployeeAttendanceWorkspace({
             {/* Quick Actions */}
             <div className="flex flex-col gap-3">
               <div className="flex gap-3 h-full">
-                <button onClick={handleCheckIn} className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-lg transition hover:scale-[1.02] hover:shadow-emerald-500/25">
+                <button 
+                  onClick={handleCheckIn} 
+                  disabled={!!todayRecord?.checkIn}
+                  className={`flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-white shadow-lg transition ${!!todayRecord?.checkIn ? 'bg-slate-300 opacity-50 cursor-not-allowed dark:bg-slate-700' : 'bg-gradient-to-br from-emerald-500 to-emerald-600 hover:scale-[1.02] hover:shadow-emerald-500/25'}`}
+                >
                   <LogIn className="h-6 w-6" />
                   <span className="font-bold text-sm">Check In</span>
                 </button>
-                <button onClick={handleCheckOut} className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg transition hover:scale-[1.02] hover:shadow-blue-500/25">
+                <button 
+                  onClick={handleCheckOut} 
+                  disabled={!todayRecord?.checkIn || !!todayRecord?.checkOut}
+                  className={`flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-white shadow-lg transition ${!todayRecord?.checkIn || !!todayRecord?.checkOut ? 'bg-slate-300 opacity-50 cursor-not-allowed dark:bg-slate-700' : 'bg-gradient-to-br from-blue-500 to-blue-600 hover:scale-[1.02] hover:shadow-blue-500/25'}`}
+                >
                   <LogOut className="h-6 w-6" />
                   <span className="font-bold text-sm">Check Out</span>
                 </button>
