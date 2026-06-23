@@ -70,11 +70,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('user', JSON.stringify(u));
         setUser(u);
         redirectByRole(u);
-      } catch (err: unknown) {
-        setError(
-          (err as { response?: { data?: { message?: string } } })?.response
-            ?.data?.message ?? 'Login failed',
-        );
+      } catch (err: any) {
+        console.error('Login error:', err);
+        let msg = 'Login failed';
+        if (err instanceof Error) {
+          msg = err.message;
+        } else if (err?.response?.data?.message) {
+          msg = err.response.data.message;
+        } else if (err?.message) {
+          msg = err.message;
+        }
+        setError(msg);
       } finally {
         setIsLoading(false);
       }
