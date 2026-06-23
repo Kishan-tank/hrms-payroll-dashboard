@@ -3,11 +3,17 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/authRoutes.js";
+import attendanceRoutes from "./routes/attendanceRoutes.js";
+import leaveRoutes from "./routes/leaveRoutes.js";
+
 const app = express();
 
 app.use(express.json());
 app.use(cors());
 app.use(helmet());
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/leaves", leaveRoutes);
+
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
