@@ -196,7 +196,7 @@ export default function WorkspaceSnapshot({ summary }: { summary?: EmployeeSumma
       iconGradient: "linear-gradient(135deg, #f59e0b, #d97706)",
       glowColor: "rgba(245,158,11,0.3)",
       label: "Pending Tasks",
-      value: 4,
+      value: summary?.productivity?.pendingTasksCount || 0,
       sub: "2 due today · 2 this week",
       badge: "Action",
       badgeColor: "#f59e0b",

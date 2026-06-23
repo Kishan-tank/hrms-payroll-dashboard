@@ -179,7 +179,7 @@ export default function EmployeeDashboard() {
 
         {/* ROW 4: Skills & Achievements */}
         <motion.div custom={0.15} variants={fade} initial="hidden" animate="visible">
-          <SkillsAndAchievements />
+          <SkillsAndAchievements summary={summary} />
         </motion.div>
 
         {/* ROW 5: Quick Actions (Grid) */}
@@ -194,7 +194,7 @@ export default function EmployeeDashboard() {
 
         {/* ROW 7: My Goals & Sprint Tasks */}
         <motion.div custom={0.30} variants={fade} initial="hidden" animate="visible">
-          <MyGoals />
+          <MyGoals summary={summary} />
         </motion.div>
 
       </div>

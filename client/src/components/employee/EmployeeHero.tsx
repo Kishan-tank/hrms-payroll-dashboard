@@ -259,7 +259,7 @@ export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile
 
           {/* Score Rings */}
           <div className="relative z-10 flex items-center justify-around rounded-xl border border-slate-200 bg-white py-2 px-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
-            <CircularProgress value={96} color="#3b82f6" label="Performance" sublabel="Score" />
+            <CircularProgress value={summary?.performance?.score || 0} color="#3b82f6" label="Performance" sublabel="Score" />
             <div className="h-10 w-px bg-slate-200 dark:bg-transparent" style={{ background: 'linear-gradient(180deg, transparent, currentColor, transparent)' }} />
             <CircularProgress value={94} color="#8b5cf6" label="Attendance" sublabel="Score" />
           </div>

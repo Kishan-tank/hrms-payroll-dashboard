@@ -1,6 +1,7 @@
 
 import { motion } from 'framer-motion';
 import { Sparkles, Code2, Database, Layout, Server, Trophy, Star, Flame, GraduationCap, Zap, Gem } from 'lucide-react';
+import type { EmployeeSummary } from '../../services/hrmsApi';
 
 const achievements = [
   {
@@ -65,14 +66,49 @@ const achievements = [
   },
 ];
 
-const skills = [
+const mockSkills = [
   { name: 'React', level: 'Expert', icon: Code2, color: '#3b82f6', bg: 'bg-blue-100 dark:bg-blue-500/10', border: 'border-blue-200 dark:border-blue-500/20', text: 'text-blue-600 dark:text-blue-400', badgeText: 'text-blue-700 dark:text-blue-400', pct: 95 },
   { name: 'TypeScript', level: 'Advanced', icon: Database, color: '#8b5cf6', bg: 'bg-purple-100 dark:bg-purple-500/10', border: 'border-purple-200 dark:border-purple-500/20', text: 'text-purple-600 dark:text-purple-400', badgeText: 'text-purple-700 dark:text-purple-400', pct: 85 },
   { name: 'Tailwind CSS', level: 'Expert', icon: Layout, color: '#06b6d4', bg: 'bg-white dark:bg-cyan-500/10', border: 'border-slate-800 dark:border-cyan-500/20', text: 'text-slate-900 dark:text-cyan-400', badgeText: 'text-slate-900 dark:text-cyan-400', pct: 92 },
   { name: 'Node.js', level: 'Intermediate', icon: Server, color: '#10b981', bg: 'bg-emerald-100 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', badgeText: 'text-emerald-700 dark:text-emerald-400', pct: 70 },
 ];
 
-export default function SkillsAndAchievements() {
+const skillConfigMap: Record<string, { icon: any; color: string; bg: string; border: string; text: string; badgeText: string }> = {
+  react: { icon: Code2, color: '#3b82f6', bg: 'bg-blue-100 dark:bg-blue-500/10', border: 'border-blue-200 dark:border-blue-500/20', text: 'text-blue-600 dark:text-blue-400', badgeText: 'text-blue-700 dark:text-blue-400' },
+  typescript: { icon: Database, color: '#8b5cf6', bg: 'bg-purple-100 dark:bg-purple-500/10', border: 'border-purple-200 dark:border-purple-500/20', text: 'text-purple-600 dark:text-purple-400', badgeText: 'text-purple-700 dark:text-purple-400' },
+  'tailwind css': { icon: Layout, color: '#06b6d4', bg: 'bg-white dark:bg-cyan-500/10', border: 'border-slate-800 dark:border-cyan-500/20', text: 'text-slate-900 dark:text-cyan-400', badgeText: 'text-slate-900 dark:text-cyan-400' },
+  'nodejs': { icon: Server, color: '#10b981', bg: 'bg-emerald-100 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', badgeText: 'text-emerald-700 dark:text-emerald-400' },
+  'node.js': { icon: Server, color: '#10b981', bg: 'bg-emerald-100 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', badgeText: 'text-emerald-700 dark:text-emerald-400' },
+};
+
+const defaultSkillConfig = { icon: Code2, color: '#3b82f6', bg: 'bg-blue-100 dark:bg-blue-500/10', border: 'border-blue-200 dark:border-blue-500/20', text: 'text-blue-600 dark:text-blue-400', badgeText: 'text-blue-700 dark:text-blue-400' };
+
+const getSkillLevel = (pct: number) => {
+  if (pct >= 90) return 'Expert';
+  if (pct >= 75) return 'Advanced';
+  if (pct >= 50) return 'Intermediate';
+  return 'Beginner';
+};
+
+export default function SkillsAndAchievements({ summary }: { summary?: EmployeeSummary | null }) {
+  const backendSkills = summary?.performance?.skills || [];
+  const skillsData = backendSkills.length > 0
+    ? backendSkills.map((sk) => {
+        const key = sk.name.toLowerCase();
+        const config = skillConfigMap[key] || defaultSkillConfig;
+        return {
+          name: sk.name,
+          level: getSkillLevel(sk.proficiency),
+          icon: config.icon,
+          color: config.color,
+          bg: config.bg,
+          border: config.border,
+          text: config.text,
+          badgeText: config.badgeText,
+          pct: sk.proficiency,
+        };
+      })
+    : mockSkills;
   return (
     <div className="grid gap-4 xl:grid-cols-3">
       {/* LEFT: Skills Section (Col span 1) */}
@@ -85,7 +121,7 @@ export default function SkillsAndAchievements() {
         </div>
 
         <div className="mt-2 flex flex-1 flex-col justify-center gap-4">
-          {skills.map((s, i) => (
+          {skillsData.map((s, i) => (
             <motion.div
               key={s.name}
               initial={{ opacity: 0, x: -10 }}

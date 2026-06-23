@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { Target, Rocket, CheckCircle2, Circle, Clock, TrendingUp } from 'lucide-react';
+import type { EmployeeSummary } from '../../services/hrmsApi';
 
-const quarterGoals = [
+const mockQuarterGoals = [
   { id: 1, title: 'Ship Employee Portal V2', progress: 85, color: '#3b82f6', deadline: 'Jun 30', status: 'On Track' },
   { id: 2, title: 'Complete AWS Certification', progress: 40, color: '#8b5cf6', deadline: 'Jul 15', status: 'At Risk' },
   { id: 3, title: 'Reduce API Latency by 20%', progress: 100, color: '#10b981', deadline: 'May 30', status: 'Completed' },
@@ -51,7 +52,36 @@ function ProgressRing({ radius, stroke, progress, color }: { radius: number; str
   );
 }
 
-export default function MyGoals() {
+export default function MyGoals({ summary }: { summary?: EmployeeSummary | null }) {
+  const backendGoals = summary?.productivity?.goals || [];
+  const quarterGoals = backendGoals.length > 0
+    ? backendGoals.map((g: any, index: number) => {
+        const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b'];
+        const color = colors[index % colors.length];
+        
+        let status = 'On Track';
+        if (g.progress === 100) status = 'Completed';
+        else if (g.progress < 50) status = 'At Risk';
+        
+        let deadline = 'No date';
+        if (g.dueDate) {
+          deadline = new Date(g.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        
+        return {
+          id: index + 1,
+          title: g.title,
+          progress: g.progress,
+          color: color,
+          deadline: deadline,
+          status: status,
+        };
+      })
+    : mockQuarterGoals;
+
+  const avgProgress = backendGoals.length > 0
+    ? Math.round(backendGoals.reduce((sum, g: any) => sum + g.progress, 0) / backendGoals.length)
+    : 68;
   return (
     <div className="grid gap-4 xl:grid-cols-3">
       {/* LEFT: Quarter Goals (Span 2) */}
@@ -73,7 +103,7 @@ export default function MyGoals() {
           <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2">
               <TrendingUp size={16} className="text-emerald-500 dark:text-emerald-400" />
-              <div className="text-[28px] font-black text-slate-900 leading-none dark:text-white">68%</div>
+              <div className="text-[28px] font-black text-slate-900 leading-none dark:text-white">{avgProgress}%</div>
             </div>
             <div className="text-[10px] uppercase font-extrabold tracking-widest text-slate-500 dark:text-slate-400">Quarter Completion</div>
           </div>
