@@ -70,7 +70,11 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
   /* Ctrl+K shortcut */
   useEffect(() => {
     function handler(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        if (isInput) return;
         e.preventDefault();
         setCmdOpen((v) => !v);
       }

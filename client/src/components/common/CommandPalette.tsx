@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuthContext } from '../../context/AuthContext';
@@ -46,49 +46,74 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const HR_COMMANDS: CommandItem[] = [
     { id: 'nav-hr-dash', label: 'HR Dashboard', cat: 'Navigation', type: 'nav', path: '/hr-dashboard' },
     { id: 'nav-emp', label: 'Employees', cat: 'Navigation', type: 'nav', path: '/employees' },
-    { id: 'nav-pay', label: 'Payroll', cat: 'Navigation', type: 'nav', path: '/payroll' },
-    { id: 'nav-rep', label: 'Reports', cat: 'Navigation', type: 'nav', path: '/reports' },
     { id: 'nav-att', label: 'Attendance', cat: 'Navigation', type: 'nav', path: '/attendance' },
     { id: 'nav-leave', label: 'Leave Management', cat: 'Navigation', type: 'nav', path: '/leave' },
+    { id: 'nav-pay', label: 'Payroll', cat: 'Navigation', type: 'nav', path: '/payroll' },
+    { id: 'nav-rep', label: 'Reports', cat: 'Navigation', type: 'nav', path: '/reports' },
+    { id: 'nav-org', label: 'Org Chart', cat: 'Navigation', type: 'nav', path: '/org-chart' },
     { id: 'nav-set', label: 'Settings', cat: 'Navigation', type: 'nav', path: '/settings' },
     
-    { id: 'act-pay', label: 'Run Payroll', cat: 'Actions', type: 'action', path: '/payroll', keywords: ['process', 'salary'] },
-    { id: 'act-leave', label: 'Approve Leave', cat: 'Actions', type: 'action', path: '/leave', keywords: ['time off', 'holiday'] },
-    { id: 'act-add-emp', label: 'Add Employee', cat: 'Actions', type: 'action', path: '/employees', keywords: ['hire', 'new'] },
-    
-    // Mocks for Priority 4: Global Search
-    { id: 'search-emp-1', label: 'Aisha Verma', cat: 'Employees', type: 'search', path: '/employees', keywords: ['engineering', 'senior'] },
-    { id: 'search-emp-2', label: 'Marcus Lee', cat: 'Employees', type: 'search', path: '/employees', keywords: ['design'] },
-    { id: 'search-dept-1', label: 'Engineering Department', cat: 'Departments', type: 'search', path: '/employees' },
-    { id: 'search-rep-1', label: 'Q2 Attendance Report', cat: 'Reports', type: 'search', path: '/reports' },
+    { id: 'act-rev-leave', label: 'Review Pending Leaves', cat: 'Actions', type: 'action', path: '/leave', keywords: ['approve', 'time off'] },
+    { id: 'act-open-pay', label: 'Open Payroll Center', cat: 'Actions', type: 'action', path: '/payroll', keywords: ['run', 'salary'] },
+    { id: 'act-view-rep', label: 'View Reports', cat: 'Actions', type: 'action', path: '/reports', keywords: ['analytics', 'metrics'] },
+    { id: 'act-open-org', label: 'Open Org Chart', cat: 'Actions', type: 'action', path: '/org-chart', keywords: ['hierarchy', 'structure'] },
+    { id: 'act-man-emp', label: 'Manage Employees', cat: 'Actions', type: 'action', path: '/employees', keywords: ['add', 'directory'] },
   ];
 
   const EMPLOYEE_COMMANDS: CommandItem[] = [
     { id: 'nav-emp-dash', label: 'Employee Dashboard', cat: 'Navigation', type: 'nav', path: '/employee-dashboard' },
-    { id: 'nav-att', label: 'My Attendance', cat: 'Navigation', type: 'nav', path: '/attendance' },
-    { id: 'nav-leave', label: 'My Leave', cat: 'Navigation', type: 'nav', path: '/leave' },
-    { id: 'nav-pay', label: 'My Payroll', cat: 'Navigation', type: 'nav', path: '/payroll' },
-    { id: 'nav-doc', label: 'My Documents', cat: 'Navigation', type: 'nav', path: '/documents' },
-    { id: 'act-prof', label: 'My Profile', cat: 'Actions', type: 'action', path: '#profile' },
+    { id: 'nav-att', label: 'Attendance', cat: 'Navigation', type: 'nav', path: '/attendance' },
+    { id: 'nav-leave', label: 'Leave Management', cat: 'Navigation', type: 'nav', path: '/leave' },
+    { id: 'nav-pay', label: 'Payroll', cat: 'Navigation', type: 'nav', path: '/payroll' },
+    { id: 'nav-doc', label: 'Documents', cat: 'Navigation', type: 'nav', path: '/documents' },
+    { id: 'nav-prof', label: 'Profile', cat: 'Navigation', type: 'nav', path: '/profile' },
+    { id: 'nav-help', label: 'Help Center', cat: 'Navigation', type: 'nav', path: '/help' },
     { id: 'nav-set', label: 'Settings', cat: 'Navigation', type: 'nav', path: '/settings' },
-    { id: 'act-leave', label: 'Apply Leave', cat: 'Actions', type: 'action', path: '/leave' },
-    { id: 'act-payslip', label: 'Download Payslip', cat: 'Actions', type: 'action', path: '/payroll' },
-    { id: 'act-rep', label: 'Attendance Report', cat: 'Reports', type: 'action', path: '/attendance' },
+    
+    { id: 'act-req-leave', label: 'Request Leave', cat: 'Actions', type: 'action', path: '/leave', keywords: ['apply', 'time off'] },
+    { id: 'act-view-pay', label: 'View Payslip', cat: 'Actions', type: 'action', path: '/payroll', keywords: ['download', 'salary'] },
+    { id: 'act-my-att', label: 'Open My Attendance', cat: 'Actions', type: 'action', path: '/attendance', keywords: ['time', 'clock'] },
+    { id: 'act-my-doc', label: 'Open My Documents', cat: 'Actions', type: 'action', path: '/documents', keywords: ['files', 'upload'] },
+    { id: 'act-my-prof', label: 'Open My Profile', cat: 'Actions', type: 'action', path: '/profile', keywords: ['edit', 'personal'] },
   ];
 
   const normalizedRole = user?.role?.toLowerCase() || '';
   const isHr = ['hr-manager', 'hr manager', 'hr', 'manager'].includes(normalizedRole);
   const ALL_COMMANDS = isHr ? HR_COMMANDS : EMPLOYEE_COMMANDS;
 
-  const filtered = query
-    ? ALL_COMMANDS.filter((c) => {
-        const q = query.toLowerCase();
-        if (c.label.toLowerCase().includes(q)) return true;
-        if (c.cat.toLowerCase().includes(q)) return true;
-        if (c.keywords?.some((k) => k.toLowerCase().includes(q))) return true;
-        return false;
-      })
-    : ALL_COMMANDS;
+  const RECENT_KEY = 'command-palette-recent';
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+  
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(RECENT_KEY);
+      if (stored) setRecentIds(JSON.parse(stored));
+    } catch (e) {}
+  }, []);
+
+  const saveRecent = useCallback((id: string) => {
+    setRecentIds((prev) => {
+      const updated = [id, ...prev.filter(x => x !== id)].slice(0, 3);
+      try { sessionStorage.setItem(RECENT_KEY, JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+  }, []);
+
+  let filtered = ALL_COMMANDS;
+  if (query) {
+    filtered = ALL_COMMANDS.filter((c) => {
+      const q = query.toLowerCase();
+      if (c.label.toLowerCase().includes(q)) return true;
+      if (c.cat.toLowerCase().includes(q)) return true;
+      if (c.keywords?.some((k) => k.toLowerCase().includes(q))) return true;
+      return false;
+    });
+  } else {
+    // Show recents first
+    const recents = recentIds.map(id => ALL_COMMANDS.find(c => c.id === id)).filter(Boolean) as CommandItem[];
+    const others = ALL_COMMANDS.filter(c => !recentIds.includes(c.id));
+    filtered = [...recents, ...others];
+  }
 
   useEffect(() => {
     if (open) {
@@ -115,6 +140,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
         e.preventDefault();
         const selected = filtered[selectedIndex];
         if (selected) {
+          saveRecent(selected.id);
           if (selected.path) navigate(selected.path);
           if (selected.action) selected.action();
           onClose();
@@ -123,6 +149,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, filtered, selectedIndex, navigate, onClose]);
 
   // Auto-scroll to selected
@@ -167,7 +194,8 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search employees, payroll, reports, or type a command..."
+                placeholder="Search pages, payroll, reports, or type a command..."
+                aria-label="Search pages and actions"
                 role="combobox"
                 aria-expanded="true"
                 aria-controls="command-palette-results"
@@ -181,8 +209,8 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
             <div id="command-palette-results" role="listbox" ref={listRef} className="max-h-[60vh] overflow-y-auto p-2 sm:max-h-[400px]">
               {filtered.length === 0 ? (
                 <div className="px-4 py-12 text-center">
-                  <p className="text-sm font-medium text-white">No results found</p>
-                  <p className="mt-1 text-xs text-slate-500">Try searching for employees, reports, or actions.</p>
+                  <p className="text-sm font-medium text-white">No matching pages or actions</p>
+                  <p className="mt-1 text-xs text-slate-500">Try searching for different keywords or features.</p>
                 </div>
               ) : (
                 filtered.map((cmd, idx) => {
@@ -195,6 +223,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
                       aria-selected={isSelected}
                       onMouseEnter={() => setSelectedIndex(idx)}
                       onClick={() => {
+                        saveRecent(cmd.id);
                         if (cmd.path) navigate(cmd.path);
                         if (cmd.action) cmd.action();
                         onClose();
