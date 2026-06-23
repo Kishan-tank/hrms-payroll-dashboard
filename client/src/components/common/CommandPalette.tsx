@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuthContext } from '../../context/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { ArrowRight } from 'lucide-react';
 
 function SearchIcon() {
   return (
@@ -99,21 +100,31 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     });
   }, []);
 
-  let filtered = ALL_COMMANDS;
+  const clearRecent = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRecentIds([]);
+    try { sessionStorage.removeItem(RECENT_KEY); } catch (e) {}
+  };
+
+  let groups: { title: string, items: CommandItem[] }[] = [];
   if (query) {
-    filtered = ALL_COMMANDS.filter((c) => {
+    const matched = ALL_COMMANDS.filter(c => {
       const q = query.toLowerCase();
-      if (c.label.toLowerCase().includes(q)) return true;
-      if (c.cat.toLowerCase().includes(q)) return true;
-      if (c.keywords?.some((k) => k.toLowerCase().includes(q))) return true;
-      return false;
+      return c.label.toLowerCase().includes(q) || c.cat.toLowerCase().includes(q) || c.keywords?.some(k => k.toLowerCase().includes(q));
     });
+    if (matched.length > 0) groups.push({ title: 'Results', items: matched });
   } else {
-    // Show recents first
     const recents = recentIds.map(id => ALL_COMMANDS.find(c => c.id === id)).filter(Boolean) as CommandItem[];
-    const others = ALL_COMMANDS.filter(c => !recentIds.includes(c.id));
-    filtered = [...recents, ...others];
+    if (recents.length > 0) {
+      groups.push({ title: 'Recent', items: recents });
+    }
+    const navs = ALL_COMMANDS.filter(c => !recentIds.includes(c.id) && c.type === 'nav');
+    if (navs.length > 0) groups.push({ title: 'Navigation', items: navs });
+    const actions = ALL_COMMANDS.filter(c => !recentIds.includes(c.id) && c.type === 'action');
+    if (actions.length > 0) groups.push({ title: 'Actions', items: actions });
   }
+
+  const flattened = groups.flatMap(g => g.items);
 
   useEffect(() => {
     if (open) {
@@ -132,13 +143,17 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
       if (!open) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
+        if (flattened.length > 0) {
+          setSelectedIndex((i) => (i + 1) % flattened.length);
+        }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex((i) => Math.max(i - 1, 0));
+        if (flattened.length > 0) {
+          setSelectedIndex((i) => (i - 1 + flattened.length) % flattened.length);
+        }
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        const selected = filtered[selectedIndex];
+        const selected = flattened[selectedIndex];
         if (selected) {
           saveRecent(selected.id);
           if (selected.path) navigate(selected.path);
@@ -149,13 +164,12 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, filtered, selectedIndex, navigate, onClose]);
+  }, [open, flattened, selectedIndex, navigate, onClose, saveRecent]);
 
   // Auto-scroll to selected
   useEffect(() => {
     if (listRef.current && selectedIndex >= 0) {
-      const selectedEl = listRef.current.children[selectedIndex] as HTMLElement;
+      const selectedEl = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
       if (selectedEl) {
         selectedEl.scrollIntoView({ block: 'nearest' });
       }
@@ -168,7 +182,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     <AnimatePresence>
       {open && (
         <div
-          className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] sm:pt-[20vh]"
+          className="fixed inset-0 z-[200] flex items-start justify-center pt-0 sm:pt-[20vh]"
           style={{ background: 'rgba(2,6,23,0.7)', backdropFilter: 'blur(8px)' }}
           onClick={onClose}
         >
@@ -182,13 +196,13 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.95, y: shouldReduceMotion ? 0 : -20 }}
             transition={{ duration: shouldReduceMotion ? 0 : 0.15, ease: 'easeOut' }}
-            className="w-full max-w-2xl overflow-hidden rounded-2xl shadow-[0_32px_80px_rgba(0,0,0,0.6)] outline-none"
+            className="flex h-full w-full max-w-2xl flex-col overflow-hidden rounded-none shadow-[0_32px_80px_rgba(0,0,0,0.6)] outline-none sm:h-auto sm:rounded-2xl"
             style={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.1)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="cmd-palette-title" className="sr-only">Command Palette</h2>
             {/* Input */}
-            <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
+            <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-4 sm:py-4 mt-2 sm:mt-0">
               <span className="text-slate-400"><SearchIcon /></span>
               <input
                 ref={inputRef}
@@ -200,60 +214,89 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
                 aria-expanded="true"
                 aria-controls="command-palette-results"
                 aria-autocomplete="list"
+                aria-activedescendant={flattened[selectedIndex]?.id}
                 className="flex-1 bg-transparent text-base font-medium text-white outline-none placeholder:text-slate-500"
               />
               <kbd className="hidden rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-bold text-slate-400 sm:block">ESC</kbd>
             </div>
             
             {/* Results */}
-            <div id="command-palette-results" role="listbox" ref={listRef} className="max-h-[60vh] overflow-y-auto p-2 sm:max-h-[400px]">
-              {filtered.length === 0 ? (
+            <div id="command-palette-results" role="listbox" ref={listRef} className="flex-1 overflow-y-auto p-2 sm:max-h-[400px]">
+              {flattened.length === 0 ? (
                 <div className="px-4 py-12 text-center">
                   <p className="text-sm font-medium text-white">No matching pages or actions</p>
                   <p className="mt-1 text-xs text-slate-500">Try searching for different keywords or features.</p>
                 </div>
               ) : (
-                filtered.map((cmd, idx) => {
-                  const isSelected = idx === selectedIndex;
+                groups.map((group, groupIdx) => {
+                  // Calculate global offset for data-index
+                  const offset = groups.slice(0, groupIdx).reduce((acc, g) => acc + g.items.length, 0);
+                  
                   return (
-                    <button
-                      key={cmd.id}
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      onMouseEnter={() => setSelectedIndex(idx)}
-                      onClick={() => {
-                        saveRecent(cmd.id);
-                        if (cmd.path) navigate(cmd.path);
-                        if (cmd.action) cmd.action();
-                        onClose();
-                      }}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${
-                        isSelected ? 'bg-blue-600/15 text-white' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
-                        isSelected ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-slate-500'
-                      }`}>
-                        <CommandIcon type={cmd.type} />
-                      </span>
-                      <span className="flex-1 truncate">{cmd.label}</span>
-                      <span className={`text-[11px] font-semibold tracking-wide ${isSelected ? 'text-blue-300/70' : 'text-slate-600'}`}>
-                        {cmd.cat}
-                      </span>
-                      {isSelected && (
-                        <span className="hidden items-center gap-1 sm:flex">
-                          <kbd className="rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-400">↵</kbd>
+                    <div key={group.title} className="mb-4 last:mb-0">
+                      <div className="mb-1 flex items-center justify-between px-3">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          {group.title}
                         </span>
-                      )}
-                    </button>
+                        {group.title === 'Recent' && (
+                          <button
+                            type="button"
+                            onClick={clearRecent}
+                            className="text-[10px] font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            Clear recent
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        {group.items.map((cmd, idx) => {
+                          const globalIndex = offset + idx;
+                          const isSelected = globalIndex === selectedIndex;
+                          return (
+                            <button
+                              key={cmd.id}
+                              id={cmd.id}
+                              type="button"
+                              role="option"
+                              data-index={globalIndex}
+                              aria-selected={isSelected}
+                              onMouseEnter={() => setSelectedIndex(globalIndex)}
+                              onClick={() => {
+                                saveRecent(cmd.id);
+                                if (cmd.path) navigate(cmd.path);
+                                if (cmd.action) cmd.action();
+                                onClose();
+                              }}
+                              className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 sm:py-2.5 text-left text-sm font-medium transition-colors ${
+                                isSelected 
+                                  ? 'bg-blue-600/15 text-white shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]' 
+                                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                              }`}
+                            >
+                              <span className={`flex h-7 w-7 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-md ${
+                                isSelected ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-slate-500 group-hover:text-slate-400 group-hover:bg-white/10'
+                              }`}>
+                                <CommandIcon type={cmd.type} />
+                              </span>
+                              <span className="flex-1 truncate">{cmd.label}</span>
+                              {isSelected && (
+                                <span className="flex items-center text-blue-400 gap-1.5 opacity-80">
+                                  <span className="text-[11px] font-semibold tracking-wide">Jump</span>
+                                  <ArrowRight size={14} />
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })
               )}
             </div>
             
             {/* Footer */}
-            <div className="hidden items-center justify-between border-t border-white/5 bg-white/[0.02] px-4 py-3 sm:flex">
+            <div className="hidden shrink-0 items-center justify-between border-t border-white/5 bg-white/[0.02] px-4 py-3 sm:flex">
               <div className="flex items-center gap-4 text-[11px] font-medium text-slate-500">
                 <span className="flex items-center gap-1.5">
                   <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 font-sans">↑</kbd>
