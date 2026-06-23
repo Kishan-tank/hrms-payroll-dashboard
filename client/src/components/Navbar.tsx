@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -55,6 +55,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const rawDisplayName = user?.name ?? userName ?? 'User';
   const displayName = rawDisplayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -70,8 +71,13 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
   /* Ctrl+K shortcut */
   useEffect(() => {
     function handler(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        if (isInput) return;
         e.preventDefault();
+        triggerRef.current?.focus();
         setCmdOpen((v) => !v);
       }
       if (e.key === 'Escape') setCmdOpen(false);
@@ -92,6 +98,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
 
         {/* ── Search / Command Palette trigger ── */}
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setCmdOpen(true)}
           aria-label="Open command palette"

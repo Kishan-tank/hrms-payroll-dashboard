@@ -4,7 +4,7 @@ import { Sparkles, Code2, Database, Layout, Server, Trophy, Star, Flame, Graduat
 
 const achievements = [
   {
-    icon: <Trophy size={20} strokeWidth={2} className="text-white" />,
+    icon: <Trophy size={20} strokeWidth={2} color="currentColor" />,
     title: "Employee Of The Month",
     desc: "June 2026",
     gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
@@ -14,7 +14,7 @@ const achievements = [
     tagColor: "#f59e0b",
   },
   {
-    icon: <Star size={20} strokeWidth={2} className="text-white" />,
+    icon: <Star size={20} strokeWidth={2} color="currentColor" />,
     title: "Top Performer",
     desc: "Q2 2026 · 96% Score",
     gradient: "linear-gradient(135deg, #3b82f6, #2563eb)",
@@ -24,7 +24,7 @@ const achievements = [
     tagColor: "#3b82f6",
   },
   {
-    icon: <Flame size={20} strokeWidth={2} className="text-white" />,
+    icon: <Flame size={20} strokeWidth={2} color="currentColor" />,
     title: "Attendance Champion",
     desc: "42-Day Best Streak",
     gradient: "linear-gradient(135deg, #ef4444, #dc2626)",
@@ -34,7 +34,7 @@ const achievements = [
     tagColor: "#ef4444",
   },
   {
-    icon: <GraduationCap size={20} strokeWidth={2} className="text-white" />,
+    icon: <GraduationCap size={20} strokeWidth={2} color="currentColor" />,
     title: "Training Completed",
     desc: "React Advanced · 40hrs",
     gradient: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
@@ -44,7 +44,7 @@ const achievements = [
     tagColor: "#8b5cf6",
   },
   {
-    icon: <Zap size={20} strokeWidth={2} className="text-white" />,
+    icon: <Zap size={20} strokeWidth={2} color="currentColor" />,
     title: "Sprint Champion",
     desc: "5 sprints delivered on time",
     gradient: "linear-gradient(135deg, #06b6d4, #0891b2)",
@@ -54,7 +54,7 @@ const achievements = [
     tagColor: "#06b6d4",
   },
   {
-    icon: <Gem size={20} strokeWidth={2} className="text-white" />,
+    icon: <Gem size={20} strokeWidth={2} color="currentColor" />,
     title: "Peer Recognition",
     desc: "Voted by 14 teammates",
     gradient: "linear-gradient(135deg, #10b981, #059669)",
@@ -164,8 +164,8 @@ export default function SkillsAndAchievements() {
                     <div
                       className="flex h-11 w-11 items-center justify-center rounded-[12px] shadow-lg transition-transform duration-300 group-hover:scale-110"
                       style={{
-                        background: a.gradient,
-                        boxShadow: `0 6px 20px ${a.glow}, inset 0 1px 0 rgba(255,255,255,0.18)`,
+                        background: a.tagColor ? a.tagColor + '15' : a.gradient,
+                        color: a.tagColor,
                       }}
                     >
                       {a.icon}

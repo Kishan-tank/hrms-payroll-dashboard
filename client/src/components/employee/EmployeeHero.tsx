@@ -123,8 +123,7 @@ export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile
           <div className="flex items-center gap-3 mb-3">
             {/* Avatar */}
             <div className="relative shrink-0">
-              <div className="relative flex h-[68px] w-[68px] items-center justify-center rounded-2xl text-[30px] font-extrabold text-white"
-                   style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%)', boxShadow: '0 6px 24px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.12)' }}>
+              <div className="relative flex h-[68px] w-[68px] items-center justify-center rounded-2xl text-[30px] font-extrabold text-blue-600 bg-blue-50 dark:text-blue-500 dark:bg-blue-500/10">
                 {initial}
               </div>
               <div className="absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-[#0b1121]"
