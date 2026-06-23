@@ -13,6 +13,7 @@ import EmployeeQuickActions from '../components/employee/EmployeeQuickActions';
 import ActivityAndEvents from '../components/employee/ActivityAndEvents';
 import MyGoals from '../components/employee/MyGoals';
 import EmployeeProfileDrawer from '../components/employee/EmployeeProfileDrawer';
+import OnboardingChecklist from '../components/employee/OnboardingChecklist';
 
 export default function EmployeeDashboard() {
   const reducedMotion = useReducedMotion();
@@ -160,6 +161,11 @@ export default function EmployeeDashboard() {
         {/* ROW 1: Hero Workspace */}
         <motion.div custom={0} variants={fade} initial="hidden" animate="visible">
           <EmployeeHero onViewProfile={() => setIsProfileDrawerOpen(true)} summary={summary} />
+        </motion.div>
+        
+        {/* ROW 1.5: Onboarding Checklist */}
+        <motion.div custom={0.02} variants={fade} initial="hidden" animate="visible">
+          <OnboardingChecklist />
         </motion.div>
         
         {/* ROW 2: Snapshot Cards */}

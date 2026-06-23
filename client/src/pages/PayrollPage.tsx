@@ -9,6 +9,7 @@ import EmptyState from '../components/common/EmptyState';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
+import PayslipPreviewModal from '../components/payroll/PayslipPreviewModal';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const CURRENT_MONTH = MONTHS[new Date().getMonth()];
@@ -36,6 +37,7 @@ export default function PayrollPage() {
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
 
   const [filterMonth, setFilterMonth] = useState(CURRENT_MONTH);
   const [filterYear] = useState(CURRENT_YEAR);
@@ -363,7 +365,11 @@ export default function PayrollPage() {
       header: 'Action',
       render: (row) => (
         <div className="flex gap-2">
-          <button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
+          <button 
+            type="button" 
+            onClick={() => setSelectedRecord(row)}
+            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+          >
             View
           </button>
           <button 
@@ -538,11 +544,18 @@ export default function PayrollPage() {
                       <p className="font-bold text-slate-900 dark:text-white text-base">{fmt(record.netPay)}</p>
                     </div>
                   </div>
-                  <div className="flex justify-end border-t border-slate-100 pt-3 dark:border-white/10">
+                  <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRecord(record)}
+                      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-300 dark:hover:bg-white/5"
+                    >
+                      View Payslip
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleDownloadPayslip(record)}
-                      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-300 dark:hover:bg-white/5"
+                      className="flex items-center gap-2 rounded-lg border border-transparent bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
                     >
                       Download PDF
                     </button>
@@ -653,6 +666,13 @@ export default function PayrollPage() {
           </>
         )}
       </div>
+
+      <PayslipPreviewModal
+        open={!!selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+        record={selectedRecord}
+        onDownload={handleDownloadPayslip}
+      />
     </DashboardLayout>
   );
 }

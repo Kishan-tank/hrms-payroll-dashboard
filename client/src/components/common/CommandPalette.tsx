@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuthContext } from '../../context/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { ArrowRight } from 'lucide-react';
+import { employeeService, ApiEmployee } from '../../services/hrmsApi';
 
 function SearchIcon() {
   return (
@@ -41,6 +42,14 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const listRef = useRef<HTMLDivElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
+
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [employees, setEmployees] = useState<ApiEmployee[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 80);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useFocusTrap(open, onClose, paletteRef, { initialFocusRef: inputRef });
 
@@ -107,12 +116,27 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   };
 
   let groups: { title: string, items: CommandItem[] }[] = [];
-  if (query) {
+  if (debouncedQuery) {
+    const q = debouncedQuery.toLowerCase();
+    
+    const empMatched = employees.filter(e => {
+      return (e.name && e.name.toLowerCase().includes(q)) || 
+             (e.department && e.department.toLowerCase().includes(q)) || 
+             (e.role && e.role.toLowerCase().includes(q));
+    }).slice(0, 5).map(e => ({
+      id: `emp-${e._id}`,
+      label: e.name,
+      cat: e.department || 'Employee',
+      type: 'search' as const,
+      path: `/employees?highlight=${e.employeeId}`,
+    }));
+
+    if (empMatched.length > 0) groups.push({ title: 'Employees', items: empMatched });
+
     const matched = ALL_COMMANDS.filter(c => {
-      const q = query.toLowerCase();
       return c.label.toLowerCase().includes(q) || c.cat.toLowerCase().includes(q) || c.keywords?.some(k => k.toLowerCase().includes(q));
     });
-    if (matched.length > 0) groups.push({ title: 'Results', items: matched });
+    if (matched.length > 0) groups.push({ title: 'Pages & Actions', items: matched });
   } else {
     const recents = recentIds.map(id => ALL_COMMANDS.find(c => c.id === id)).filter(Boolean) as CommandItem[];
     if (recents.length > 0) {
@@ -129,13 +153,19 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   useEffect(() => {
     if (open) {
       setQuery('');
+      setDebouncedQuery('');
       setSelectedIndex(0);
+      employeeService.getAll({ limit: 1000 }).then(res => {
+        if (res.success) setEmployees(res.employees || []);
+      }).catch(() => {});
+    } else {
+      setEmployees([]);
     }
   }, [open]);
 
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query]);
+  }, [debouncedQuery]);
 
   // Keyboard navigation
   useEffect(() => {
