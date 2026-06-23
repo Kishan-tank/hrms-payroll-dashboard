@@ -1,19 +1,21 @@
 import { useMemo, useState } from 'react';
-import { UserPlus, CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck } from 'lucide-react';
+import { CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNotifications, formatTimestamp } from '../context/NotificationContext';
-import type { NotificationType } from '../context/NotificationContext';
+import type { NotificationType, Notification } from '../context/NotificationContext';
 import EmptyState from '../components/common/EmptyState';
 
 // ─── Icon helper ─────────────────────────────────────────────────────────────
 
 function getIconForType(type: NotificationType) {
   switch (type) {
-    case 'employee':   return { icon: <UserPlus className="h-5 w-5" />,      color: 'text-blue-500   bg-blue-50   dark:bg-blue-500/20'   };
+    case 'document':   return { icon: <FileText className="h-5 w-5" />,      color: 'text-blue-500   bg-blue-50   dark:bg-blue-500/20'   };
     case 'leave':      return { icon: <CalendarCheck className="h-5 w-5" />, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/20' };
     case 'payroll':    return { icon: <IndianRupee className="h-5 w-5" />,   color: 'text-violet-500  bg-violet-50  dark:bg-violet-500/20'  };
     case 'attendance': return { icon: <Clock className="h-5 w-5" />,         color: 'text-amber-500   bg-amber-50   dark:bg-amber-500/20'   };
-    case 'policy':     return { icon: <FileText className="h-5 w-5" />,      color: 'text-pink-500    bg-pink-50    dark:bg-pink-500/20'     };
+    case 'system':     return { icon: <Bell className="h-5 w-5" />,          color: 'text-pink-500    bg-pink-50    dark:bg-pink-500/20'     };
     default:           return { icon: <Bell className="h-5 w-5" />,          color: 'text-slate-500   bg-slate-100  dark:bg-slate-500/20'   };
   }
 }
@@ -21,49 +23,94 @@ function getIconForType(type: NotificationType) {
 // ─── Label map ────────────────────────────────────────────────────────────────
 
 const TYPE_LABELS: Record<string, string> = {
-  employee:   'Employee',
+  document:   'Document',
   leave:      'Leave',
   payroll:    'Payroll',
   attendance: 'Attendance',
-  policy:     'Policy',
+  system:     'System',
 };
 
-type ReadFilter = 'all' | 'unread' | 'read';
-type TypeFilter = 'all' | NotificationType;
+type CombinedFilter = 'all' | 'unread' | 'approvals' | 'payroll' | 'system';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const [readFilter, setReadFilter]   = useState<ReadFilter>('all');
-  const [typeFilter, setTypeFilter]   = useState<TypeFilter>('all');
+  const [filter, setFilter] = useState<CombinedFilter>('all');
+  const navigate = useNavigate();
+  const toast = useToast();
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
-      const passRead = readFilter === 'all'
-        ? true
-        : readFilter === 'unread'
-          ? !n.read
-          : n.read;
-      const passType = typeFilter === 'all' ? true : n.type === typeFilter;
-      return passRead && passType;
+      if (filter === 'all') return true;
+      if (filter === 'unread') return !n.read;
+      if (filter === 'approvals') return n.type === 'leave';
+      if (filter === 'payroll') return n.type === 'payroll';
+      if (filter === 'system') return n.type === 'system';
+      return true;
     });
-  }, [notifications, readFilter, typeFilter]);
+  }, [notifications, filter]);
 
-  const readFilterTabs: { label: string; value: ReadFilter }[] = [
-    { label: 'All',    value: 'all' },
-    { label: 'Unread', value: 'unread' },
-    { label: 'Read',   value: 'read' },
+  const filterTabs: { label: string; value: CombinedFilter }[] = [
+    { label: 'All',       value: 'all' },
+    { label: 'Unread',    value: 'unread' },
+    { label: 'Approvals', value: 'approvals' },
+    { label: 'Payroll',   value: 'payroll' },
+    { label: 'System',    value: 'system' },
   ];
 
-  const typeFilterOptions: { label: string; value: TypeFilter }[] = [
-    { label: 'All Types',  value: 'all' },
-    { label: 'Leave',      value: 'leave' },
-    { label: 'Payroll',    value: 'payroll' },
-    { label: 'Attendance', value: 'attendance' },
-    { label: 'Employee',   value: 'employee' },
-    { label: 'Policy',     value: 'policy' },
-  ];
+  const handleAction = (e: React.MouseEvent, action: string, n?: Notification) => {
+    e.stopPropagation();
+    if (action === 'coming_soon') {
+      toast.info('Action endpoint coming soon');
+      return;
+    }
+    if (action === 'mark_read' && n) {
+      markAsRead(n.id);
+      return;
+    }
+    navigate(action);
+  };
+
+  const renderActions = (n: Notification) => {
+    switch (n.type) {
+      case 'leave':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={(e) => handleAction(e, '/leave', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">View Leave</button>
+            <button onClick={(e) => handleAction(e, 'coming_soon', n)} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400">Approve</button>
+            <button onClick={(e) => handleAction(e, 'coming_soon', n)} className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400">Reject</button>
+          </div>
+        );
+      case 'payroll':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={(e) => handleAction(e, '/payroll', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">View Payroll</button>
+            <button onClick={(e) => handleAction(e, '/payroll', n)} className="rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-600 transition hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-400">View Payslip</button>
+          </div>
+        );
+      case 'document':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={(e) => handleAction(e, '/documents', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">Open Documents</button>
+          </div>
+        );
+      case 'attendance':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={(e) => handleAction(e, '/attendance', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">Open Attendance</button>
+          </div>
+        );
+      case 'system':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={(e) => handleAction(e, 'mark_read', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">Mark as read</button>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <DashboardLayout title="Notifications">
@@ -100,42 +147,26 @@ export default function NotificationsPage() {
         </div>
 
         {/* ── Filters ── */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
-          {/* Read state tabs */}
-          <div className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-white/5">
-            {readFilterTabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setReadFilter(tab.value)}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${
-                  readFilter === tab.value
-                    ? 'bg-white text-slate-900 shadow-sm dark:bg-white/10 dark:text-white'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-                }`}
-              >
-                {tab.label}
-                {tab.value === 'unread' && unreadCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Type filter dropdown */}
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          >
-            {typeFilterOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-white dark:bg-[#111827]">
-                {opt.label}
-              </option>
-            ))}
-          </select>
+        <div className="flex overflow-x-auto no-scrollbar gap-2 sm:gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setFilter(tab.value)}
+              className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+                filter === tab.value
+                  ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-300'
+              }`}
+            >
+              {tab.label}
+              {tab.value === 'unread' && unreadCount > 0 && (
+                <span className={`ml-2 inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-extrabold ${filter === tab.value ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900' : 'bg-blue-500 text-white'}`}>
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* ── Notification List ── */}
@@ -153,7 +184,7 @@ export default function NotificationsPage() {
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
               <h2 className="font-bold text-slate-950 dark:text-white">
-                {readFilter === 'all' ? 'All' : readFilter === 'unread' ? 'Unread' : 'Read'} Notifications
+                Notifications
               </h2>
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
                 {filtered.length} item{filtered.length !== 1 ? 's' : ''}
@@ -168,10 +199,12 @@ export default function NotificationsPage() {
                     key={n.id}
                     className={`${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''} ${!n.read ? 'bg-blue-50/40 dark:bg-blue-500/[0.06]' : ''}`}
                   >
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => markAsRead(n.id)}
-                      className="group flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]"
+                      onKeyDown={(e) => { if (e.key === 'Enter') markAsRead(n.id); }}
+                      className="group flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03] cursor-pointer"
                     >
                       {/* Icon */}
                       <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}>
@@ -191,16 +224,19 @@ export default function NotificationsPage() {
                         <span className="mt-1 block text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                           {n.message}
                         </span>
-                        <span className="mt-1.5 inline-block rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:text-slate-500">
-                          {TYPE_LABELS[n.type] ?? n.type}
-                        </span>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+                            {TYPE_LABELS[n.type] ?? n.type}
+                          </span>
+                        </div>
+                        {renderActions(n)}
                       </span>
 
                       {/* Unread dot */}
                       {!n.read && (
                         <span className="mt-2 shrink-0 h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
                       )}
-                    </button>
+                    </div>
                   </li>
                 );
               })}
