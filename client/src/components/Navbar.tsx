@@ -56,6 +56,11 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
   const [showProfile, setShowProfile] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+  }, []);
 
   const rawDisplayName = user?.name ?? userName ?? 'User';
   const displayName = rawDisplayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -102,14 +107,16 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
           type="button"
           onClick={() => setCmdOpen(true)}
           aria-label="Open command palette"
-          aria-haspopup="dialog"
-          className="group flex h-12 flex-1 items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 text-left text-slate-800 transition-all duration-300 hover:scale-[1.02] hover:bg-slate-100 hover:border-blue-500/30 focus:border-blue-500/30 focus:outline-none focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.06] md:max-w-[520px] xl:max-w-[600px]"
+          className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:border-white/5 dark:bg-[#0B1121]/50 dark:hover:bg-white/5 dark:hover:text-slate-300 md:px-4 md:py-2.5"
         >
-          <span className="text-slate-400 transition-all duration-300 group-hover:text-blue-500 group-focus:text-blue-500 group-hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.3)] group-focus:drop-shadow-[0_0_8px_rgba(59,130,246,0.3)] dark:group-hover:text-blue-400 dark:group-focus:text-blue-400 dark:group-hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] dark:group-focus:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]"><SearchIcon /></span>
-          <span className="flex-1 truncate text-[13px] text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis tracking-wide dark:text-slate-400">Search attendance, leaves, payslips...</span>
-          <span className="hidden items-center gap-1 text-slate-400 transition-colors group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-400 sm:flex">
-            <kbd className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold dark:border-white/10 dark:bg-white/5">⌘ K</kbd>
-          </span>
+          <SearchIcon />
+          <span className="hidden text-sm font-medium md:block">Search employees, actions...</span>
+          <div className="hidden items-center gap-1 md:flex">
+            <kbd className="rounded-md border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 shadow-sm dark:border-white/10 dark:bg-black/50 dark:text-slate-400">
+              {isMac ? '⌘' : 'Ctrl'}
+            </kbd>
+            <kbd className="rounded-md border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 shadow-sm dark:border-white/10 dark:bg-black/50 dark:text-slate-400">K</kbd>
+          </div>
         </button>
 
         {/* ── Right actions ── */}
