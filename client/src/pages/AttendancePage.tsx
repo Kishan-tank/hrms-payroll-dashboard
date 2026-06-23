@@ -228,13 +228,13 @@ export default function AttendancePage() {
           <div className="flex rounded-lg bg-slate-100 p-1 dark:bg-white/5">
             <button
               onClick={() => setActiveTab('company')}
-              className={`rounded-md px-4 py-2 text-sm font-bold transition-all ${activeTab === 'company' ? 'bg-white text-blue-600 shadow-sm dark:bg-[#0B1121] dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+              className={`rounded-md px-4 py-2 text-sm font-bold transition-all ${activeTab === 'company' ? 'bg-white text-blue-600 shadow-sm dark:bg-blue-500/10 dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
             >
               Company View
             </button>
             <button
               onClick={() => setActiveTab('personal')}
-              className={`rounded-md px-4 py-2 text-sm font-bold transition-all ${activeTab === 'personal' ? 'bg-white text-blue-600 shadow-sm dark:bg-[#0B1121] dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+              className={`rounded-md px-4 py-2 text-sm font-bold transition-all ${activeTab === 'personal' ? 'bg-white text-blue-600 shadow-sm dark:bg-blue-500/10 dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
             >
               My Attendance
             </button>

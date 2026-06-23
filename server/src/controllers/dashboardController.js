@@ -3,6 +3,10 @@ import Payroll from "../models/payroll.js";
 import Leave from "../models/leave.js";
 import Attendance from "../models/attendance.js";
 import User from "../models/user.js";
+import Skill from '../models/Skill.js';
+import PerformanceReview from '../models/PerformanceReview.js';
+import Task from '../models/Task.js';
+import Goal from '../models/Goal.js';
 
 function timeAgo(date) {
   if (!date) return "Just now";
@@ -183,6 +187,12 @@ export const getEmployeeSummary = async (req, res) => {
       }
     }
 
+    // Fetch Phase 2 Data
+    const skills = await Skill.find({ employeeId: employee._id });
+    const latestReview = await PerformanceReview.findOne({ employeeId: employee._id }).sort({ createdAt: -1 });
+    const pendingTasks = await Task.countDocuments({ employeeId: employee._id, status: { $ne: 'Done' } });
+    const goals = await Goal.find({ employeeId: employee._id });
+
     res.status(200).json({
       success: true,
       summary: {
@@ -201,6 +211,14 @@ export const getEmployeeSummary = async (req, res) => {
           leaveBalance,
           latestNetPay: latestPayroll?.netPay || 0,
           payrollStatus: payrollStatus
+        },
+        performance: {
+          score: latestReview ? latestReview.score : 0,
+          skills: skills
+        },
+        productivity: {
+          pendingTasksCount: pendingTasks,
+          goals: goals
         }
       }
     });

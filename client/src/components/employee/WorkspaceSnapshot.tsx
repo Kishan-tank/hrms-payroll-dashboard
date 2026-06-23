@@ -94,7 +94,7 @@ function KpiCard({ icon, iconGradient, glowColor, label, value, suffix, sub, ind
       <div className="flex items-start justify-between relative z-10">
         <div
           className="flex h-9 w-9 items-center justify-center rounded-xl"
-          style={{ background: iconGradient, boxShadow: `0 4px 16px ${glowColor}` }}
+          style={{ background: badgeColor ? badgeColor + '15' : iconGradient, color: badgeColor }}
         >
           {icon}
         </div>
@@ -137,7 +137,7 @@ function KpiCard({ icon, iconGradient, glowColor, label, value, suffix, sub, ind
       <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner relative z-10 dark:bg-slate-800/50">
         <div
           className="h-full rounded-full transition-all duration-1000 ease-out"
-          style={{ width: `${progress}%`, background: iconGradient, boxShadow: `0 0 10px ${glowColor}` }}
+          style={{ width: `${progress}%`, background: badgeColor }}
         />
       </div>
 
@@ -153,7 +153,7 @@ function KpiCard({ icon, iconGradient, glowColor, label, value, suffix, sub, ind
 export default function WorkspaceSnapshot({ summary }: { summary?: EmployeeSummary | null }) {
   const cards: KpiCardProps[] = [
     {
-      icon: <Clock size={18} className="text-white" />,
+      icon: <Clock size={18} color="currentColor" />,
       iconGradient: "linear-gradient(135deg, #3b82f6, #2563eb)",
       glowColor: "rgba(59,130,246,0.3)",
       label: "Attendance Rate",
@@ -167,7 +167,7 @@ export default function WorkspaceSnapshot({ summary }: { summary?: EmployeeSumma
       route: '/attendance',
     },
     {
-      icon: <Umbrella size={18} className="text-white" />,
+      icon: <Umbrella size={18} color="currentColor" />,
       iconGradient: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
       glowColor: "rgba(139,92,246,0.3)",
       label: "Leave Balance",
@@ -180,7 +180,7 @@ export default function WorkspaceSnapshot({ summary }: { summary?: EmployeeSumma
       route: '/leave',
     },
     {
-      icon: <DollarSign size={18} className="text-white" />,
+      icon: <DollarSign size={18} color="currentColor" />,
       iconGradient: "linear-gradient(135deg, #10b981, #059669)",
       glowColor: "rgba(16,185,129,0.3)",
       label: "Payroll Status",
@@ -192,11 +192,11 @@ export default function WorkspaceSnapshot({ summary }: { summary?: EmployeeSumma
       route: '/payroll',
     },
     {
-      icon: <CheckSquare size={18} className="text-white" />,
+      icon: <CheckSquare size={18} color="currentColor" />,
       iconGradient: "linear-gradient(135deg, #f59e0b, #d97706)",
       glowColor: "rgba(245,158,11,0.3)",
       label: "Pending Tasks",
-      value: 4,
+      value: summary?.productivity?.pendingTasksCount || 0,
       sub: "2 due today · 2 this week",
       badge: "Action",
       badgeColor: "#f59e0b",

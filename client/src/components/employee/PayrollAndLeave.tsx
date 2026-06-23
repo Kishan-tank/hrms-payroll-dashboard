@@ -69,7 +69,7 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
     { name: 'Leaves Taken', value: leavesTaken, color: '#3b82f6' },
     { name: 'Sick Leave', value: 0, color: '#8b5cf6' }, // Phase 2
     { name: 'Casual Leave', value: 0, color: '#06b6d4' }, // Phase 2
-    { name: 'Remaining', value: leaveBalance, color: 'rgba(255,255,255,0.06)' },
+    { name: 'Remaining', value: leaveBalance, color: 'remaining' },
   ], [leavesTaken, leaveBalance]);
 
   return (
@@ -93,9 +93,8 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
           {/* Current Salary */}
           <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 shadow-sm hover:bg-slate-100 transition-colors dark:border-white/5 dark:bg-white/[0.02] dark:hover:bg-white/[0.03]">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg shadow-[0_4px_12px_rgba(16,185,129,0.25)]"
-                style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
-                <DollarSign size={15} className="text-white" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-500">
+                <DollarSign size={15} color="currentColor" />
               </div>
               <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">Net Salary</span>
             </div>
@@ -112,9 +111,8 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
           {/* Next Credit */}
           <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 shadow-sm hover:bg-slate-100 transition-colors dark:border-white/5 dark:bg-white/[0.02] dark:hover:bg-white/[0.03]">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg shadow-[0_4px_12px_rgba(59,130,246,0.25)]"
-                style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}>
-                <Calendar size={15} className="text-white" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-500">
+                <Calendar size={15} color="currentColor" />
               </div>
               <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">Next Credit</span>
             </div>
@@ -189,8 +187,18 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
           <div className="relative shrink-0 w-[150px] h-[150px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
+                <defs>
+                  <linearGradient id="remainingGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.1} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.1} />
+                  </linearGradient>
+                  <linearGradient id="remainingGradLight" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.05} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
                 <AnyPie
-                  data={leaveData.slice(0, 3)}
+                  data={leaveData}
                   cx="50%"
                   cy="75%"
                   innerRadius={60}
@@ -198,14 +206,19 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
                   startAngle={0}
                   endAngle={180}
                   paddingAngle={4}
+                  cornerRadius={10}
                   dataKey="value"
                   strokeWidth={0}
                   activeIndex={activeIndex > 2 ? -1 : activeIndex}
                   activeShape={renderActiveShape}
                   onMouseEnter={onPieEnter}
                 >
-                  {leaveData.slice(0, 3).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} className="transition-all duration-300 hover:opacity-80 cursor-pointer" />
+                  {leaveData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.color === 'remaining' ? 'url(#remainingGrad)' : entry.color}
+                      className={entry.color === 'remaining' ? "dark:fill-[url(#remainingGrad)] fill-[url(#remainingGradLight)] transition-all duration-300" : "transition-all duration-300 hover:opacity-80 cursor-pointer"}
+                    />
                   ))}
                 </AnyPie>
               </PieChart>
@@ -231,7 +244,7 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
                 onMouseEnter={() => setActiveIndex(idx)}
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="h-2.5 w-2.5 rounded-full" style={{ background: item.color, boxShadow: `0 0 8px ${item.color}80` }} />
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
                   <span className={`text-[13px] font-semibold ${activeIndex === idx ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{item.name}</span>
                 </div>
                 <span className={`text-[14px] font-bold ${activeIndex === idx ? 'text-slate-900 dark:text-white' : 'text-slate-800 dark:text-slate-300'}`}>{item.value}d</span>

@@ -130,6 +130,14 @@ export interface EmployeeSummary {
     latestNetPay: number;
     payrollStatus?: string;
   };
+  performance?: {
+    score: number;
+    skills: Array<{ name: string; proficiency: number; endorsements: number }>;
+  };
+  productivity?: {
+    pendingTasksCount: number;
+    goals: Array<{ title: string; progress: number }>;
+  };
 }
 
 export interface ApiAttendance {

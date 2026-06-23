@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type NotificationType = 'employee' | 'leave' | 'payroll' | 'attendance' | 'policy';
+export type NotificationType = 'leave' | 'payroll' | 'attendance' | 'document' | 'system';
 
 export interface Notification {
   id: string;
@@ -47,9 +47,9 @@ const SEED_NOTIFICATIONS: Notification[] = [
   },
   {
     id: 'n-003',
-    type: 'employee',
-    title: 'Training Assigned',
-    message: 'You have been enrolled in "Workplace Security 101" — due by Jun 30.',
+    type: 'document',
+    title: 'Document Uploaded',
+    message: 'A new tax document has been uploaded to your profile.',
     read: false,
     timestamp: hoursAgo(2),
   },
@@ -63,15 +63,15 @@ const SEED_NOTIFICATIONS: Notification[] = [
   },
   {
     id: 'n-005',
-    type: 'policy',
-    title: 'Leave Policy Updated',
-    message: 'The Work From Home policy has been updated effective Jul 1, 2026.',
+    type: 'system',
+    title: 'System Maintenance',
+    message: 'HRMSPro will be down for maintenance on Jul 1 from 02:00 AM to 04:00 AM.',
     read: false,
     timestamp: hoursAgo(8),
   },
   {
     id: 'n-006',
-    type: 'employee',
+    type: 'system',
     title: 'Profile Updated',
     message: 'Your profile information was successfully updated.',
     read: true,

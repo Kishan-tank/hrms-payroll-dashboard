@@ -25,6 +25,7 @@ const OrgChartPage = lazy(() => import('../pages/OrgChartPage'));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
 const DocumentsPage = lazy(() => import('../pages/DocumentsPage'));
 const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
+const AuditLogsPage = lazy(() => import('../pages/AuditLogsPage'));
 
 export default function AppRouter() {
   return (
@@ -72,6 +73,7 @@ export default function AppRouter() {
               <Route path="/org-chart" element={<OrgChartPage />} />
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/audit-logs" element={<AuditLogsPage />} />
             </Route>
 
             {/* ── Catch-all: proper 404 instead of silent redirect ── */}

@@ -17,12 +17,12 @@ interface QuickActionItem {
 }
 
 const ACTIONS: QuickActionItem[] = [
-  { id: 'leave', label: 'Apply Leave', sub: 'Request time off', path: '/leave', accent: '#3b82f6', accentDim: 'rgba(59,130,246,0.15)', gradient: 'from-blue-600 to-blue-400', icon: <CalendarDays size={24} color="#ffffff" />, shortcut: 'L', recent: 'Used 2h ago' },
-  { id: 'payslip', label: 'Payslip', sub: 'Download PDF', path: '/payroll', accent: '#10b981', accentDim: 'rgba(16,185,129,0.15)', gradient: 'from-emerald-600 to-emerald-400', icon: <Download size={24} color="#ffffff" />, shortcut: 'P', recent: 'Used Yesterday' },
-  { id: 'attendance', label: 'Attendance', sub: 'View report', path: '/attendance', accent: '#8b5cf6', accentDim: 'rgba(139,92,246,0.15)', gradient: 'from-violet-600 to-purple-400', icon: <FileText size={24} color="#ffffff" />, shortcut: 'A', recent: 'Used Today' },
-  { id: 'documents', label: 'Documents', sub: 'View files', path: '/documents', accent: '#f59e0b', accentDim: 'rgba(245,158,11,0.15)', gradient: 'from-amber-500 to-orange-400', icon: <Folder size={24} color="#ffffff" />, shortcut: 'D' },
-  { id: 'profile', label: 'Update Profile', sub: 'Edit details', path: '/profile', accent: '#ec4899', accentDim: 'rgba(236,72,153,0.15)', gradient: 'from-pink-500 to-rose-400', icon: <UserCircle size={24} color="#ffffff" />, shortcut: 'U' },
-  { id: 'help', label: 'Help Center', sub: 'Support & FAQs', path: '/help', accent: '#06b6d4', accentDim: 'rgba(6,182,212,0.15)', gradient: 'from-cyan-500 to-cyan-400', icon: <Sparkles size={24} color="#ffffff" />, shortcut: 'H' },
+  { id: 'leave', label: 'Apply Leave', sub: 'Request time off', path: '/leave', accent: '#3b82f6', accentDim: 'rgba(59,130,246,0.15)', gradient: 'from-blue-600 to-blue-400', icon: <CalendarDays size={24} />, shortcut: 'L', recent: 'Used 2h ago' },
+  { id: 'payslip', label: 'Payslip', sub: 'Download PDF', path: '/payroll', accent: '#10b981', accentDim: 'rgba(16,185,129,0.15)', gradient: 'from-emerald-600 to-emerald-400', icon: <Download size={24} />, shortcut: 'P', recent: 'Used Yesterday' },
+  { id: 'attendance', label: 'Attendance', sub: 'View report', path: '/attendance', accent: '#8b5cf6', accentDim: 'rgba(139,92,246,0.15)', gradient: 'from-violet-600 to-purple-400', icon: <FileText size={24} />, shortcut: 'A', recent: 'Used Today' },
+  { id: 'documents', label: 'Documents', sub: 'View files', path: '/documents', accent: '#f59e0b', accentDim: 'rgba(245,158,11,0.15)', gradient: 'from-amber-500 to-orange-400', icon: <Folder size={24} />, shortcut: 'D' },
+  { id: 'profile', label: 'Update Profile', sub: 'Edit details', path: '/profile', accent: '#ec4899', accentDim: 'rgba(236,72,153,0.15)', gradient: 'from-pink-500 to-rose-400', icon: <UserCircle size={24} />, shortcut: 'U' },
+  { id: 'help', label: 'Help Center', sub: 'Support & FAQs', path: '/help', accent: '#06b6d4', accentDim: 'rgba(6,182,212,0.15)', gradient: 'from-cyan-500 to-cyan-400', icon: <Sparkles size={24} />, shortcut: 'H' },
 ];
 
 export default function EmployeeQuickActions() {
@@ -75,13 +75,9 @@ export default function EmployeeQuickActions() {
 
             {/* Icon */}
             <div className="relative">
-              <div 
-                className="absolute inset-0 rounded-[16px] blur-md transition-opacity duration-300 group-hover:opacity-100 opacity-60"
-                style={{ background: action.accent }}
-              />
               <span
-                className={`relative flex h-14 w-14 items-center justify-center rounded-[16px] bg-gradient-to-br ${action.gradient} shadow-lg transition-transform duration-300 group-hover:scale-110`}
-                style={{ boxShadow: `0 4px 16px ${action.accent}40` }}
+                className="relative flex h-14 w-14 items-center justify-center rounded-[16px] transition-transform duration-300 group-hover:scale-110"
+                style={{ background: action.accentDim, color: action.accent }}
               >
                 {action.icon}
               </span>

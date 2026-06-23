@@ -13,6 +13,7 @@ import EmployeeQuickActions from '../components/employee/EmployeeQuickActions';
 import ActivityAndEvents from '../components/employee/ActivityAndEvents';
 import MyGoals from '../components/employee/MyGoals';
 import EmployeeProfileDrawer from '../components/employee/EmployeeProfileDrawer';
+import OnboardingChecklist from '../components/employee/OnboardingChecklist';
 
 export default function EmployeeDashboard() {
   const reducedMotion = useReducedMotion();
@@ -162,6 +163,11 @@ export default function EmployeeDashboard() {
           <EmployeeHero onViewProfile={() => setIsProfileDrawerOpen(true)} summary={summary} />
         </motion.div>
         
+        {/* ROW 1.5: Onboarding Checklist */}
+        <motion.div custom={0.02} variants={fade} initial="hidden" animate="visible">
+          <OnboardingChecklist />
+        </motion.div>
+        
         {/* ROW 2: Snapshot Cards */}
         <motion.div custom={0.05} variants={fade} initial="hidden" animate="visible">
           <WorkspaceSnapshot summary={summary} />
@@ -179,7 +185,7 @@ export default function EmployeeDashboard() {
 
         {/* ROW 4: Skills & Achievements */}
         <motion.div custom={0.15} variants={fade} initial="hidden" animate="visible">
-          <SkillsAndAchievements />
+          <SkillsAndAchievements summary={summary} />
         </motion.div>
 
         {/* ROW 5: Quick Actions (Grid) */}
@@ -194,7 +200,7 @@ export default function EmployeeDashboard() {
 
         {/* ROW 7: My Goals & Sprint Tasks */}
         <motion.div custom={0.30} variants={fade} initial="hidden" animate="visible">
-          <MyGoals />
+          <MyGoals summary={summary} />
         </motion.div>
 
       </div>

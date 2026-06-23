@@ -31,7 +31,6 @@ export default function EmployeeSpotlight() {
       <div className="flex flex-1 flex-col items-center justify-center text-center">
         {/* Avatar */}
         <div className="relative mb-5">
-          <div className="absolute -inset-1 animate-pulse rounded-full bg-gradient-to-r from-blue-500 to-purple-500 opacity-30 blur-md" />
           <div
             className="relative flex h-20 w-20 items-center justify-center rounded-full border-4 border-white text-2xl font-extrabold text-white shadow-lg dark:border-[#0B1121] dark:shadow-2xl"
             style={{ background: SPOTLIGHT.avatarGradient }}
