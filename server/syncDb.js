@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 
 async function sync() {
-  await mongoose.connect('mongodb+srv://tankkishan902_db_user:c0Sf5boBDsuZpP7W@cluster0.dia8ndg.mongodb.net/');
+  await mongoose.connect('mongodb+srv://');
   const db = mongoose.connection.db;
   const users = await db.collection('users').find({}).toArray();
   const employees = await db.collection('employees').find({}).toArray();
-  
+
   const existingEmails = new Set(employees.map(e => e.email));
   let count = 0;
   for (const user of users) {
