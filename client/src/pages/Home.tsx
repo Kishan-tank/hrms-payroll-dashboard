@@ -28,7 +28,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden" style={{ background: '#020617' }}>
+    <div className="relative min-h-screen overflow-x-clip" style={{ background: '#020617' }}>
       
       {/* ── Scroll Progress Bar ── */}
       <div 
@@ -53,10 +53,10 @@ export default function Home() {
       {/* ── Page Content ── */}
       <div className="relative z-10">
         <LandingScrollProgress />
+        <LandingNavbar />
         
         <div data-section="Hero">
           <AnimatedBackground>
-            <LandingNavbar />
             <HeroSection />
           </AnimatedBackground>
         </div>
