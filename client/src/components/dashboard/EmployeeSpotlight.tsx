@@ -1,4 +1,4 @@
-
+import type { HrSummary } from '../../services/hrmsApi';
 
 const SPOTLIGHT = {
   name: 'Aisha Verma',
@@ -10,7 +10,9 @@ const SPOTLIGHT = {
   manager: 'David Chen, VP of Engineering'
 };
 
-export default function EmployeeSpotlight() {
+export default function EmployeeSpotlight({ summary }: { summary?: HrSummary | null }) {
+  const spotlight = summary?.spotlight ? { ...SPOTLIGHT, ...summary.spotlight } : SPOTLIGHT;
+
   return (
     <div className="relative flex h-full min-h-[380px] flex-col overflow-hidden rounded-[20px] border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl dark:backdrop-blur-sm">
       {/* Background Decorative Elements */}
@@ -33,9 +35,9 @@ export default function EmployeeSpotlight() {
         <div className="relative mb-5">
           <div
             className="relative flex h-20 w-20 items-center justify-center rounded-full border-4 border-white text-2xl font-extrabold text-white shadow-lg dark:border-[#0B1121] dark:shadow-2xl"
-            style={{ background: SPOTLIGHT.avatarGradient }}
+            style={{ background: spotlight.avatarGradient }}
           >
-            {SPOTLIGHT.avatar}
+            {spotlight.avatar}
           </div>
           {/* Performance Badge */}
           <div className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-emerald-500 shadow-sm dark:border-[#0B1121] dark:shadow-lg">
@@ -46,19 +48,19 @@ export default function EmployeeSpotlight() {
         </div>
         
         {/* Profile Info */}
-        <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{SPOTLIGHT.name}</h3>
-        <p className="text-sm font-semibold text-slate-500 dark:font-medium dark:text-slate-400">{SPOTLIGHT.title}</p>
+        <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{spotlight.name}</h3>
+        <p className="text-sm font-semibold text-slate-500 dark:font-medium dark:text-slate-400">{spotlight.title} • {spotlight.department}</p>
         <span className="mt-2 inline-block rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-bold text-blue-400">
-          Score: 98/100
+          Score: {summary?.spotlight?.score ?? 98}/100
         </span>
 
         {/* Manager Quote */}
         <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-4 text-center dark:border-white/5 dark:bg-white/[0.02]">
           <p className="text-xs italic leading-relaxed font-medium text-slate-600 dark:text-slate-300">
-            {SPOTLIGHT.quote}
+            {spotlight.quote}
           </p>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            — {SPOTLIGHT.manager}
+            — {spotlight.manager}
           </p>
         </div>
       </div>

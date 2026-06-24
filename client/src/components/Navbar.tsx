@@ -107,7 +107,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
           type="button"
           onClick={() => setCmdOpen(true)}
           aria-label="Open command palette"
-          className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:border-white/5 dark:bg-[#0B1121]/50 dark:hover:bg-white/5 dark:hover:text-slate-300 md:px-4 md:py-2.5"
+          className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-slate-400 transition-all duration-300 hover:scale-[1.02] hover:bg-slate-100 hover:text-slate-600 hover:border-blue-500/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] dark:border-white/5 dark:bg-[#0B1121]/50 dark:hover:bg-white/5 dark:hover:text-slate-300 md:px-4 md:py-2.5"
         >
           <SearchIcon />
           <span className="hidden text-sm font-medium md:block">Search employees, actions...</span>
@@ -122,7 +122,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
         {/* ── Right actions ── */}
         <div className="ml-auto flex items-center gap-2">
           
-          <div className="hidden h-10 items-center gap-2.5 rounded-full border border-slate-200 bg-slate-50 px-4 text-[11px] font-medium text-slate-500 shadow-sm backdrop-blur-md sm:flex dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+          <div className="hidden h-10 items-center gap-2.5 rounded-full border border-slate-200 bg-slate-50 px-4 text-[11px] font-medium text-slate-500 shadow-sm backdrop-blur-md sm:flex dark:border-white/10 dark:bg-white/5 dark:text-slate-300 hover:border-blue-500/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-300">
             <span className="text-slate-900 dark:text-white">{timeStr}</span>
             <span className="h-3 w-px bg-slate-300 dark:bg-white/20" />
             <span className="text-slate-500 dark:text-slate-400">{dateStr}</span>

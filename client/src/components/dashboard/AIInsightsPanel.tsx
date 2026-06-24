@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import type { HrSummary } from '../../services/hrmsApi';
 
 // ─── TypeScript Interfaces ────────────────────────────────────────────────────
 
@@ -10,7 +11,7 @@ export interface InsightItem {
   confidence: number;
   accent: string;
   accentDim: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   action: string;
 }
 
@@ -32,6 +33,13 @@ function ArrowRightIcon() {
   return <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 18l6-6-6-6" /></svg>;
 }
 
+function getCategoryIcon(category: string, accent: string) {
+  if (category === 'ATTENDANCE') return <TrendUpIcon c={accent} />;
+  if (category === 'LEAVE') return <AlertIcon c={accent} />;
+  if (category === 'PAYROLL') return <RupeeIcon c={accent} />;
+  return <BellIcon c={accent} />;
+}
+
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const INSIGHTS: InsightItem[] = [
@@ -43,7 +51,6 @@ const INSIGHTS: InsightItem[] = [
     confidence: 94,
     accent: '#3b82f6',
     accentDim: 'rgba(59,130,246,0.10)',
-    icon: <TrendUpIcon c="#3b82f6" />,
     action: 'View breakdown',
   },
   {
@@ -54,7 +61,6 @@ const INSIGHTS: InsightItem[] = [
     confidence: 87,
     accent: '#22c55e',
     accentDim: 'rgba(34,197,94,0.10)',
-    icon: <AlertIcon c="#22c55e" />,
     action: 'Review calendar',
   },
   {
@@ -65,7 +71,6 @@ const INSIGHTS: InsightItem[] = [
     confidence: 91,
     accent: '#8b5cf6',
     accentDim: 'rgba(139,92,246,0.10)',
-    icon: <RupeeIcon c="#8b5cf6" />,
     action: 'Audit entries',
   },
   {
@@ -76,7 +81,6 @@ const INSIGHTS: InsightItem[] = [
     confidence: 99,
     accent: '#f59e0b',
     accentDim: 'rgba(245,158,11,0.10)',
-    icon: <BellIcon c="#f59e0b" />,
     action: 'Approve now',
   },
 ];
@@ -99,7 +103,9 @@ function ConfidenceBar({ value, color }: { value: number; color: string }) {
 
 // ─── AIInsightsPanel ─────────────────────────────────────────────────────────
 
-export default function AIInsightsPanel() {
+export default function AIInsightsPanel({ summary }: { summary?: HrSummary | null }) {
+  const insightsList = summary?.insights ?? INSIGHTS;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 16 }}
@@ -130,7 +136,7 @@ export default function AIInsightsPanel() {
 
       {/* Insight cards */}
       <div className="flex flex-col gap-2.5">
-        {INSIGHTS.map((ins, idx) => (
+        {insightsList.map((ins, idx) => (
           <motion.div
             key={ins.id}
             initial={{ opacity: 0, y: 8 }}
@@ -157,7 +163,7 @@ export default function AIInsightsPanel() {
                 className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                 style={{ background: `${ins.accent}18`, color: ins.accent }}
               >
-                {ins.icon}
+                {getCategoryIcon(ins.category, ins.accent)}
                 {ins.category}
               </span>
               <ConfidenceBar value={ins.confidence} color={ins.accent} />

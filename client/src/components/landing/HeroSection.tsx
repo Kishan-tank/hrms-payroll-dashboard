@@ -52,7 +52,7 @@ function PayrollDashboardMockup() {
 
       {/* ── Main card ── */}
       <div
-        className="relative rounded-2xl p-5 shadow-[0_32px_80px_rgba(0,0,0,0.5)]"
+        className="relative rounded-2xl p-5 shadow-[0_32px_80px_rgba(0,0,0,0.5)] hover:scale-[1.02] hover:shadow-[0_40px_100px_rgba(37,99,235,0.2)] transition-all duration-500 cursor-pointer"
         style={{
           background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(9,14,30,0.98) 100%)',
           border: '1px solid rgba(255,255,255,0.10)',
@@ -127,7 +127,7 @@ function PayrollDashboardMockup() {
 
       {/* ── Floating toast: Payroll Processed ── */}
       <div
-        className="animate-float-slow animation-delay-300 absolute -right-4 top-6 flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 shadow-2xl"
+        className="animate-float-slow animation-delay-300 absolute -right-4 top-6 flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 shadow-2xl hover:scale-105 hover:border-emerald-400/60 hover:shadow-[0_20px_50px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer"
         style={{ background: 'rgba(16,24,40,0.95)', border: '1px solid rgba(16,185,129,0.3)', backdropFilter: 'blur(16px)' }}
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15">
@@ -143,7 +143,7 @@ function PayrollDashboardMockup() {
 
       {/* ── Floating Headcount card ── */}
       <div
-        className="animate-float animation-delay-200 absolute -left-6 bottom-12 rounded-xl p-3 shadow-2xl"
+        className="animate-float animation-delay-200 absolute -left-6 bottom-12 rounded-xl p-3 shadow-2xl hover:scale-105 hover:border-blue-400/60 hover:shadow-[0_20px_50px_rgba(37,99,235,0.25)] transition-all duration-300 cursor-pointer"
         style={{ background: 'rgba(16,24,40,0.95)', border: '1px solid rgba(37,99,235,0.25)', backdropFilter: 'blur(16px)', minWidth: '140px' }}
       >
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Headcount</p>
@@ -235,10 +235,10 @@ export default function HeroSection() {
         <div className="flex-1 text-center lg:text-left">
 
           {/* Badge */}
-          <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5" style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.25)' }}>
+          <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 shadow-[0_0_20px_rgba(37,99,235,0.15)] hover:shadow-[0_0_25px_rgba(37,99,235,0.25)] hover:border-blue-500/40 transition-all duration-300 cursor-pointer backdrop-blur-md" style={{ background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.25)' }}>
             <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
             <span className="text-xs font-bold uppercase tracking-widest text-blue-400">
-              Week 1 Launch — Enterprise HRMS Platform
+              Enterprise HRMS & Payroll Automation Suite
             </span>
           </div>
 

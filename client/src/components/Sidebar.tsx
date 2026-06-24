@@ -172,7 +172,7 @@ export default function Sidebar() {
                         [
                           `group relative flex h-10 items-center text-sm font-semibold transition-all duration-300 ${collapsed ? 'justify-center w-12 mx-auto px-0 rounded-xl' : 'px-3 gap-3 w-full rounded-xl hover:translate-x-1'}`,
                           isActive
-                            ? 'bg-blue-600/10 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.15)] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-8 before:w-1 before:rounded-full before:bg-blue-500 before:shadow-[0_0_8px_rgba(59,130,246,0.8)]'
+                            ? 'bg-blue-600/15 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.25)] border border-blue-500/30 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-8 before:w-1.5 before:rounded-full before:bg-blue-500 before:shadow-[0_0_12px_rgba(59,130,246,0.9)]'
                             : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:border-white/10 dark:hover:bg-white/[0.04] dark:hover:text-slate-200',
                         ].join(' ')
                       }
