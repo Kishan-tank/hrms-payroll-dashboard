@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import type { HrSummary } from '../../services/hrmsApi';
 
 const DEPARTMENTS = [
   { name: 'Engineering', count: 485, color: 'bg-blue-500' },
@@ -9,9 +10,10 @@ const DEPARTMENTS = [
   { name: 'Finance', count: 38, color: 'bg-indigo-500' },
 ];
 
-export default function DepartmentOverview() {
+export default function DepartmentOverview({ summary }: { summary?: HrSummary | null }) {
   const navigate = useNavigate();
-  const maxCount = Math.max(...DEPARTMENTS.map((d) => d.count));
+  const depts = summary?.departments ?? DEPARTMENTS;
+  const maxCount = Math.max(...depts.map((d) => d.count), 1);
 
   return (
     <div className="flex h-full flex-col rounded-[20px] border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
@@ -29,7 +31,7 @@ export default function DepartmentOverview() {
       </div>
 
       <div className="flex flex-1 flex-col justify-center space-y-5">
-        {DEPARTMENTS.map((dept, i) => {
+        {depts.map((dept, i) => {
           const widthPercent = (dept.count / maxCount) * 100;
           return (
             <div key={dept.name} className="group">

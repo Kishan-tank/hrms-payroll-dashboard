@@ -157,13 +157,23 @@ export default function EmployeeManagement() {
     setTimeout(() => setToastMsg(null), 3000);
   };
 
+  const [showBulkDeptModal, setShowBulkDeptModal] = useState(false);
+  const [bulkDeptSelect, setBulkDeptSelect] = useState('Engineering');
+
   const handleBulkChangeDepartment = () => {
-    showToast('Bulk action endpoint coming soon');
+    setShowBulkDeptModal(true);
   };
 
-  const handleBulkDeactivate = () => {
+  const handleBulkDeactivate = async () => {
     if (window.confirm(`Are you sure you want to deactivate ${selectedRowIds.size} selected employee(s)?`)) {
-      showToast('Bulk action endpoint coming soon');
+      try {
+        const res = await employeeService.bulkDeactivate(Array.from(selectedRowIds));
+        showToast(res.message || 'Employees deactivated successfully');
+        setSelectedRowIds(new Set());
+        void fetchEmployees();
+      } catch (err) {
+        showToast((err as Error).message);
+      }
     }
   };
 
@@ -672,6 +682,56 @@ export default function EmployeeManagement() {
               <button type="button" onClick={() => setDeleteTarget(null)} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">Cancel</button>
               <button type="button" onClick={() => void handleDelete()} disabled={deleting} className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-70 dark:bg-red-500 dark:hover:bg-red-600">
                 {deleting && <Icon name="spinner" />} Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Change Department Modal ── */}
+      {showBulkDeptModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div 
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-dept-title"
+            tabIndex={-1}
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] outline-none dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+          >
+            <h2 id="bulk-dept-title" className="mb-2 text-lg font-bold text-slate-950 dark:text-white">Change Department</h2>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+              Select a new department for {selectedRowIds.size} selected employee(s).
+            </p>
+            <div className="mb-6">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Department</label>
+              <select
+                value={bulkDeptSelect}
+                onChange={(e) => setBulkDeptSelect(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+              >
+                {departments.filter((d) => d !== 'All').map((d) => (
+                  <option key={d} value={d} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{d}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowBulkDeptModal(false)} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">Cancel</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await employeeService.bulkChangeDepartment(Array.from(selectedRowIds), bulkDeptSelect);
+                    showToast(res.message || 'Department updated successfully');
+                    setSelectedRowIds(new Set());
+                    setShowBulkDeptModal(false);
+                    void fetchEmployees();
+                  } catch (err) {
+                    showToast((err as Error).message);
+                  }
+                }}
+                className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              >
+                Update
               </button>
             </div>
           </div>

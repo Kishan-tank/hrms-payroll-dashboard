@@ -103,7 +103,16 @@ export interface HrSummary {
   totalEmployees: number;
   attendanceRate: string;
   payrollStatus: string;
+  payrollTotal?: number;
   pendingApprovals: number;
+  presentToday?: number;
+  onLeave?: number;
+  remoteCount?: number;
+  workforceHealth?: number;
+  approvalQueue?: Array<{ id: string; type: string; user: string; detail: string; time: string; color: string; bg: string }>;
+  departments?: Array<{ name: string; count: number; color: string }>;
+  spotlight?: { name: string; title: string; department: string; avatar: string; score: number; quote: string; manager: string };
+  insights?: Array<{ id: string; category: 'ATTENDANCE' | 'LEAVE' | 'PAYROLL' | 'APPROVALS'; title: string; body: string; confidence: number; accent: string; accentDim: string; action: string }>;
 }
 
 export interface Activity {
