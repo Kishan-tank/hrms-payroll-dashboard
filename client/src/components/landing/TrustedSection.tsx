@@ -1,12 +1,12 @@
 
 
 const metrics = [
-  { value: '150+', label: 'Enterprises' },
-  { value: '2,500+', label: 'Employees Managed' },
-  { value: '99.7%', label: 'Payroll Accuracy' },
-  { value: 'SOC 2', label: 'Ready' },
-  { value: 'GDPR', label: 'Compliant' },
-  { value: '99.99%', label: 'System Uptime' },
+  { value: 'SOC 2', label: 'Ready Controls' },
+  { value: 'GDPR', label: 'Compliant Flows' },
+  { value: 'RBAC', label: 'Role-Level Access' },
+  { value: 'AES-256', label: 'Encryption Model' },
+  { value: '99.99%', label: 'Uptime Target' },
+  { value: 'Audit', label: 'Event Trails' },
 ];
 
 /* ── Icons ──────────────────────────────────────────────── */
@@ -45,18 +45,28 @@ function ZapIcon() {
 /* ── Main Component ─────────────────────────────────────── */
 export default function TrustedSection() {
   return (
-    <section className="py-16" style={{ background: 'transparent' }}>
+    <section className="py-20" style={{ background: 'transparent' }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         
-        {/* Badge */}
-        <div className="mb-8 text-center">
-          <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
-            TRUSTED BY HR TEAMS ACROSS INDIA
-          </span>
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <div
+            className="mb-4 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-blue-400"
+            style={{ background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)' }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+            Security & Compliance
+          </div>
+          <h2 className="mb-4 text-3xl font-extrabold text-white sm:text-4xl">
+            Enterprise Trust Built In
+          </h2>
+          <p className="mx-auto max-w-2xl text-base leading-relaxed text-slate-400">
+            Protect workforce data with secure access controls, encrypted workflows, audit trails, and compliance-ready operations.
+          </p>
         </div>
 
         {/* Metrics Grid */}
-        <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
           {metrics.map((metric, idx) => (
             <div
               key={idx}
@@ -91,7 +101,7 @@ export default function TrustedSection() {
         {/* Bottom Trust Indicators */}
         <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
-            <StarIcon /> 4.9/5 Customer Rating
+            <StarIcon /> Audit-ready controls
           </div>
           <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
             <CheckCircleIcon /> SOC 2 Ready
