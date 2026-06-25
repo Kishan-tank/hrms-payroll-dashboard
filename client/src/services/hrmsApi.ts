@@ -11,6 +11,60 @@ function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+export interface ApiGoal {
+  _id: string;
+  employeeId: string;
+  title: string;
+  progress: number;
+  dueDate?: string;
+  createdAt: string;
+}
+
+export interface ApiTask {
+  _id: string;
+  employeeId: string;
+  title: string;
+  status: 'Pending' | 'In Progress' | 'Done';
+  priority: 'Low' | 'Medium' | 'High';
+  createdAt: string;
+}
+
+export interface ApiPerformanceReview {
+  _id: string;
+  employeeId: { _id: string; name: string; department: string; role: string };
+  score: number;
+  reviewPeriod: string;
+  managerFeedback?: string;
+  createdAt: string;
+}
+
+export const performanceService = {
+  // Goals
+  getGoals: (employeeId?: string) =>
+    request<{ success: boolean; goals: ApiGoal[] }>('GET', employeeId ? `/performance/goals?employeeId=${employeeId}` : '/performance/goals'),
+  createGoal: (title: string, dueDate?: string, employeeId?: string) =>
+    request<{ success: boolean; goal: ApiGoal; message: string }>('POST', '/performance/goals', { title, dueDate, employeeId }),
+  updateGoalProgress: (id: string, progress: number) =>
+    request<{ success: boolean; goal: ApiGoal; message: string }>('PUT', `/performance/goals/${id}`, { progress }),
+  deleteGoal: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/performance/goals/${id}`),
+
+  // Tasks
+  getTasks: (employeeId?: string) =>
+    request<{ success: boolean; tasks: ApiTask[] }>('GET', employeeId ? `/performance/tasks?employeeId=${employeeId}` : '/performance/tasks'),
+  createTask: (title: string, priority: string, employeeId?: string) =>
+    request<{ success: boolean; task: ApiTask; message: string }>('POST', '/performance/tasks', { title, priority, employeeId }),
+  updateTaskStatus: (id: string, status: string) =>
+    request<{ success: boolean; task: ApiTask; message: string }>('PUT', `/performance/tasks/${id}`, { status }),
+  deleteTask: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/performance/tasks/${id}`),
+
+  // Reviews
+  getReviews: (employeeId?: string) =>
+    request<{ success: boolean; reviews: ApiPerformanceReview[] }>('GET', employeeId ? `/performance/reviews?employeeId=${employeeId}` : '/performance/reviews'),
+  createReview: (employeeId: string, score: number, reviewPeriod: string, managerFeedback: string) =>
+    request<{ success: boolean; review: ApiPerformanceReview; message: string }>('POST', '/performance/reviews', { employeeId, score, reviewPeriod, managerFeedback }),
+};
 
 async function request<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
