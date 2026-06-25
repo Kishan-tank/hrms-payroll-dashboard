@@ -12,6 +12,7 @@ import leaveRoutes from "./routes/leaveRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
+import performanceRoutes from "./routes/performanceRoutes.js";
 const app = express();
 
 app.use(express.json());
@@ -51,5 +52,7 @@ app.use("/api/leave", leaveRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/documents", documentRoutes);
+app.use("/api/performance", performanceRoutes);
 
 export default app;
