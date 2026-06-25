@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import type { HrSummary } from '../../services/hrmsApi';
 
 const DEPARTMENTS = [
@@ -11,7 +10,6 @@ const DEPARTMENTS = [
 ];
 
 export default function DepartmentOverview({ summary }: { summary?: HrSummary | null }) {
-  const navigate = useNavigate();
   const depts = summary?.departments ?? DEPARTMENTS;
   const maxCount = Math.max(...depts.map((d) => d.count), 1);
 
@@ -22,12 +20,6 @@ export default function DepartmentOverview({ summary }: { summary?: HrSummary | 
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">Department Overview</h3>
           <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Headcount distribution</p>
         </div>
-        <button 
-          onClick={() => navigate('/org-chart')}
-          className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
-        >
-          View Org Chart &rarr;
-        </button>
       </div>
 
       <div className="flex flex-1 flex-col justify-center space-y-5">

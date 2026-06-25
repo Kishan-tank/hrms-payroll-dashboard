@@ -60,13 +60,11 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     { id: 'nav-leave', label: 'Leave Management', cat: 'Navigation', type: 'nav', path: '/leave' },
     { id: 'nav-pay', label: 'Payroll', cat: 'Navigation', type: 'nav', path: '/payroll' },
     { id: 'nav-rep', label: 'Reports', cat: 'Navigation', type: 'nav', path: '/reports' },
-    { id: 'nav-org', label: 'Org Chart', cat: 'Navigation', type: 'nav', path: '/org-chart' },
     { id: 'nav-set', label: 'Settings', cat: 'Navigation', type: 'nav', path: '/settings' },
     
     { id: 'act-rev-leave', label: 'Review Pending Leaves', cat: 'Actions', type: 'action', path: '/leave', keywords: ['approve', 'time off'] },
     { id: 'act-open-pay', label: 'Open Payroll Center', cat: 'Actions', type: 'action', path: '/payroll', keywords: ['run', 'salary'] },
     { id: 'act-view-rep', label: 'View Reports', cat: 'Actions', type: 'action', path: '/reports', keywords: ['analytics', 'metrics'] },
-    { id: 'act-open-org', label: 'Open Org Chart', cat: 'Actions', type: 'action', path: '/org-chart', keywords: ['hierarchy', 'structure'] },
     { id: 'act-man-emp', label: 'Manage Employees', cat: 'Actions', type: 'action', path: '/employees', keywords: ['add', 'directory'] },
   ];
 
