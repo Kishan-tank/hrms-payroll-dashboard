@@ -25,7 +25,8 @@ const OrgChartPage = lazy(() => import('../pages/OrgChartPage'));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
 const DocumentsPage = lazy(() => import('../pages/DocumentsPage'));
 const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
-
+const PerformancePage = lazy(() => import('../pages/PerformancePage')); // <-- ADD THIS
+const CompanyHubPage = lazy(() => import('../pages/CompanyHubPage')); // <-- ADD THIS
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -55,7 +56,10 @@ export default function AppRouter() {
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/leave" element={<LeavePage />} />
               <Route path="/payroll" element={<PayrollPage />} />
-            </Route>
+              
+              <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
+            
+              <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
 
             {/* ── Employee-only routes ── */}
             <Route element={<ProtectedRoute allowedRoles={['employee']} />}>

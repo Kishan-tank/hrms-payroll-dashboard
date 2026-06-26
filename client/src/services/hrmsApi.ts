@@ -378,3 +378,40 @@ export const documentService = {
   },
   delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/documents/${id}`),
 };
+
+
+// ─── Company Hub: Events & Skills ─────────────────────────────────────────────
+
+export interface ApiEvent {
+  _id: string;
+  title: string;
+  date: string;
+  type: 'Holiday' | 'Birthday' | 'Anniversary' | 'Training';
+  createdAt: string;
+}
+
+export interface ApiSkill {
+  _id: string;
+  employeeId: { _id: string; name: string; department: string; role: string };
+  name: string;
+  proficiency: number;
+  endorsements: number;
+  createdAt: string;
+}
+
+export const companyService = {
+  // Events
+  getEvents: () => request<{ success: boolean; events: ApiEvent[] }>('GET', '/company/events'),
+  createEvent: (title: string, date: string, type: string) =>
+    request<{ success: boolean; event: ApiEvent; message: string }>('POST', '/company/events', { title, date, type }),
+  deleteEvent: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/events/${id}`),
+
+  // Skills
+  getSkills: (department?: string) =>
+    request<{ success: boolean; skills: ApiSkill[] }>('GET', department ? `/company/skills?department=${department}` : '/company/skills'),
+  createSkill: (name: string, proficiency: number, employeeId?: string) =>
+    request<{ success: boolean; skill: ApiSkill; message: string }>('POST', '/company/skills', { name, proficiency, employeeId }),
+  endorseSkill: (id: string) =>
+    request<{ success: boolean; skill: ApiSkill; message: string }>('POST', `/company/skills/${id}/endorse`),
+  deleteSkill: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/skills/${id}`),
+};

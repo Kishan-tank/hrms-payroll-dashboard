@@ -14,7 +14,8 @@ type IconName =
   | 'building'
   | 'chevron'
   | 'briefcase'
-  | 'orgchart';
+  | 'performance'
+  | 'companyHub'; // <-- ADD THIS
 
 interface NavItem {
   label: string;
