@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,6 +10,9 @@ import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import EmptyState from '../components/common/EmptyState';
+import ContextMenu from '../components/common/ContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
+import LeaveApprovalModal from '../components/leave/LeaveApprovalModal';
 
 const leaveSchema = z.object({
   leaveType: z.string().min(1),
@@ -25,11 +28,43 @@ type LeaveFormData = z.infer<typeof leaveSchema>;
 
 export default function LeavePage() {
   const { user } = useAuth();
-  const { success, info } = useToast();
+  const { success, info, error: toastError } = useToast();
   // Safely check role regardless of casing
   const normalizedRole = user?.role?.toLowerCase() || '';
   const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
   const displayName = user?.name || 'HR Manager';
+
+  const { menuProps, handleContextMenu } = useContextMenu();
+  const contextTargetRef = useRef<ApiLeave | null>(null);
+
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
+  const [pendingApproval, setPendingApproval] = useState<{
+    leave: ApiLeave;
+    action: 'Approved' | 'Rejected';
+  } | null>(null);
+
+  function requestApproval(leave: ApiLeave, action: 'Approved' | 'Rejected') {
+    setPendingApproval({ leave, action });
+  }
+
+  function confirmApproval() {
+    if (!pendingApproval) return;
+    void handleUpdateStatus(pendingApproval.leave._id as string, pendingApproval.action);
+  }
+
+  function buildLeaveMenuItems(row: ApiLeave) {
+    const isPending = row.status === 'Pending';
+    const items: any[] = [
+      { label: 'View details', icon: 'eye', onClick: () => { /* no-op */ } },
+    ];
+    if (!isEmployee && isPending) {
+      items.push(
+        { label: 'Approve', icon: 'circle-check', onClick: () => requestApproval(row, 'Approved') },
+        { label: 'Reject', icon: 'circle-x', variant: 'danger', onClick: () => requestApproval(row, 'Rejected') }
+      );
+    }
+    return items;
+  }
 
   const [leaveRequests, setLeaveRequests] = useState<ApiLeave[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,19 +146,24 @@ export default function LeavePage() {
   });
 
   const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
+    setApprovingIds(prev => new Set(prev).add(id));
     try {
-      // 1. Send the request to the backend
       await leaveService.updateStatus(id, newStatus);
-
-      // 2. Update the UI only on success
       setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: newStatus } : req));
-      success(`Leave request ${newStatus}`);
+      success(`Leave request ${newStatus.toLowerCase()}.`);
     } catch (err: any) {
-      console.error(err);
-      // Let the user know if they don't have permission or if it fails
-      success(err.response?.data?.message || 'Failed to update leave status');
+      console.error('Leave status update failed:', err);
+      toastError(err.response?.data?.message || 'Failed to update leave status');
+      setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req } : req));
+    } finally {
+      setApprovingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setPendingApproval(null);
     }
-  }, [success]);
+  }, [success, toastError]);
 
   // ── Columns defined inside component — Actions column closes over
   //    isEmployee and handleUpdateStatus. Dep array: [isEmployee, handleUpdateStatus].
@@ -137,7 +177,7 @@ export default function LeavePage() {
         const empName = row.employeeId?.name || (row as any).name || 'Unknown';
         const empDept = row.employeeId?.department || (row as any).department || 'Engineering';
         return (
-          <div className="flex items-center gap-2.5">
+          <div className="flex h-full w-full items-center gap-2.5" onMouseEnter={() => { contextTargetRef.current = row; }}>
             <span
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
               style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
@@ -157,7 +197,9 @@ export default function LeavePage() {
       header: 'Leave Type',
       sortable: true,
       render: (row) => (
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{row.type}</span>
+        <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}>
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{row.type}</span>
+        </div>
       ),
     },
     {
@@ -166,7 +208,9 @@ export default function LeavePage() {
       sortable: true,
       sortValue: (row) => row.days ?? 0,
       render: (row) => (
-        <span className="text-sm text-slate-500 dark:text-slate-400">{row.days}d</span>
+        <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}>
+          <span className="text-sm text-slate-500 dark:text-slate-400">{row.days}d</span>
+        </div>
       ),
     },
     {
@@ -176,9 +220,11 @@ export default function LeavePage() {
         const fromStr = row.fromDate?.split('T')[0] || (row as any).from;
         const toStr = row.toDate?.split('T')[0] || (row as any).to;
         return (
-          <span className="text-sm text-slate-500 dark:text-slate-400">
-            {fromStr} <span className="px-1 text-slate-400">→</span> {toStr}
-          </span>
+          <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}>
+            <span className="text-sm text-slate-500 dark:text-slate-400">
+              {fromStr} <span className="px-1 text-slate-400">→</span> {toStr}
+            </span>
+          </div>
         );
       },
     },
@@ -187,37 +233,63 @@ export default function LeavePage() {
       header: 'Status',
       sortable: true,
       sortValue: (row) => row.status ?? '',
-      render: (row) => <StatusBadge status={row.status ?? 'Pending'} />,
+      render: (row) => (
+        <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}>
+          <StatusBadge status={row.status ?? 'Pending'} />
+        </div>
+      ),
     },
     {
       key: 'actions',
       header: 'Actions',
       render: (row) => {
         const st = row.status || 'Pending';
+        const isApproving = approvingIds.has(row._id as string);
+        
         if (!isEmployee && st === 'Pending') {
           return (
-            <div className="flex gap-2">
+            <div className="flex h-full w-full items-center gap-2" 
+                 onMouseEnter={() => { contextTargetRef.current = row; }}>
               <button
                 type="button"
-                onClick={() => handleUpdateStatus(row._id as string, 'Approved')}
-                className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30"
+                disabled={isApproving}
+                onClick={() => requestApproval(row, 'Approved')}
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 
+                           text-xs font-bold text-emerald-600 transition 
+                           hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed
+                           dark:border-emerald-500/30 dark:bg-emerald-500/20 
+                           dark:text-emerald-400 dark:hover:bg-emerald-500/30"
               >
-                Approve
+                {isApproving ? (
+                  <i className="ti ti-loader-2 animate-spin" aria-hidden="true" />
+                ) : 'Approve'}
               </button>
               <button
                 type="button"
-                onClick={() => handleUpdateStatus(row._id as string, 'Rejected')}
-                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+                disabled={isApproving}
+                onClick={() => requestApproval(row, 'Rejected')}
+                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 
+                           text-xs font-bold text-red-600 transition 
+                           hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed
+                           dark:border-red-500/30 dark:bg-red-500/20 
+                           dark:text-red-400 dark:hover:bg-red-500/30"
               >
-                Reject
+                {isApproving ? (
+                  <i className="ti ti-loader-2 animate-spin" aria-hidden="true" />
+                ) : 'Reject'}
               </button>
             </div>
           );
         }
-        return <span className="text-xs font-medium text-slate-400 dark:text-slate-600">—</span>;
+        return (
+          <div className="flex h-full w-full items-center" 
+               onMouseEnter={() => { contextTargetRef.current = row; }}>
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-600">—</span>
+          </div>
+        );
       },
     },
-  ], [isEmployee, handleUpdateStatus]);
+  ], [isEmployee, handleUpdateStatus, approvingIds]);
 
   return (
     <DashboardLayout title="Leave Management" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
@@ -386,7 +458,10 @@ export default function LeavePage() {
         {/* ── Leave Requests DataTable ── */}
         {/* data={filtered} — receives the pill-filtered slice, not raw leaveRequests */}
         {/* Table - Desktop */}
-        <div className="hidden md:block">
+        <div className="hidden md:block" onContextMenu={(e) => {
+          if (!contextTargetRef.current) return;
+          handleContextMenu(e, buildLeaveMenuItems(contextTargetRef.current));
+        }}>
           <DataTable<ApiLeave>
             columns={columns}
             data={filtered}
@@ -501,6 +576,15 @@ export default function LeavePage() {
         </div>
 
       </div>
+      <LeaveApprovalModal
+        open={pendingApproval !== null}
+        action={pendingApproval?.action ?? null}
+        leave={pendingApproval?.leave ?? null}
+        onConfirm={confirmApproval}
+        onCancel={() => setPendingApproval(null)}
+        loading={pendingApproval ? approvingIds.has(pendingApproval.leave._id as string) : false}
+      />
+      <ContextMenu {...menuProps} />
     </DashboardLayout>
   );
 }
