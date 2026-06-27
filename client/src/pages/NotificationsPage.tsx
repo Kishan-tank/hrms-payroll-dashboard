@@ -34,7 +34,7 @@ type TypeFilter = 'all' | NotificationType;
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearReadNotifications } = useNotifications();
   const [readFilter, setReadFilter]   = useState<ReadFilter>('all');
   const [typeFilter, setTypeFilter]   = useState<TypeFilter>('all');
 

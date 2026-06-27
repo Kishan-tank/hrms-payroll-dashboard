@@ -415,3 +415,54 @@ export const companyService = {
     request<{ success: boolean; skill: ApiSkill; message: string }>('POST', `/company/skills/${id}/endorse`),
   deleteSkill: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/skills/${id}`),
 };
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export interface ApiNotification {
+  _id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'leave' | 'payroll' | 'attendance' | 'document' | 'system';
+  read: boolean;
+  link?: string | null;
+  createdAt: string;
+}
+
+export const notificationService = {
+  // Fetch all notifications + unread count for the logged-in user
+  getAll: () =>
+    request<{ success: boolean; notifications: ApiNotification[]; unreadCount: number }>(
+      'GET', '/notifications'
+    ),
+
+  // Mark a single notification as read
+  markAsRead: (id: string) =>
+    request<{ success: boolean; notification: ApiNotification }>(
+      'PUT', `/notifications/${id}/read`
+    ),
+
+  // Mark ALL notifications as read
+  markAllAsRead: () =>
+    request<{ success: boolean; message: string }>(
+      'PUT', '/notifications/mark-all-read'
+    ),
+
+  // Delete a single notification
+  delete: (id: string) =>
+    request<{ success: boolean; message: string }>(
+      'DELETE', `/notifications/${id}`
+    ),
+
+  // Delete all read notifications (clear inbox)
+  clearRead: () =>
+    request<{ success: boolean; message: string }>(
+      'DELETE', '/notifications/clear-read'
+    ),
+
+  // HR only: broadcast a notification
+  create: (payload: { title: string; message: string; type?: string; targetUserId?: string; link?: string }) =>
+    request<{ success: boolean; message: string }>(
+      'POST', '/notifications', payload
+    ),
+};
