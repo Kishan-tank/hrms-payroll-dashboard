@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck } from 'lucide-react';
+import { CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck, Inbox, Mail, CheckCircle, Coins, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import DashboardLayout from '../layouts/DashboardLayout';
@@ -51,13 +51,13 @@ export default function NotificationsPage() {
     });
   }, [notifications, filter]);
 
-  const filterTabs: { label: string; value: CombinedFilter }[] = [
-    { label: 'All',       value: 'all' },
-    { label: 'Unread',    value: 'unread' },
-    { label: 'Approvals', value: 'approvals' },
-    { label: 'Payroll',   value: 'payroll' },
-    { label: 'System',    value: 'system' },
-  ];
+  const filterTabs = [
+    { label: 'All',       value: 'all',       icon: Inbox },
+    { label: 'Unread',    value: 'unread',    icon: Mail },
+    { label: 'Approvals', value: 'approvals', icon: CheckCircle },
+    { label: 'Payroll',   value: 'payroll',   icon: Coins },
+    { label: 'System',    value: 'system',    icon: Monitor },
+  ] as const;
 
   const handleAction = (e: React.MouseEvent, action: string, n?: Notification) => {
     e.stopPropagation();
@@ -147,26 +147,31 @@ export default function NotificationsPage() {
         </div>
 
         {/* ── Filters ── */}
-        <div className="flex overflow-x-auto no-scrollbar gap-2 sm:gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
-          {filterTabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setFilter(tab.value)}
-              className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-bold transition-all ${
-                filter === tab.value
-                  ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-300'
-              }`}
-            >
-              {tab.label}
-              {tab.value === 'unread' && unreadCount > 0 && (
-                <span className={`ml-2 inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-extrabold ${filter === tab.value ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900' : 'bg-blue-500 text-white'}`}>
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="overflow-x-auto no-scrollbar">
+          <div className="flex w-max gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+            {filterTabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setFilter(tab.value as CombinedFilter)}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
+                    filter === tab.value
+                      ? 'bg-slate-900 text-white shadow-md dark:bg-blue-500/10 dark:text-blue-400 dark:shadow-none'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" /> {tab.label}
+                  {tab.value === 'unread' && unreadCount > 0 && (
+                    <span className={`ml-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-extrabold ${filter === tab.value ? 'bg-white/20 text-white dark:bg-blue-500/20 dark:text-blue-400' : 'bg-blue-500 text-white'}`}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── Notification List ── */}
