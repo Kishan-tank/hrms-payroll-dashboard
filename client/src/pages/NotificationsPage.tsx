@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck, Inbox, Mail, CheckCircle, Coins, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
@@ -6,6 +6,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { useNotifications, formatTimestamp } from '../context/NotificationContext';
 import type { NotificationType, Notification } from '../context/NotificationContext';
 import EmptyState from '../components/common/EmptyState';
+import { leaveService } from '../services/hrmsApi';
 
 // ─── Icon helper ─────────────────────────────────────────────────────────────
 
@@ -35,10 +36,30 @@ type CombinedFilter = 'all' | 'unread' | 'approvals' | 'payroll' | 'system';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss } = useNotifications();
   const [filter, setFilter] = useState<CombinedFilter>('all');
   const navigate = useNavigate();
-  const toast = useToast();
+  const { success, info, error: toastError } = useToast();
+
+  // Track which notification IDs are currently processing an action
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+
+  // Inline confirm state
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    notifId: string;
+    action: 'Approved' | 'Rejected';
+  } | null>(null);
+
+  // Close confirm banner on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setPendingConfirm(null);
+    }
+    if (pendingConfirm) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [pendingConfirm]);
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
@@ -59,54 +80,186 @@ export default function NotificationsPage() {
     { label: 'System',    value: 'system',    icon: Monitor },
   ] as const;
 
-  const handleAction = (e: React.MouseEvent, action: string, n?: Notification) => {
+  // 1. Request confirmation before leave actions
+  function requestLeaveAction(
+    e: React.MouseEvent,
+    notifId: string,
+    action: 'Approved' | 'Rejected'
+  ) {
     e.stopPropagation();
-    if (action === 'coming_soon') {
-      toast.info('Action endpoint coming soon');
+    // Toggle off if already showing confirm for same notification + action
+    if (pendingConfirm?.notifId === notifId && pendingConfirm.action === action) {
+      setPendingConfirm(null);
       return;
     }
-    if (action === 'mark_read' && n) {
+    setPendingConfirm({ notifId, action });
+  }
+
+  // 2. Execute confirmed leave action
+  async function confirmLeaveAction() {
+    if (!pendingConfirm) return;
+    const { notifId, action } = pendingConfirm;
+    const notif = notifications.find(n => n.id === notifId);
+    if (!notif?.leaveId) {
+      info('No leave record linked to this notification');
+      setPendingConfirm(null);
+      return;
+    }
+    setProcessingIds(prev => new Set(prev).add(notifId));
+    setPendingConfirm(null);
+    try {
+      await leaveService.updateStatus(notif.leaveId, action);
+      markAsRead(notifId);
+      success(`Leave request ${action.toLowerCase()}.`);
+      // Brief delay so user sees the success state before dismiss
+      setTimeout(() => dismiss(notifId), 800);
+    } catch (err: any) {
+      toastError(err?.message || `Failed to ${action.toLowerCase()} leave request`);
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(notifId);
+        return next;
+      });
+    }
+  }
+
+  // 3. Navigation and simple actions
+  function handleSimpleAction(e: React.MouseEvent, action: string, n: Notification) {
+    e.stopPropagation();
+    if (action === 'mark_read') {
       markAsRead(n.id);
       return;
     }
+    markAsRead(n.id);
     navigate(action);
-  };
+  }
 
   const renderActions = (n: Notification) => {
+    const isProcessing = processingIds.has(n.id);
+    const isConfirming = pendingConfirm?.notifId === n.id;
+
     switch (n.type) {
       case 'leave':
         return (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={(e) => handleAction(e, '/leave', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">View Leave</button>
-            <button onClick={(e) => handleAction(e, 'coming_soon', n)} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400">Approve</button>
-            <button onClick={(e) => handleAction(e, 'coming_soon', n)} className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400">Reject</button>
+          <div className="mt-3 space-y-2">
+            {/* Inline confirm banner */}
+            {isConfirming && (
+              <div
+                className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-500/30 dark:bg-amber-500/10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  Confirm {pendingConfirm!.action.toLowerCase()} this leave request?
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); void confirmLeaveAction(); }}
+                    className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-amber-600"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setPendingConfirm(null); }}
+                    className="rounded-lg border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700 transition hover:bg-amber-100 dark:border-amber-500/30 dark:text-amber-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {/* Action buttons row */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={(e) => handleSimpleAction(e, '/leave', n)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+              >
+                View Leave
+              </button>
+              {/* Only show Approve/Reject if notification has a leaveId */}
+              {n.leaveId && (
+                <>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={(e) => requestLeaveAction(e, n.id, 'Approved')}
+                    className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400"
+                  >
+                    {isProcessing ? (
+                      <i className="ti ti-loader-2 animate-spin" aria-hidden="true" />
+                    ) : 'Approve'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={(e) => requestLeaveAction(e, n.id, 'Rejected')}
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400"
+                  >
+                    {isProcessing ? (
+                      <i className="ti ti-loader-2 animate-spin" aria-hidden="true" />
+                    ) : 'Reject'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         );
+
       case 'payroll':
         return (
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={(e) => handleAction(e, '/payroll', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">View Payroll</button>
-            <button onClick={(e) => handleAction(e, '/payroll', n)} className="rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-600 transition hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-400">View Payslip</button>
+            <button
+              type="button"
+              onClick={(e) => handleSimpleAction(e, '/payroll', n)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              View Payslip
+            </button>
           </div>
         );
+
       case 'document':
         return (
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={(e) => handleAction(e, '/documents', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">Open Documents</button>
+            <button
+              type="button"
+              onClick={(e) => handleSimpleAction(e, '/documents', n)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              Open Documents
+            </button>
           </div>
         );
+
       case 'attendance':
         return (
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={(e) => handleAction(e, '/attendance', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">Open Attendance</button>
+            <button
+              type="button"
+              onClick={(e) => handleSimpleAction(e, '/attendance', n)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              Open Attendance
+            </button>
           </div>
         );
+
       case 'system':
         return (
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={(e) => handleAction(e, 'mark_read', n)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5">Mark as read</button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); markAsRead(n.id); }}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              Mark as read
+            </button>
           </div>
         );
+
       default:
         return null;
     }
@@ -202,7 +355,7 @@ export default function NotificationsPage() {
                 return (
                   <li
                     key={n.id}
-                    className={`${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''} ${!n.read ? 'bg-blue-50/40 dark:bg-blue-500/[0.06]' : ''}`}
+                    className={`${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''} ${!n.read ? 'bg-blue-50/40 dark:bg-blue-500/[0.06]' : ''} ${n.priority === 'high' ? 'border-l-2 border-l-amber-400 dark:border-l-amber-500' : ''}`}
                   >
                     <div
                       role="button"
@@ -233,6 +386,11 @@ export default function NotificationsPage() {
                           <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
                             {TYPE_LABELS[n.type] ?? n.type}
                           </span>
+                          {n.priority === 'high' && (
+                            <span className="inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+                              High Priority
+                            </span>
+                          )}
                         </div>
                         {renderActions(n)}
                       </span>
