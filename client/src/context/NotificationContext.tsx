@@ -12,6 +12,8 @@ export interface Notification {
   type: NotificationType;
   read: boolean;
   timestamp: string; // ISO string
+  leaveId?: string;             // ID of the ApiLeave record this refers to
+  priority?: 'high' | 'normal'; // high = show accent border
 }
 
 interface NotificationContextValue {
@@ -19,6 +21,7 @@ interface NotificationContextValue {
   unreadCount: number;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
+  dismiss: (id: string) => void;
 }
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -36,6 +39,8 @@ const SEED_NOTIFICATIONS: Notification[] = [
     message: 'Your Annual Vacation leave request for Jun 12–13 has been approved.',
     read: false,
     timestamp: minsAgo(12),
+    leaveId: 'LR-001',
+    priority: 'normal',
   },
   {
     id: 'n-002',
@@ -44,6 +49,7 @@ const SEED_NOTIFICATIONS: Notification[] = [
     message: 'Your payslip for June 2026 is ready. Tap to download.',
     read: false,
     timestamp: hoursAgo(1),
+    priority: 'high',
   },
   {
     id: 'n-003',
@@ -60,6 +66,7 @@ const SEED_NOTIFICATIONS: Notification[] = [
     message: 'Your check-in on Jun 10 was recorded at 09:45 AM. Please add a remark.',
     read: false,
     timestamp: hoursAgo(5),
+    priority: 'high',
   },
   {
     id: 'n-005',
@@ -92,6 +99,8 @@ const SEED_NOTIFICATIONS: Notification[] = [
     message: 'Your annual leave balance has been reset for FY 2026–27.',
     read: true,
     timestamp: daysAgo(5),
+    leaveId: 'LR-008',
+    priority: 'normal',
   },
 ];
 
@@ -116,8 +125,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
+  const dismiss = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, dismiss }}>
       {children}
     </NotificationContext.Provider>
   );

@@ -4,6 +4,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { dashboardService, reportsService } from '../services/hrmsApi';
 import type { HrSummary, Activity } from '../services/hrmsApi';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import ErrorState from '../components/common/ErrorState';
 
 import DashboardHero from '../components/dashboard/DashboardHero';
 import KPIGrid from '../components/dashboard/KPIGrid';
@@ -34,6 +35,7 @@ export default function HRDashboard() {
   const [headcountTrend, setHeadcountTrend] = useState<[string, number][]>([]);
   const [deptAttendance, setDeptAttendance] = useState<[string, number][]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -48,6 +50,13 @@ export default function HRDashboard() {
       if (actRes.status === 'fulfilled') setActivities(actRes.value.activities);
       if (headRes.status === 'fulfilled') setHeadcountTrend(headRes.value.trend);
       if (deptRes.status === 'fulfilled') setDeptAttendance(deptRes.value.attendance);
+
+      const allFailed = [sumRes, actRes, headRes, deptRes].every(r => r.status === 'rejected');
+      if (allFailed) {
+        setLoadError('Failed to load dashboard data. Please try again.');
+      } else {
+        setLoadError(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -71,6 +80,14 @@ export default function HRDashboard() {
         <motion.div custom={0} variants={fade} initial="hidden" animate="visible">
           <DashboardHero summary={summary} />
         </motion.div>
+
+        {loadError && (
+          <ErrorState
+            size="sm"
+            description={loadError}
+            onRetry={() => void load()}
+          />
+        )}
 
         {/* ROW 2 ── KPI Grid ── */}
         <motion.div custom={0.05} variants={fade} initial="hidden" animate="visible">

@@ -10,6 +10,7 @@ import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
 import ContextMenu from '../components/common/ContextMenu';
 import { useContextMenu } from '../hooks/useContextMenu';
 import LeaveApprovalModal from '../components/leave/LeaveApprovalModal';
@@ -319,7 +320,12 @@ export default function LeavePage() {
           )}
         </div>
 
-        {error && <div className="p-4 text-red-600 bg-red-50 rounded-xl dark:bg-red-500/10 dark:text-red-400">{error}</div>}
+        {error && (
+          <ErrorState
+            size="sm"
+            description={error}
+          />
+        )}
 
         <div className="grid gap-4 md:grid-cols-3">
           {[

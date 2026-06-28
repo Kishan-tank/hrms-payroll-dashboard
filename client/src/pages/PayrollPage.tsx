@@ -6,6 +6,7 @@ import type { PayrollRecord, PayrollSummary } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
@@ -471,9 +472,11 @@ export default function PayrollPage() {
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400">
-            ⚠ {error} <button className="font-bold underline ml-2" onClick={() => void fetchData()}>Retry</button>
-          </div>
+          <ErrorState
+            size="sm"
+            description={error}
+            onRetry={() => void fetchData()}
+          />
         )}
 
         {isEmployee ? (

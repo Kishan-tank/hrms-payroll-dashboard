@@ -4,15 +4,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { employeeService } from '../services/hrmsApi';
-import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { ApiEmployee } from '../services/hrmsApi';
-import EmployeeDrawer from '../components/employees/EmployeeDrawer';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import ContextMenu from '../components/common/ContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
+import { useEmployeeDrawer } from '../context/EmployeeDrawerContext';
 import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
-import ContextMenu from '../components/common/ContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
 
 const departments = ['All', 'Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations'];
 const statuses = ['All', 'Active', 'On Leave', 'Inactive'];
@@ -93,7 +94,7 @@ export default function EmployeeManagement() {
   const deleteModalRef = useRef<HTMLDivElement>(null);
   useFocusTrap(!!deleteTarget, () => setDeleteTarget(null), deleteModalRef);
 
-  const [selectedEmployee, setSelectedEmployee] = useState<ApiEmployee | null>(null);
+  const { openDrawer } = useEmployeeDrawer();
 
   const { menuProps, handleContextMenu } = useContextMenu();
   const contextTargetRef = useRef<ApiEmployee | null>(null);
@@ -442,16 +443,18 @@ export default function EmployeeManagement() {
 
         {/* Error banner */}
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            ⚠ {error} &nbsp;<button className="font-bold underline" onClick={() => void fetchEmployees()}>Retry</button>
-          </div>
+          <ErrorState
+            size="sm"
+            description={error}
+            onRetry={() => void fetchEmployees()}
+          />
         )}
 
         {/* Table - Desktop Only */}
         <div className="hidden md:block" onContextMenu={(e) => {
           if (!contextTargetRef.current) return;
           handleContextMenu(e, [
-            { label: 'View profile', icon: 'eye', onClick: () => setSelectedEmployee(contextTargetRef.current!) },
+            { label: 'View profile', icon: 'eye', onClick: () => openDrawer(contextTargetRef.current!) },
             { label: 'Edit', icon: 'edit', onClick: () => openEdit(contextTargetRef.current!) },
             { separator: true, label: 'Deactivate', icon: 'trash', variant: 'danger', onClick: () => setDeleteTarget(contextTargetRef.current!) },
           ]);
@@ -468,7 +471,7 @@ export default function EmployeeManagement() {
             totalItems={total}
             currentPage={page}
             pageSize={perPage}
-            onRowClick={(emp) => setSelectedEmployee(emp)}
+            onRowClick={(emp) => openDrawer(emp)}
             minWidth={900}
             emptyState={
               <EmptyState
@@ -488,13 +491,13 @@ export default function EmployeeManagement() {
             <div 
               key={emp._id} 
               className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm cursor-pointer hover:shadow-md transition outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-white/10 dark:bg-[#0B1121]"
-              onClick={() => setSelectedEmployee(emp)}
+              onClick={() => openDrawer(emp)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  setSelectedEmployee(emp);
+                  openDrawer(emp);
                 }
               }}
             >
@@ -581,12 +584,6 @@ export default function EmployeeManagement() {
         </div>
       )}
 
-      {/* ── Employee Drawer ── */}
-      <EmployeeDrawer
-        open={selectedEmployee !== null}
-        employee={selectedEmployee}
-        onClose={() => setSelectedEmployee(null)}
-      />
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
