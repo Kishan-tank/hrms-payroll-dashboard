@@ -339,3 +339,90 @@ export const documentService = {
   },
   delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/documents/${id}`),
 };
+
+// ─── Company Hub: Events & Skills ─────────────────────────────────────────────
+
+export interface ApiEvent {
+  _id: string;
+  title: string;
+  date: string;
+  type: 'Holiday' | 'Birthday' | 'Anniversary' | 'Training';
+  createdAt: string;
+}
+
+export interface ApiSkill {
+  _id: string;
+  employeeId: { _id: string; name: string; department: string; role: string };
+  name: string;
+  proficiency: number;
+  endorsements: number;
+  createdAt: string;
+}
+
+export const companyService = {
+  // Events
+  getEvents: () => request<{ success: boolean; events: ApiEvent[] }>('GET', '/company/events'),
+  createEvent: (title: string, date: string, type: string) =>
+    request<{ success: boolean; event: ApiEvent; message: string }>('POST', '/company/events', { title, date, type }),
+  deleteEvent: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/events/${id}`),
+
+  // Skills
+  getSkills: (department?: string) =>
+    request<{ success: boolean; skills: ApiSkill[] }>('GET', department ? `/company/skills?department=${department}` : '/company/skills'),
+  createSkill: (name: string, proficiency: number, employeeId?: string) =>
+    request<{ success: boolean; skill: ApiSkill; message: string }>('POST', '/company/skills', { name, proficiency, employeeId }),
+  endorseSkill: (id: string) =>
+    request<{ success: boolean; skill: ApiSkill; message: string }>('POST', `/company/skills/${id}/endorse`),
+  deleteSkill: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/skills/${id}`),
+};
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export interface ApiNotification {
+  _id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'leave' | 'payroll' | 'attendance' | 'document' | 'system';
+  read: boolean;
+  link?: string | null;
+  createdAt: string;
+}
+
+export const notificationService = {
+  // Fetch all notifications + unread count for the logged-in user
+  getAll: () =>
+    request<{ success: boolean; notifications: ApiNotification[]; unreadCount: number }>(
+      'GET', '/notifications'
+    ),
+
+  // Mark a single notification as read
+  markAsRead: (id: string) =>
+    request<{ success: boolean; notification: ApiNotification }>(
+      'PUT', `/notifications/${id}/read`
+    ),
+
+  // Mark ALL notifications as read
+  markAllAsRead: () =>
+    request<{ success: boolean; message: string }>(
+      'PUT', '/notifications/mark-all-read'
+    ),
+
+  // Delete a single notification
+  delete: (id: string) =>
+    request<{ success: boolean; message: string }>(
+      'DELETE', `/notifications/${id}`
+    ),
+
+  // Delete all read notifications (clear inbox)
+  clearRead: () =>
+    request<{ success: boolean; message: string }>(
+      'DELETE', '/notifications/clear-read'
+    ),
+
+  // HR only: broadcast a notification
+  create: (payload: { title: string; message: string; type?: string; targetUserId?: string; link?: string }) =>
+    request<{ success: boolean; message: string }>(
+      'POST', '/notifications', payload
+    ),
+};
