@@ -14,6 +14,7 @@ import NotFoundPage from '../pages/NotFoundPage';
 
 // Lazy loaded (heavy pages)
 const DesignSystemPage = lazy(() => import('../pages/DesignSystemPage'));
+const OnboardingPage = lazy(() => import('../pages/OnboardingPage'));
 const EmployeeDashboard = lazy(() => import('../pages/EmployeeDashboard'));
 const HRDashboard = lazy(() => import('../pages/HRDashboard'));
 const EmployeeManagement = lazy(() => import('../pages/EmployeeManagement'));
@@ -65,6 +66,7 @@ export default function AppRouter() {
 
                 {/* ── Employee-only routes ── */}
                 <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
+                  <Route path="/onboarding" element={<OnboardingPage />} />
                   <Route path="/dashboard" element={<EmployeeDashboard />} />
                   <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
                   <Route path="/employee-dashboard" element={<EmployeeDashboard />} />

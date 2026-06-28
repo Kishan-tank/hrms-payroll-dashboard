@@ -13,7 +13,8 @@ type IconName =
   | 'logout'
   | 'building'
   | 'chevron'
-  | 'briefcase';
+  | 'briefcase'
+  | 'checklist';
 
 interface NavItem {
   label: string;
@@ -32,6 +33,7 @@ const NAV_GROUPS: NavGroup[] = [
     group: 'Main',
     items: [
       { label: 'Dashboard', path: '/employee-dashboard', icon: 'dashboard', roles: ['EMPLOYEE'] },
+      { label: 'Onboarding', path: '/onboarding', icon: 'checklist', roles: ['EMPLOYEE'] },
       { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['HR_MANAGER'] },
       { label: 'Attendance', path: '/attendance', icon: 'attendance' },
       { label: 'Leave Management', path: '/leave', icon: 'leave' },
@@ -73,6 +75,7 @@ function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: str
     case 'logout': return <svg {...c}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>;
     case 'chevron': return <svg {...c}><path d="m15 18-6-6 6-6" /></svg>;
     case 'briefcase': return <svg {...c}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>;
+    case 'checklist': return <svg {...c}><path d="M9.615 20H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8M14 19l2 2 4-4M9 8h4M9 12h2" /></svg>;
     default: return null;
   }
 }
