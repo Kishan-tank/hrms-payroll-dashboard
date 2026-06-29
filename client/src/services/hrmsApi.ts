@@ -481,3 +481,23 @@ export const notificationService = {
       'POST', '/notifications', payload
     ),
 };
+
+// ─── Tasks ───────────────────────────────────────────────────────────────────
+
+export interface ApiTask {
+  _id: string;
+  employeeId: { _id: string; name: string; department: string; role: string };
+  title: string;
+  status: 'Pending' | 'In Progress' | 'Done';
+  priority: 'Low' | 'Medium' | 'High';
+  createdAt: string;
+}
+
+export const taskService = {
+  getAll: () => request<{ success: boolean; tasks: ApiTask[] }>('GET', '/tasks'),
+  create: (title: string, priority?: string, employeeId?: string) =>
+    request<{ success: boolean; task: ApiTask; message: string }>('POST', '/tasks', { title, priority, employeeId }),
+  update: (id: string, payload: { title?: string; status?: string; priority?: string }) =>
+    request<{ success: boolean; task: ApiTask; message: string }>('PUT', `/tasks/${id}`, payload),
+  delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/tasks/${id}`),
+};
