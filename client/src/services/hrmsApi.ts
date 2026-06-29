@@ -441,6 +441,8 @@ export interface ApiNotification {
   type: 'leave' | 'payroll' | 'attendance' | 'document' | 'system';
   read: boolean;
   link?: string | null;
+  leaveId?: string | null;
+  priority?: 'high' | 'normal';
   createdAt: string;
 }
 

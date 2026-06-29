@@ -14,8 +14,9 @@ type IconName =
   | 'building'
   | 'chevron'
   | 'briefcase'
+  | 'checklist'
   | 'performance'
-  | 'companyHub'; // <-- ADD THIS
+  | 'companyHub';
 
 interface NavItem {
   label: string;
