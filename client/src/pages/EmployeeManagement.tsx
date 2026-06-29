@@ -4,10 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { employeeService } from '../services/hrmsApi';
-import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { ApiEmployee } from '../services/hrmsApi';
-import EmployeeDrawer from '../components/employees/EmployeeDrawer';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import ContextMenu from '../components/common/ContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
+import { useEmployeeDrawer } from '../context/EmployeeDrawerContext';
 import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
@@ -91,8 +94,10 @@ export default function EmployeeManagement() {
   const deleteModalRef = useRef<HTMLDivElement>(null);
   useFocusTrap(!!deleteTarget, () => setDeleteTarget(null), deleteModalRef);
 
-  // drawer
-  const [selectedEmployee, setSelectedEmployee] = useState<ApiEmployee | null>(null);
+  const { openDrawer } = useEmployeeDrawer();
+
+  const { menuProps, handleContextMenu } = useContextMenu();
+  const contextTargetRef = useRef<ApiEmployee | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   useFocusTrap(showModal, () => {
@@ -272,16 +277,18 @@ export default function EmployeeManagement() {
         />
       ),
       render: (emp) => (
-        <input
-          type="checkbox"
-          checked={selectedRowIds.has(emp._id)}
-          onChange={(e) => {
-            e.stopPropagation();
-            toggleSelectOne(emp._id);
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900"
-        />
+        <div className="flex h-full w-full items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>
+          <input
+            type="checkbox"
+            checked={selectedRowIds.has(emp._id)}
+            onChange={(e) => {
+              e.stopPropagation();
+              toggleSelectOne(emp._id);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900"
+          />
+        </div>
       ),
       sortable: false,
     },
@@ -290,13 +297,14 @@ export default function EmployeeManagement() {
       header: 'Employee ID',
       sortable: true,
       className: 'font-mono text-sm text-blue-600 dark:text-blue-400',
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{emp.employeeId}</div>,
     },
     {
       key: 'name',
       header: 'Employee Name',
       sortable: true,
       render: (emp) => (
-        <div className="flex items-center gap-2.5">
+        <div className="flex h-full w-full items-center gap-2.5" onMouseEnter={() => { contextTargetRef.current = emp; }}>
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white dark:bg-white/10 dark:text-white">{emp.name.charAt(0)}</span>
           <span className="text-sm font-medium text-slate-950 dark:text-white">{emp.name}</span>
         </div>
@@ -306,36 +314,38 @@ export default function EmployeeManagement() {
       key: 'department',
       header: 'Department',
       sortable: true,
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{emp.department}</div>,
     },
     {
       key: 'role',
       header: 'Role',
       sortable: true,
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{emp.role}</div>,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (emp) => <StatusBadge status={emp.status} />,
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}><StatusBadge status={emp.status} /></div>,
     },
     {
       key: 'joinDate',
       header: 'Join Date',
       sortable: true,
-      render: (emp) => new Date(emp.joinDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{new Date(emp.joinDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>,
     },
     {
       key: 'basicPay',
       header: 'Basic Pay',
       sortable: true,
       className: 'font-bold text-slate-950 dark:text-white',
-      render: (emp) => `₹${emp.basicPay.toLocaleString('en-IN')}`,
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{`₹${emp.basicPay.toLocaleString('en-IN')}`}</div>,
     },
     {
       key: 'actions',
       header: 'Actions',
       render: (emp) => (
-        <div className="flex items-center gap-1">
+        <div className="flex h-full w-full items-center gap-1" onMouseEnter={() => { contextTargetRef.current = emp; }}>
           <button type="button" onClick={(e) => { e.stopPropagation(); openEdit(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" title="Edit"><Icon name="edit" /></button>
           <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTarget(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" title="Deactivate"><Icon name="trash" /></button>
         </div>
@@ -433,13 +443,22 @@ export default function EmployeeManagement() {
 
         {/* Error banner */}
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            ⚠ {error} &nbsp;<button className="font-bold underline" onClick={() => void fetchEmployees()}>Retry</button>
-          </div>
+          <ErrorState
+            size="sm"
+            description={error}
+            onRetry={() => void fetchEmployees()}
+          />
         )}
 
         {/* Table - Desktop Only */}
-        <div className="hidden md:block">
+        <div className="hidden md:block" onContextMenu={(e) => {
+          if (!contextTargetRef.current) return;
+          handleContextMenu(e, [
+            { label: 'View profile', icon: 'eye', onClick: () => openDrawer(contextTargetRef.current!) },
+            { label: 'Edit', icon: 'edit', onClick: () => openEdit(contextTargetRef.current!) },
+            { separator: true, label: 'Deactivate', icon: 'trash', variant: 'danger', onClick: () => setDeleteTarget(contextTargetRef.current!) },
+          ]);
+        }}>
           <DataTable
             columns={columns}
             data={employees}
@@ -452,7 +471,7 @@ export default function EmployeeManagement() {
             totalItems={total}
             currentPage={page}
             pageSize={perPage}
-            onRowClick={(emp) => setSelectedEmployee(emp)}
+            onRowClick={(emp) => openDrawer(emp)}
             minWidth={900}
             emptyState={
               <EmptyState
@@ -472,13 +491,13 @@ export default function EmployeeManagement() {
             <div 
               key={emp._id} 
               className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm cursor-pointer hover:shadow-md transition outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-white/10 dark:bg-[#0B1121]"
-              onClick={() => setSelectedEmployee(emp)}
+              onClick={() => openDrawer(emp)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  setSelectedEmployee(emp);
+                  openDrawer(emp);
                 }
               }}
             >
@@ -565,12 +584,6 @@ export default function EmployeeManagement() {
         </div>
       )}
 
-      {/* ── Employee Drawer ── */}
-      <EmployeeDrawer
-        open={selectedEmployee !== null}
-        employee={selectedEmployee}
-        onClose={() => setSelectedEmployee(null)}
-      />
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
@@ -737,6 +750,8 @@ export default function EmployeeManagement() {
           </div>
         </div>
       )}
+
+      <ContextMenu {...menuProps} />
     </DashboardLayout>
   );
 }

@@ -6,6 +6,7 @@ import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
 import EmployeeAttendanceWorkspace from '../components/employee/EmployeeAttendanceWorkspace';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -243,9 +244,11 @@ export default function AttendancePage() {
 
         {/* ── Error banner ── */}
         {error && (
-          <div className="rounded-xl bg-red-50 p-4 text-red-600 dark:bg-red-500/10 dark:text-red-400">
-            {error}
-          </div>
+          <ErrorState
+            size="sm"
+            description={error}
+            onRetry={() => void fetchAttendance()}
+          />
         )}
 
         {activeTab === 'personal' ? (

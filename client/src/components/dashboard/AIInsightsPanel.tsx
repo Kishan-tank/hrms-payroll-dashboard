@@ -1,19 +1,16 @@
 import { motion } from 'framer-motion';
+import { useAIInsights } from '../../hooks/useAIInsights';
+import type { AIInsight } from '../../hooks/useAIInsights';
 import type { HrSummary } from '../../services/hrmsApi';
 
-// ─── TypeScript Interfaces ────────────────────────────────────────────────────
+// ─── Sentiment → Color Mapping ────────────────────────────────────────────────
 
-export interface InsightItem {
-  id: string;
-  category: 'ATTENDANCE' | 'LEAVE' | 'PAYROLL' | 'APPROVALS';
-  title: string;
-  body: string;
-  confidence: number;
-  accent: string;
-  accentDim: string;
-  icon?: React.ReactNode;
-  action: string;
-}
+const SENTIMENT_COLORS: Record<AIInsight['sentiment'], { accent: string; accentDim: string }> = {
+  positive: { accent: '#22c55e', accentDim: 'rgba(34,197,94,0.10)' },
+  warning:  { accent: '#f59e0b', accentDim: 'rgba(245,158,11,0.10)' },
+  critical: { accent: '#ef4444', accentDim: 'rgba(239,68,68,0.10)' },
+  neutral:  { accent: '#3b82f6', accentDim: 'rgba(59,130,246,0.10)' },
+};
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -40,51 +37,6 @@ function getCategoryIcon(category: string, accent: string) {
   return <BellIcon c={accent} />;
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const INSIGHTS: InsightItem[] = [
-  {
-    id: 'att',
-    category: 'ATTENDANCE',
-    title: 'Attendance climbing 2.4%',
-    body: 'On-site attendance trending up for 3rd consecutive week. Engineering leading at 99.1%.',
-    confidence: 94,
-    accent: '#3b82f6',
-    accentDim: 'rgba(59,130,246,0.10)',
-    action: 'View breakdown',
-  },
-  {
-    id: 'leave',
-    category: 'LEAVE',
-    title: 'Leave spike predicted',
-    body: 'Model forecasts +31% leave requests next week due to regional holiday cluster.',
-    confidence: 87,
-    accent: '#22c55e',
-    accentDim: 'rgba(34,197,94,0.10)',
-    action: 'Review calendar',
-  },
-  {
-    id: 'payroll',
-    category: 'PAYROLL',
-    title: 'Payroll anomaly flagged',
-    body: '3 overtime entries in Sales exceed policy thresholds. ₹42,000 at risk of non-compliance.',
-    confidence: 91,
-    accent: '#8b5cf6',
-    accentDim: 'rgba(139,92,246,0.10)',
-    action: 'Audit entries',
-  },
-  {
-    id: 'approvals',
-    category: 'APPROVALS',
-    title: '12 approvals pending > 48h',
-    body: 'Reminder sent to 4 managers. Avg approval time improved to 9.2h this month.',
-    confidence: 99,
-    accent: '#f59e0b',
-    accentDim: 'rgba(245,158,11,0.10)',
-    action: 'Approve now',
-  },
-];
-
 // ─── Confidence Bar ───────────────────────────────────────────────────────────
 
 function ConfidenceBar({ value, color }: { value: number; color: string }) {
@@ -92,7 +44,7 @@ function ConfidenceBar({ value, color }: { value: number; color: string }) {
     <div className="flex items-center gap-2">
       <div className="h-1 w-16 overflow-hidden rounded-full bg-slate-200 dark:bg-white/5">
         <div
-          className="h-full rounded-full animate-bar-grow"
+          className="h-full rounded-full"
           style={{ width: `${value}%`, background: color }}
         />
       </div>
@@ -101,10 +53,172 @@ function ConfidenceBar({ value, color }: { value: number; color: string }) {
   );
 }
 
+// ─── Skeleton Card ────────────────────────────────────────────────────────────
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-2xl border border-slate-200 dark:border-white/5 p-3.5">
+      <div className="space-y-2">
+        <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-white/5" />
+        <div className="h-4 w-3/4 animate-pulse rounded-full bg-slate-200 dark:bg-white/5" />
+        <div className="h-8 w-full animate-pulse rounded-lg bg-slate-200 dark:bg-white/5" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Relative Time ────────────────────────────────────────────────────────────
+
+function relativeTime(date: Date): string {
+  const mins = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins === 1) return '1m ago';
+  return `${mins}m ago`;
+}
+
 // ─── AIInsightsPanel ─────────────────────────────────────────────────────────
 
 export default function AIInsightsPanel({ summary }: { summary?: HrSummary | null }) {
-  const insightsList = summary?.insights ?? INSIGHTS;
+  const { insights, loading, streaming, error, generate, lastGeneratedAt } =
+    useAIInsights(summary ?? null);
+
+  const isActive = loading || streaming;
+
+  // ── Header badge ──
+  const badge = (() => {
+    if (isActive) {
+      return (
+        <span className="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-400">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+          Analysing...
+        </span>
+      );
+    }
+    if (lastGeneratedAt) {
+      return (
+        <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          Updated {relativeTime(lastGeneratedAt)}
+        </span>
+      );
+    }
+    return (
+      <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        Live
+      </span>
+    );
+  })();
+
+  // ── Content area ──
+  const content = (() => {
+    // Loading or streaming — show 4 skeletons
+    if (isActive && insights.length === 0) {
+      return (
+        <>
+          <div className="flex flex-col gap-2.5">
+            {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+          </div>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
+            Analysing workforce data...
+          </p>
+        </>
+      );
+    }
+
+    // Error state
+    if (error && insights.length === 0) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 dark:border-white/5 px-4 py-8 text-center">
+          <i className="ti ti-wifi-off text-2xl text-slate-400" />
+          <div>
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+              Could not load insights
+            </p>
+            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500 break-all">
+              {error}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={generate}
+            className="mt-1 flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/[0.06] dark:hover:text-white"
+          >
+            Retry
+            <ArrowRightIcon />
+          </button>
+        </div>
+      );
+    }
+
+    // Loaded state
+    if (insights.length > 0) {
+      return (
+        <div className="flex flex-col gap-2.5">
+          {insights.map((ins, idx) => {
+            const { accent, accentDim } = SENTIMENT_COLORS[ins.sentiment];
+            return (
+              <motion.div
+                key={ins.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 + idx * 0.07, duration: 0.4 }}
+                className="group cursor-default rounded-2xl border p-3.5 transition-all duration-200"
+                style={{ borderColor: `${accent}18` }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = `${accent}40`;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = `${accent}18`;
+                }}
+                ref={(el) => {
+                  if (el) {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    el.style.background = isDark ? accentDim : accentDim.replace('0.10', '0.04');
+                  }
+                }}
+              >
+                {/* Category tag + confidence */}
+                <div className="mb-2 flex items-center justify-between">
+                  <span
+                    className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                    style={{ background: `${accent}18`, color: accent }}
+                  >
+                    {getCategoryIcon(ins.category, accent)}
+                    {ins.category}
+                  </span>
+                  <ConfidenceBar value={ins.confidence} color={accent} />
+                </div>
+
+                <p className="text-sm font-bold leading-snug text-slate-900 dark:text-white">{ins.title}</p>
+                <p className="mt-1 text-xs leading-relaxed font-medium text-slate-600 dark:text-slate-400">{ins.body}</p>
+
+                <button
+                  type="button"
+                  className="mt-2.5 flex items-center gap-1 text-[11px] font-bold transition-opacity duration-150 hover:opacity-80"
+                  style={{ color: accent }}
+                >
+                  {ins.action}
+                  <ArrowRightIcon />
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Empty state — briefly shown before auto-generate fires
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-white/5 px-4 py-8 text-center">
+        <i className="ti ti-loader-2 animate-spin text-2xl text-slate-400" />
+        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+          Generating workforce insights...
+        </p>
+      </div>
+    );
+  })();
 
   return (
     <motion.div
@@ -128,69 +242,35 @@ export default function AIInsightsPanel({ summary }: { summary?: HrSummary | nul
             <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Live workforce signals</p>
           </div>
         </div>
-        <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-live" />
-          Live
-        </span>
-      </div>
 
-      {/* Insight cards */}
-      <div className="flex flex-col gap-2.5">
-        {insightsList.map((ins, idx) => (
-          <motion.div
-            key={ins.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 + idx * 0.07, duration: 0.4 }}
-            className="group cursor-default rounded-2xl border p-3.5 transition-all duration-200"
-            style={{ borderColor: `${ins.accent}18` }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = `${ins.accent}40`;
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = `${ins.accent}18`;
-            }}
-            ref={(el) => {
-              if (el) {
-                const isDark = document.documentElement.classList.contains('dark');
-                el.style.background = isDark ? ins.accentDim : ins.accentDim.replace('0.10', '0.04');
-              }
-            }}
+        {/* Badge + Refresh button */}
+        <div className="flex items-center gap-2">
+          {badge}
+          <button
+            type="button"
+            onClick={generate}
+            disabled={isActive}
+            title="Regenerate insights"
+            className={`rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40 dark:hover:bg-white/10 dark:hover:text-slate-300 ${isActive ? 'animate-spin' : ''}`}
           >
-            {/* Category tag + confidence */}
-            <div className="mb-2 flex items-center justify-between">
-              <span
-                className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                style={{ background: `${ins.accent}18`, color: ins.accent }}
-              >
-                {getCategoryIcon(ins.category, ins.accent)}
-                {ins.category}
-              </span>
-              <ConfidenceBar value={ins.confidence} color={ins.accent} />
-            </div>
-
-            <p className="text-sm font-bold leading-snug text-slate-900 dark:text-white">{ins.title}</p>
-            <p className="mt-1 text-xs leading-relaxed font-medium text-slate-600 dark:text-slate-400">{ins.body}</p>
-
-            {/* Action link */}
-            <button
-              type="button"
-              className="mt-2.5 flex items-center gap-1 text-[11px] font-bold transition-opacity duration-150 hover:opacity-80"
-              style={{ color: ins.accent }}
-            >
-              {ins.action}
-              <ArrowRightIcon />
-            </button>
-          </motion.div>
-        ))}
+            <i className="ti ti-refresh text-[15px]" />
+          </button>
+        </div>
       </div>
 
-      {/* View all */}
+      {/* Content */}
+      <div className="flex flex-1 flex-col">
+        {content}
+      </div>
+
+      {/* Footer button */}
       <button
         type="button"
-        className="mt-4 flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/[0.06] dark:hover:text-white"
+        onClick={generate}
+        disabled={isActive}
+        className="mt-4 flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/[0.06] dark:hover:text-white"
       >
-        View all Insights
+        {lastGeneratedAt ? 'Regenerate insights' : 'Generate insights'}
         <ArrowRightIcon />
       </button>
     </motion.div>

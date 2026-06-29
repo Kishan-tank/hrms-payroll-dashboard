@@ -13,8 +13,10 @@ export interface Notification {
   message: string;
   type: NotificationType;
   read: boolean;
-  timestamp: string; // mapped from createdAt
+  timestamp: string; // mapped from createdAt or ISO string
   link?: string | null;
+  leaveId?: string;             // ID of the ApiLeave record this refers to
+  priority?: 'high' | 'normal'; // high = show accent border
 }
 
 interface NotificationContextValue {
@@ -26,6 +28,7 @@ interface NotificationContextValue {
   deleteNotification: (id: string) => void;
   clearReadNotifications: () => void;
   refresh: () => void;
+  dismiss: (id: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -125,6 +128,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchNotifications]);
 
+  const dismiss = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
   return (
     <NotificationContext.Provider
       value={{
@@ -136,6 +143,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         deleteNotification,
         clearReadNotifications,
         refresh: fetchNotifications,
+        dismiss,
       }}
     >
       {children}

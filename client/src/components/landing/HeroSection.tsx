@@ -1,15 +1,6 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import VideoModal from './VideoModal';
 
 /* ── Icons ─────────────────────────────────────────────── */
-function PlayIcon() {
-  return (
-    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
 function ArrowRightIcon() {
   return (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
@@ -225,8 +216,6 @@ const avatars = [
 
 /* ── Main Component ─────────────────────────────────────── */
 export default function HeroSection() {
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-
   return (
     <section className="mx-auto max-w-7xl px-6 pb-0 pt-16 lg:pt-24">
       <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center lg:gap-16">
@@ -266,7 +255,7 @@ export default function HeroSection() {
           </p>
 
           {/* CTAs */}
-          <div className="animate-fade-in-up animation-delay-300 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+          <div className="animate-fade-in-up animation-delay-300 flex justify-center lg:justify-start">
             <Link
               to="/register"
               className="group flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-500 hover:shadow-blue-500/50 hover:scale-[1.02]"
@@ -274,17 +263,6 @@ export default function HeroSection() {
               Start Free Trial
               <ArrowRightIcon />
             </Link>
-            <button
-              type="button"
-              onClick={() => setIsVideoModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold transition-all hover:bg-white/5"
-              style={{ border: '1px solid rgba(255,255,255,0.12)', color: '#cbd5e1' }}
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10">
-                <PlayIcon />
-              </span>
-              Watch Demo
-            </button>
           </div>
 
           {/* Trust points */}
@@ -366,9 +344,6 @@ export default function HeroSection() {
           </div>
         ))}
       </div>
-
-      {/* Video Modal */}
-      <VideoModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { dashboardService, EmployeeSummary } from '../services/hrmsApi';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -13,11 +13,10 @@ import EmployeeQuickActions from '../components/employee/EmployeeQuickActions';
 import ActivityAndEvents from '../components/employee/ActivityAndEvents';
 import MyGoals from '../components/employee/MyGoals';
 import EmployeeProfileDrawer from '../components/employee/EmployeeProfileDrawer';
-import OnboardingChecklist from '../components/employee/OnboardingChecklist';
 
 export default function EmployeeDashboard() {
   const reducedMotion = useReducedMotion();
-  const fade: any = {
+  const fade: Variants = {
     hidden: { opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 20 },
     visible: (d: number) => ({
       opacity: 1,
@@ -43,7 +42,7 @@ export default function EmployeeDashboard() {
         } else {
           throw new Error('Server returned an unexpected response.');
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('EmployeeDashboard fetch failed:', err);
         setError('Unable to load your workspace. Please try again.');
         setSummary(null);
@@ -161,11 +160,6 @@ export default function EmployeeDashboard() {
         {/* ROW 1: Hero Workspace */}
         <motion.div custom={0} variants={fade} initial="hidden" animate="visible">
           <EmployeeHero onViewProfile={() => setIsProfileDrawerOpen(true)} summary={summary} />
-        </motion.div>
-        
-        {/* ROW 1.5: Onboarding Checklist */}
-        <motion.div custom={0.02} variants={fade} initial="hidden" animate="visible">
-          <OnboardingChecklist />
         </motion.div>
         
         {/* ROW 2: Snapshot Cards */}
