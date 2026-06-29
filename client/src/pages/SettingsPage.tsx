@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
+import { useAuthContext } from '../context/AuthContext';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
 
@@ -38,12 +39,17 @@ function Icon({ name }: { name: string }) {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const [theme, setTheme] = useState('light');
   const [notifications, setNotifications] = useState(notificationSettings);
 
+  const userName = user?.name || 'Unknown User';
+  const userRole = user?.role === 'hr' ? 'HR Manager' : 'Employee';
+  const initial = userName.charAt(0).toUpperCase();
+
   return (
-    <DashboardLayout title="Settings" userName="Anil Kumar" userRole="HR Manager">
+    <DashboardLayout title="Settings" userName={userName} userRole={userRole}>
       <div className="space-y-5">
         <h1 className="text-xl font-bold text-slate-950 dark:text-white">Settings</h1>
 
@@ -74,23 +80,23 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Profile Settings</h2>
                 <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6 dark:border-white/10">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">A</div>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">{initial}</div>
                   <div>
-                    <div className="font-semibold text-slate-950 dark:text-white">Anil Kumar</div>
-                    <div className="text-sm text-slate-400">HR Manager - HRMSPro</div>
+                    <div className="font-semibold text-slate-950 dark:text-white">{userName}</div>
+                    <div className="text-sm text-slate-400">{userRole} - HRMSPro</div>
                     <button type="button" className="mt-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">Change Photo</button>
                   </div>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   {[
-                    ['Full Name', 'Anil Kumar'],
-                    ['Email Address', 'anil.kumar@hrms.com'],
-                    ['Phone Number', '+91 98765 43210'],
-                    ['Employee ID', 'EMP001'],
-                    ['Department', 'Human Resources'],
-                    ['Designation', 'HR Manager'],
-                    ['Location', 'Hyderabad, India'],
-                    ['Joining Date', 'January 15, 2022'],
+                    ['Full Name', userName],
+                    ['Email Address', user?.email || 'N/A'],
+                    ['Phone Number', user?.phone || 'N/A'],
+                    ['Employee ID', user?.employeeId || 'N/A'],
+                    ['Department', user?.department || 'N/A'],
+                    ['Designation', user?.designation || 'N/A'],
+                    ['Location', user?.location || 'N/A'],
+                    ['Joining Date', user?.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : 'N/A'],
                   ].map(([label, value]) => (
                     <label key={label} className="block">
                       <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>

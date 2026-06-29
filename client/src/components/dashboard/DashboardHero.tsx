@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
+import { Sparkles } from 'lucide-react';
 import type { HrSummary } from '../../services/hrmsApi';
 
 function useLiveTime() {
@@ -49,8 +50,9 @@ export default function DashboardHero({ summary }: { summary?: HrSummary | null 
 
           {/* Titles */}
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-              {getGreeting(now.getHours())}, {firstName} <span className="animate-wave inline-block origin-bottom-right">👋</span>
+            <h1 className="flex items-center gap-3 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+              {getGreeting(now.getHours())}, {firstName} 
+              <Sparkles className="h-8 w-8 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] animate-pulse" />
             </h1>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
               Here's what's happening across your workforce today.

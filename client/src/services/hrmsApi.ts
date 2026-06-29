@@ -209,6 +209,8 @@ export const employeeService = {
     return request<EmployeeListResponse>('GET', `/employees?${qs.toString()}`);
   },
 
+  getMe: () => request<{ success: boolean; employee: ApiEmployee }>('GET', `/employees/me`),
+
   getById: (id: string) =>
     request<{ success: boolean; employee: ApiEmployee }>('GET', `/employees/${id}`),
 
