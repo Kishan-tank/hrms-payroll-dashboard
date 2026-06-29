@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { payrollService } from '../services/hrmsApi';
@@ -6,9 +6,13 @@ import type { PayrollRecord, PayrollSummary } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
+import PayslipPreviewModal from '../components/payroll/PayslipPreviewModal';
+import ContextMenu from '../components/common/ContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const CURRENT_MONTH = MONTHS[new Date().getMonth()];
@@ -36,6 +40,17 @@ export default function PayrollPage() {
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
+
+  const { menuProps, handleContextMenu } = useContextMenu();
+  const contextTargetRef = useRef<PayrollRecord | null>(null);
+
+  function buildPayrollMenuItems(row: PayrollRecord) {
+    return [
+      { label: 'View payslip', icon: 'eye', onClick: () => setSelectedRecord(row) },
+      { label: 'Download payslip', icon: 'download', onClick: () => handleDownloadPayslip(row) },
+    ];
+  }
 
   const [filterMonth, setFilterMonth] = useState(CURRENT_MONTH);
   const [filterYear] = useState(CURRENT_YEAR);
@@ -267,7 +282,7 @@ export default function PayrollPage() {
       sortable: true,
       sortValue: (row) => row.employeeId?.name ?? '',
       render: (row) => (
-        <div className="flex items-center gap-2.5">
+        <div className="flex h-full w-full items-center gap-2.5" onMouseEnter={() => { contextTargetRef.current = row; }}>
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white dark:bg-slate-800">
             {row.employeeId?.name?.charAt(0) ?? '?'}
           </span>
@@ -283,35 +298,35 @@ export default function PayrollPage() {
       header: 'Department',
       sortable: true,
       sortValue: (row) => row.employeeId?.department ?? '',
-      render: (row) => <span className="text-sm text-slate-600 dark:text-slate-400">{row.employeeId?.department ?? '—'}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm text-slate-600 dark:text-slate-400">{row.employeeId?.department ?? '—'}</span></div>,
     },
     {
       key: 'basicPay',
       header: 'Basic Pay',
       sortable: true,
       sortValue: (row) => row.basicPay ?? 0,
-      render: (row) => <span className="text-sm font-bold text-slate-950 dark:text-white">{fmt(row.basicPay)}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm font-bold text-slate-950 dark:text-white">{fmt(row.basicPay)}</span></div>,
     },
     {
       key: 'deductions',
       header: 'Deductions',
       sortable: true,
       sortValue: (row) => row.deductions ?? 0,
-      render: (row) => <span className="text-sm text-red-500 dark:text-red-400">{fmt(row.deductions)}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm text-red-500 dark:text-red-400">{fmt(row.deductions)}</span></div>,
     },
     {
       key: 'netPay',
       header: 'Net Pay',
       sortable: true,
       sortValue: (row) => row.netPay ?? 0,
-      render: (row) => <span className="text-sm font-bold text-slate-950 dark:text-white">{fmt(row.netPay)}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm font-bold text-slate-950 dark:text-white">{fmt(row.netPay)}</span></div>,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
       sortValue: (row) => row.status ?? '',
-      render: (row) => <StatusBadge status={row.status ?? 'Pending'} />,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><StatusBadge status={row.status ?? 'Pending'} /></div>,
     },
   ], []);
 
@@ -321,49 +336,53 @@ export default function PayrollPage() {
       header: 'Month',
       sortable: true,
       sortValue: (row) => `${row.month} ${row.year}`,
-      render: (row) => <span className="text-sm font-bold text-slate-900 dark:text-white">{row.month} {row.year}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm font-bold text-slate-900 dark:text-white">{row.month} {row.year}</span></div>,
     },
     {
       key: 'payDate',
       header: 'Pay Date',
       sortable: true,
       sortValue: (row) => row.processedAt ?? '',
-      render: (row) => <span className="text-sm text-slate-600 dark:text-slate-400">{row.processedAt ? new Date(row.processedAt).toLocaleDateString() : '—'}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm text-slate-600 dark:text-slate-400">{row.processedAt ? new Date(row.processedAt).toLocaleDateString() : '—'}</span></div>,
     },
     {
       key: 'grossPay',
       header: 'Gross Pay',
       sortable: true,
       sortValue: (row) => row.basicPay ?? 0,
-      render: (row) => <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmt(row.basicPay)}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmt(row.basicPay)}</span></div>,
     },
     {
       key: 'deductions',
       header: 'Deductions',
       sortable: true,
       sortValue: (row) => row.deductions ?? 0,
-      render: (row) => <span className="text-sm text-red-500 dark:text-red-400">{fmt(row.deductions)}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm text-red-500 dark:text-red-400">{fmt(row.deductions)}</span></div>,
     },
     {
       key: 'netPay',
       header: 'Net Pay',
       sortable: true,
       sortValue: (row) => row.netPay ?? 0,
-      render: (row) => <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmt(row.netPay)}</span>,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmt(row.netPay)}</span></div>,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
       sortValue: (row) => row.status ?? '',
-      render: (row) => <StatusBadge status={row.status ?? 'Pending'} />,
+      render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><StatusBadge status={row.status ?? 'Pending'} /></div>,
     },
     {
       key: 'action',
       header: 'Action',
       render: (row) => (
-        <div className="flex gap-2">
-          <button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
+        <div className="flex h-full w-full items-center gap-2" onMouseEnter={() => { contextTargetRef.current = row; }}>
+          <button 
+            type="button" 
+            onClick={() => setSelectedRecord(row)}
+            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+          >
             View
           </button>
           <button 
@@ -453,9 +472,11 @@ export default function PayrollPage() {
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400">
-            ⚠ {error} <button className="font-bold underline ml-2" onClick={() => void fetchData()}>Retry</button>
-          </div>
+          <ErrorState
+            size="sm"
+            description={error}
+            onRetry={() => void fetchData()}
+          />
         )}
 
         {isEmployee ? (
@@ -490,7 +511,10 @@ export default function PayrollPage() {
             </div>
 
             {/* Payslip List */}
-            <div className="hidden md:block">
+            <div className="hidden md:block" onContextMenu={(e) => {
+              if (!contextTargetRef.current) return;
+              handleContextMenu(e, buildPayrollMenuItems(contextTargetRef.current));
+            }}>
               <DataTable<PayrollRecord>
                 columns={employeeColumns}
                 data={myRecords}
@@ -538,11 +562,18 @@ export default function PayrollPage() {
                       <p className="font-bold text-slate-900 dark:text-white text-base">{fmt(record.netPay)}</p>
                     </div>
                   </div>
-                  <div className="flex justify-end border-t border-slate-100 pt-3 dark:border-white/10">
+                  <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRecord(record)}
+                      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-300 dark:hover:bg-white/5"
+                    >
+                      View Payslip
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleDownloadPayslip(record)}
-                      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-300 dark:hover:bg-white/5"
+                      className="flex items-center gap-2 rounded-lg border border-transparent bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
                     >
                       Download PDF
                     </button>
@@ -578,7 +609,10 @@ export default function PayrollPage() {
             </div>
 
             {/* Records table */}
-            <div className="hidden md:block">
+            <div className="hidden md:block" onContextMenu={(e) => {
+              if (!contextTargetRef.current) return;
+              handleContextMenu(e, buildPayrollMenuItems(contextTargetRef.current));
+            }}>
               <DataTable<PayrollRecord>
                 columns={hrColumns}
                 data={records}
@@ -653,6 +687,14 @@ export default function PayrollPage() {
           </>
         )}
       </div>
+
+      <PayslipPreviewModal
+        open={!!selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+        record={selectedRecord}
+        onDownload={handleDownloadPayslip}
+      />
+      <ContextMenu {...menuProps} />
     </DashboardLayout>
   );
 }

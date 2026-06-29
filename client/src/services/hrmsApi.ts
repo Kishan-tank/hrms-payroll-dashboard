@@ -3,7 +3,7 @@
  * Base URL is read from VITE_API_URL env var (default: http://localhost:5000/api).
  */
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
+const BASE = import.meta.env.VITE_API_URL ?? '/api';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -71,14 +71,20 @@ async function request<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const options: RequestInit = {
     method,
     headers: {
       'Content-Type': 'application/json',
       ...authHeaders(),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  };
+
+  if (method === 'GET') {
+    options.cache = 'no-store';
+  }
+
+  const res = await fetch(`${BASE}${path}`, options);
 
   if (res.status === 401) {
     localStorage.removeItem('token');
@@ -151,7 +157,16 @@ export interface HrSummary {
   totalEmployees: number;
   attendanceRate: string;
   payrollStatus: string;
+  payrollTotal?: number;
   pendingApprovals: number;
+  presentToday?: number;
+  onLeave?: number;
+  remoteCount?: number;
+  workforceHealth?: number;
+  approvalQueue?: Array<{ id: string; type: string; user: string; detail: string; time: string; color: string; bg: string }>;
+  departments?: Array<{ name: string; count: number; color: string }>;
+  spotlight?: { name: string; title: string; department: string; avatar: string; score: number; quote: string; manager: string };
+  insights?: Array<{ id: string; category: 'ATTENDANCE' | 'LEAVE' | 'PAYROLL' | 'APPROVALS'; title: string; body: string; confidence: number; accent: string; accentDim: string; action: string }>;
 }
 
 export interface Activity {
@@ -190,7 +205,7 @@ export interface EmployeeSummary {
 
 export interface ApiAttendance {
   _id: string;
-  employeeId: { _id: string; name: string; employeeId: string; department: string };
+  employeeId: { _id: string; name: string; employeeId: string; department: string; email?: string; userId?: string };
   date: string;
   checkIn?: string;
   checkOut?: string;

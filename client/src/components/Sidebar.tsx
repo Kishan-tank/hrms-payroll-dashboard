@@ -34,6 +34,7 @@ const NAV_GROUPS: NavGroup[] = [
     group: 'Main',
     items: [
       { label: 'Dashboard', path: '/employee-dashboard', icon: 'dashboard', roles: ['EMPLOYEE'] },
+      { label: 'Onboarding', path: '/onboarding', icon: 'checklist', roles: ['EMPLOYEE'] },
       { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['HR_MANAGER'] },
       { label: 'Attendance', path: '/attendance', icon: 'attendance' },
       { label: 'Leave Management', path: '/leave', icon: 'leave' },
@@ -43,7 +44,6 @@ const NAV_GROUPS: NavGroup[] = [
     group: 'Team & Organization',
     items: [
       { label: 'Employees', path: '/employees', icon: 'employees', roles: ['HR_MANAGER'] },
-      { label: 'Org Chart', path: '/org-chart', icon: 'orgchart', roles: ['HR_MANAGER'] },
       { label: 'Payroll', path: '/payroll', icon: 'payroll' },
       { label: 'Reports', path: '/reports', icon: 'reports', roles: ['HR_MANAGER'] },
     ]
@@ -76,7 +76,7 @@ function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: str
     case 'logout': return <svg {...c}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>;
     case 'chevron': return <svg {...c}><path d="m15 18-6-6 6-6" /></svg>;
     case 'briefcase': return <svg {...c}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>;
-    case 'orgchart': return <svg {...c}><rect x="8" y="3" width="8" height="6" rx="1" /><path d="M12 9v4" /><path d="M6 13h12" /><path d="M6 13v2" /><path d="M18 13v2" /><rect x="2" y="15" width="8" height="6" rx="1" /><rect x="14" y="15" width="8" height="6" rx="1" /></svg>;
+    case 'checklist': return <svg {...c}><path d="M9.615 20H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8M14 19l2 2 4-4M9 8h4M9 12h2" /></svg>;
     default: return null;
   }
 }
@@ -170,7 +170,7 @@ export default function Sidebar() {
                         [
                           `group relative flex h-10 items-center text-sm font-semibold transition-all duration-300 ${collapsed ? 'justify-center w-12 mx-auto px-0 rounded-xl' : 'px-3 gap-3 w-full rounded-xl hover:translate-x-1'}`,
                           isActive
-                            ? 'bg-blue-600/10 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.15)] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-8 before:w-1 before:rounded-full before:bg-blue-500 before:shadow-[0_0_8px_rgba(59,130,246,0.8)]'
+                            ? 'bg-blue-600/15 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.25)] border border-blue-500/30 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-8 before:w-1.5 before:rounded-full before:bg-blue-500 before:shadow-[0_0_12px_rgba(59,130,246,0.9)]'
                             : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:border-white/10 dark:hover:bg-white/[0.04] dark:hover:text-slate-200',
                         ].join(' ')
                       }

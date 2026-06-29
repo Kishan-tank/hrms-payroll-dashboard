@@ -3,6 +3,8 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import FloatingAIAssistant from '../components/common/FloatingAIAssistant';
 import { useAuthContext } from '../context/AuthContext';
+import EmployeeDrawer from '../components/employees/EmployeeDrawer';
+import { useEmployeeDrawer } from '../context/EmployeeDrawerContext';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -18,6 +20,7 @@ export default function DashboardLayout({
   userRole,
 }: DashboardLayoutProps) {
   const { user } = useAuthContext();
+  const { selectedEmployee, closeDrawer } = useEmployeeDrawer();
 
   const displayName = user?.name ?? userName ?? 'User';
   const normalizedRole = user?.role?.toLowerCase() || '';
@@ -38,6 +41,11 @@ export default function DashboardLayout({
         </main>
         
         <FloatingAIAssistant />
+        <EmployeeDrawer
+          open={selectedEmployee !== null}
+          employee={selectedEmployee}
+          onClose={closeDrawer}
+        />
       </div>
     </div>
   );

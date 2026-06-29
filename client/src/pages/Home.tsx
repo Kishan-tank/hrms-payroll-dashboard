@@ -8,10 +8,7 @@ import RoleBasedExperienceSection from '../components/landing/RoleBasedExperienc
 import FeaturesSection from '../components/landing/FeaturesSection';
 import AnalyticsSection from '../components/landing/AnalyticsSection';
 import TestimonialsSection from '../components/landing/TestimonialsSection';
-import PricingSection from '../components/landing/PricingSection';
-import ROICalculatorSection from '../components/landing/ROICalculatorSection';
 import FAQSection from '../components/landing/FAQSection';
-import CTASection from '../components/landing/CTASection';
 import FooterSection from '../components/landing/FooterSection';
 import LandingScrollProgress from '../components/landing/LandingScrollProgress';
 
@@ -31,7 +28,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden" style={{ background: '#020617' }}>
+    <div className="relative min-h-screen overflow-x-clip" style={{ background: '#020617' }}>
       
       {/* ── Scroll Progress Bar ── */}
       <div 
@@ -56,26 +53,18 @@ export default function Home() {
       {/* ── Page Content ── */}
       <div className="relative z-10">
         <LandingScrollProgress />
+        <LandingNavbar />
         
         <div data-section="Hero">
           <AnimatedBackground>
-            <LandingNavbar />
             <HeroSection />
           </AnimatedBackground>
         </div>
 
-        <div data-section="Trusted By">
-          <TrustedSection />
-        </div>
-        
         <div data-section="Product">
           <ProductShowcase />
         </div>
-        
-        <div data-section="Experience">
-          <RoleBasedExperienceSection />
-        </div>
-        
+
         <div data-section="Features">
           <FeaturesSection />
         </div>
@@ -83,25 +72,21 @@ export default function Home() {
         <div data-section="Analytics">
           <AnalyticsSection />
         </div>
+
+        <div data-section="Role-Based Experience">
+          <RoleBasedExperienceSection />
+        </div>
         
         <div data-section="Customer Stories">
           <TestimonialsSection />
         </div>
-        
-        <div data-section="Pricing">
-          <PricingSection />
-        </div>
-        
-        <div data-section="ROI Calculator">
-          <ROICalculatorSection />
+
+        <div data-section="Security & Compliance">
+          <TrustedSection />
         </div>
         
         <div data-section="FAQ">
           <FAQSection />
-        </div>
-        
-        <div data-section="Get Started">
-          <CTASection />
         </div>
         
         <FooterSection />

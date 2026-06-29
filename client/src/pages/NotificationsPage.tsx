@@ -1,19 +1,22 @@
-import { useMemo, useState } from 'react';
-import { UserPlus, CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck, Inbox, Mail, CheckCircle, Coins, Monitor } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNotifications, formatTimestamp } from '../context/NotificationContext';
-import type { NotificationType } from '../context/NotificationContext';
+import type { NotificationType, Notification } from '../context/NotificationContext';
 import EmptyState from '../components/common/EmptyState';
+import { leaveService } from '../services/hrmsApi';
 
 // ─── Icon helper ─────────────────────────────────────────────────────────────
 
 function getIconForType(type: NotificationType) {
   switch (type) {
-    case 'employee':   return { icon: <UserPlus className="h-5 w-5" />,      color: 'text-blue-500   bg-blue-50   dark:bg-blue-500/20'   };
+    case 'document':   return { icon: <FileText className="h-5 w-5" />,      color: 'text-blue-500   bg-blue-50   dark:bg-blue-500/20'   };
     case 'leave':      return { icon: <CalendarCheck className="h-5 w-5" />, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/20' };
     case 'payroll':    return { icon: <IndianRupee className="h-5 w-5" />,   color: 'text-violet-500  bg-violet-50  dark:bg-violet-500/20'  };
     case 'attendance': return { icon: <Clock className="h-5 w-5" />,         color: 'text-amber-500   bg-amber-50   dark:bg-amber-500/20'   };
-    case 'policy':     return { icon: <FileText className="h-5 w-5" />,      color: 'text-pink-500    bg-pink-50    dark:bg-pink-500/20'     };
+    case 'system':     return { icon: <Bell className="h-5 w-5" />,          color: 'text-pink-500    bg-pink-50    dark:bg-pink-500/20'     };
     default:           return { icon: <Bell className="h-5 w-5" />,          color: 'text-slate-500   bg-slate-100  dark:bg-slate-500/20'   };
   }
 }
@@ -21,15 +24,14 @@ function getIconForType(type: NotificationType) {
 // ─── Label map ────────────────────────────────────────────────────────────────
 
 const TYPE_LABELS: Record<string, string> = {
-  employee:   'Employee',
+  document:   'Document',
   leave:      'Leave',
   payroll:    'Payroll',
   attendance: 'Attendance',
-  policy:     'Policy',
+  system:     'System',
 };
 
-type ReadFilter = 'all' | 'unread' | 'read';
-type TypeFilter = 'all' | NotificationType;
+type CombinedFilter = 'all' | 'unread' | 'approvals' | 'payroll' | 'system';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -40,30 +42,207 @@ export default function NotificationsPage() {
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
-      const passRead = readFilter === 'all'
-        ? true
-        : readFilter === 'unread'
-          ? !n.read
-          : n.read;
-      const passType = typeFilter === 'all' ? true : n.type === typeFilter;
-      return passRead && passType;
+      if (filter === 'all') return true;
+      if (filter === 'unread') return !n.read;
+      if (filter === 'approvals') return n.type === 'leave';
+      if (filter === 'payroll') return n.type === 'payroll';
+      if (filter === 'system') return n.type === 'system';
+      return true;
     });
-  }, [notifications, readFilter, typeFilter]);
+  }, [notifications, filter]);
 
-  const readFilterTabs: { label: string; value: ReadFilter }[] = [
-    { label: 'All',    value: 'all' },
-    { label: 'Unread', value: 'unread' },
-    { label: 'Read',   value: 'read' },
-  ];
+  const filterTabs = [
+    { label: 'All',       value: 'all',       icon: Inbox },
+    { label: 'Unread',    value: 'unread',    icon: Mail },
+    { label: 'Approvals', value: 'approvals', icon: CheckCircle },
+    { label: 'Payroll',   value: 'payroll',   icon: Coins },
+    { label: 'System',    value: 'system',    icon: Monitor },
+  ] as const;
 
-  const typeFilterOptions: { label: string; value: TypeFilter }[] = [
-    { label: 'All Types',  value: 'all' },
-    { label: 'Leave',      value: 'leave' },
-    { label: 'Payroll',    value: 'payroll' },
-    { label: 'Attendance', value: 'attendance' },
-    { label: 'Employee',   value: 'employee' },
-    { label: 'Policy',     value: 'policy' },
-  ];
+  // 1. Request confirmation before leave actions
+  function requestLeaveAction(
+    e: React.MouseEvent,
+    notifId: string,
+    action: 'Approved' | 'Rejected'
+  ) {
+    e.stopPropagation();
+    // Toggle off if already showing confirm for same notification + action
+    if (pendingConfirm?.notifId === notifId && pendingConfirm.action === action) {
+      setPendingConfirm(null);
+      return;
+    }
+    setPendingConfirm({ notifId, action });
+  }
+
+  // 2. Execute confirmed leave action
+  async function confirmLeaveAction() {
+    if (!pendingConfirm) return;
+    const { notifId, action } = pendingConfirm;
+    const notif = notifications.find(n => n.id === notifId);
+    if (!notif?.leaveId) {
+      info('No leave record linked to this notification');
+      setPendingConfirm(null);
+      return;
+    }
+    setProcessingIds(prev => new Set(prev).add(notifId));
+    setPendingConfirm(null);
+    try {
+      await leaveService.updateStatus(notif.leaveId, action);
+      markAsRead(notifId);
+      success(`Leave request ${action.toLowerCase()}.`);
+      // Brief delay so user sees the success state before dismiss
+      setTimeout(() => dismiss(notifId), 800);
+    } catch (err: any) {
+      toastError(err?.message || `Failed to ${action.toLowerCase()} leave request`);
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(notifId);
+        return next;
+      });
+    }
+  }
+
+  // 3. Navigation and simple actions
+  function handleSimpleAction(e: React.MouseEvent, action: string, n: Notification) {
+    e.stopPropagation();
+    if (action === 'mark_read') {
+      markAsRead(n.id);
+      return;
+    }
+    markAsRead(n.id);
+    navigate(action);
+  }
+
+  const renderActions = (n: Notification) => {
+    const isProcessing = processingIds.has(n.id);
+    const isConfirming = pendingConfirm?.notifId === n.id;
+
+    switch (n.type) {
+      case 'leave':
+        return (
+          <div className="mt-3 space-y-2">
+            {/* Inline confirm banner */}
+            {isConfirming && (
+              <div
+                className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-500/30 dark:bg-amber-500/10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  Confirm {pendingConfirm!.action.toLowerCase()} this leave request?
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); void confirmLeaveAction(); }}
+                    className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-amber-600"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setPendingConfirm(null); }}
+                    className="rounded-lg border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700 transition hover:bg-amber-100 dark:border-amber-500/30 dark:text-amber-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {/* Action buttons row */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={(e) => handleSimpleAction(e, '/leave', n)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+              >
+                View Leave
+              </button>
+              {/* Only show Approve/Reject if notification has a leaveId */}
+              {n.leaveId && (
+                <>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={(e) => requestLeaveAction(e, n.id, 'Approved')}
+                    className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400"
+                  >
+                    {isProcessing ? (
+                      <i className="ti ti-loader-2 animate-spin" aria-hidden="true" />
+                    ) : 'Approve'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={(e) => requestLeaveAction(e, n.id, 'Rejected')}
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400"
+                  >
+                    {isProcessing ? (
+                      <i className="ti ti-loader-2 animate-spin" aria-hidden="true" />
+                    ) : 'Reject'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'payroll':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={(e) => handleSimpleAction(e, '/payroll', n)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              View Payslip
+            </button>
+          </div>
+        );
+
+      case 'document':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={(e) => handleSimpleAction(e, '/documents', n)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              Open Documents
+            </button>
+          </div>
+        );
+
+      case 'attendance':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={(e) => handleSimpleAction(e, '/attendance', n)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              Open Attendance
+            </button>
+          </div>
+        );
+
+      case 'system':
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); markAsRead(n.id); }}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              Mark as read
+            </button>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <DashboardLayout title="Notifications">
@@ -100,42 +279,31 @@ export default function NotificationsPage() {
         </div>
 
         {/* ── Filters ── */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
-          {/* Read state tabs */}
-          <div className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-white/5">
-            {readFilterTabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setReadFilter(tab.value)}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${
-                  readFilter === tab.value
-                    ? 'bg-white text-slate-900 shadow-sm dark:bg-white/10 dark:text-white'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-                }`}
-              >
-                {tab.label}
-                {tab.value === 'unread' && unreadCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-            ))}
+        <div className="overflow-x-auto no-scrollbar">
+          <div className="flex w-max gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+            {filterTabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setFilter(tab.value as CombinedFilter)}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
+                    filter === tab.value
+                      ? 'bg-slate-900 text-white shadow-md dark:bg-blue-500/10 dark:text-blue-400 dark:shadow-none'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" /> {tab.label}
+                  {tab.value === 'unread' && unreadCount > 0 && (
+                    <span className={`ml-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-extrabold ${filter === tab.value ? 'bg-white/20 text-white dark:bg-blue-500/20 dark:text-blue-400' : 'bg-blue-500 text-white'}`}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-
-          {/* Type filter dropdown */}
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          >
-            {typeFilterOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-white dark:bg-[#111827]">
-                {opt.label}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* ── Notification List ── */}
@@ -153,7 +321,7 @@ export default function NotificationsPage() {
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121] dark:shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
               <h2 className="font-bold text-slate-950 dark:text-white">
-                {readFilter === 'all' ? 'All' : readFilter === 'unread' ? 'Unread' : 'Read'} Notifications
+                Notifications
               </h2>
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
                 {filtered.length} item{filtered.length !== 1 ? 's' : ''}
@@ -166,12 +334,14 @@ export default function NotificationsPage() {
                 return (
                   <li
                     key={n.id}
-                    className={`${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''} ${!n.read ? 'bg-blue-50/40 dark:bg-blue-500/[0.06]' : ''}`}
+                    className={`${index < filtered.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''} ${!n.read ? 'bg-blue-50/40 dark:bg-blue-500/[0.06]' : ''} ${n.priority === 'high' ? 'border-l-2 border-l-amber-400 dark:border-l-amber-500' : ''}`}
                   >
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => markAsRead(n.id)}
-                      className="group flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]"
+                      onKeyDown={(e) => { if (e.key === 'Enter') markAsRead(n.id); }}
+                      className="group flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03] cursor-pointer"
                     >
                       {/* Icon */}
                       <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}>
@@ -191,16 +361,24 @@ export default function NotificationsPage() {
                         <span className="mt-1 block text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                           {n.message}
                         </span>
-                        <span className="mt-1.5 inline-block rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:text-slate-500">
-                          {TYPE_LABELS[n.type] ?? n.type}
-                        </span>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+                            {TYPE_LABELS[n.type] ?? n.type}
+                          </span>
+                          {n.priority === 'high' && (
+                            <span className="inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+                              High Priority
+                            </span>
+                          )}
+                        </div>
+                        {renderActions(n)}
                       </span>
 
                       {/* Unread dot */}
                       {!n.read && (
                         <span className="mt-2 shrink-0 h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
                       )}
-                    </button>
+                    </div>
                   </li>
                 );
               })}

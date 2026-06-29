@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { dashboardService, EmployeeSummary } from '../services/hrmsApi';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -16,7 +16,7 @@ import EmployeeProfileDrawer from '../components/employee/EmployeeProfileDrawer'
 
 export default function EmployeeDashboard() {
   const reducedMotion = useReducedMotion();
-  const fade: any = {
+  const fade: Variants = {
     hidden: { opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 20 },
     visible: (d: number) => ({
       opacity: 1,
@@ -42,7 +42,7 @@ export default function EmployeeDashboard() {
         } else {
           throw new Error('Server returned an unexpected response.');
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('EmployeeDashboard fetch failed:', err);
         setError('Unable to load your workspace. Please try again.');
         setSummary(null);

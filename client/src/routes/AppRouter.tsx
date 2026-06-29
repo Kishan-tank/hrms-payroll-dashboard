@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
+import { EmployeeDrawerProvider } from '../context/EmployeeDrawerContext';
 import ProtectedRoute from './ProtectedRoute';
 import PageLoader from '../components/common/PageLoader';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Eagerly loaded (critical path)
 import LoginPage from '../pages/Login/LoginPage';
@@ -12,6 +14,7 @@ import NotFoundPage from '../pages/NotFoundPage';
 
 // Lazy loaded (heavy pages)
 const DesignSystemPage = lazy(() => import('../pages/DesignSystemPage'));
+const OnboardingPage = lazy(() => import('../pages/OnboardingPage'));
 const EmployeeDashboard = lazy(() => import('../pages/EmployeeDashboard'));
 const HRDashboard = lazy(() => import('../pages/HRDashboard'));
 const EmployeeManagement = lazy(() => import('../pages/EmployeeManagement'));
@@ -21,7 +24,6 @@ const LeavePage = lazy(() => import('../pages/LeavePage'));
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
-const OrgChartPage = lazy(() => import('../pages/OrgChartPage'));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
 const DocumentsPage = lazy(() => import('../pages/DocumentsPage'));
 const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
@@ -33,18 +35,22 @@ export default function AppRouter() {
       {/*
         AuthProvider lives INSIDE BrowserRouter so useNavigate() works.
         ProtectedRoute reads localStorage directly so it needs no context.
+        EmployeeDrawerProvider wraps all authenticated routes so any page
+        can call useEmployeeDrawer() to open the global employee drawer.
       */}
       <AuthProvider>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            {/* ── Public routes – no login required ── */}
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            {/* /design-system is a dev-only tool — unreachable in production builds */}
-            {import.meta.env.DEV && (
-              <Route path="/design-system" element={<DesignSystemPage />} />
-            )}
+        <EmployeeDrawerProvider>
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* ── Public routes – no login required ── */}
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                {/* /design-system is a dev-only tool — unreachable in production builds */}
+                {import.meta.env.DEV && (
+                  <Route path="/design-system" element={<DesignSystemPage />} />
+                )}
 
             {/* ── Any logged-in user ── */}
             <Route element={<ProtectedRoute />}>
@@ -61,27 +67,28 @@ export default function AppRouter() {
             
               <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
 
-            {/* ── Employee-only routes ── */}
-            <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
-              <Route path="/dashboard" element={<EmployeeDashboard />} />
-              <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
-              <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
-            </Route>
+                {/* ── Employee-only routes ── */}
+                <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
+                  <Route path="/onboarding" element={<OnboardingPage />} />
+                  <Route path="/dashboard" element={<EmployeeDashboard />} />
+                  <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
+                  <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
+                </Route>
 
-            {/* ── HR / Admin / Manager-only routes ── */}
-            <Route element={<ProtectedRoute allowedRoles={['hr-manager']} />}>
-              <Route path="/hr-dashboard" element={<HRDashboard />} />
-              <Route path="/dashboard/hr" element={<HRDashboard />} />
-              <Route path="/employees" element={<EmployeeManagement />} />
-              <Route path="/org-chart" element={<OrgChartPage />} />
-              <Route path="/attendance" element={<AttendancePage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-            </Route>
+                {/* ── HR / Admin / Manager-only routes ── */}
+                <Route element={<ProtectedRoute allowedRoles={['hr-manager']} />}>
+                  <Route path="/hr-dashboard" element={<HRDashboard />} />
+                  <Route path="/dashboard/hr" element={<HRDashboard />} />
+                  <Route path="/employees" element={<EmployeeManagement />} />
+                  <Route path="/reports" element={<ReportsPage />} />
+                </Route>
 
-            {/* ── Catch-all: proper 404 instead of silent redirect ── */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
+                {/* ── Catch-all: proper 404 instead of silent redirect ── */}
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </EmployeeDrawerProvider>
       </AuthProvider>
     </BrowserRouter>
   );

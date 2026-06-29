@@ -1,15 +1,6 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import VideoModal from './VideoModal';
 
 /* ── Icons ─────────────────────────────────────────────── */
-function PlayIcon() {
-  return (
-    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
 function ArrowRightIcon() {
   return (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
@@ -52,7 +43,7 @@ function PayrollDashboardMockup() {
 
       {/* ── Main card ── */}
       <div
-        className="relative rounded-2xl p-5 shadow-[0_32px_80px_rgba(0,0,0,0.5)]"
+        className="relative rounded-2xl p-5 shadow-[0_32px_80px_rgba(0,0,0,0.5)] hover:scale-[1.02] hover:shadow-[0_40px_100px_rgba(37,99,235,0.2)] transition-all duration-500 cursor-pointer"
         style={{
           background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(9,14,30,0.98) 100%)',
           border: '1px solid rgba(255,255,255,0.10)',
@@ -127,7 +118,7 @@ function PayrollDashboardMockup() {
 
       {/* ── Floating toast: Payroll Processed ── */}
       <div
-        className="animate-float-slow animation-delay-300 absolute -right-4 top-6 flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 shadow-2xl"
+        className="animate-float-slow animation-delay-300 absolute -right-4 top-6 flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 shadow-2xl hover:scale-105 hover:border-emerald-400/60 hover:shadow-[0_20px_50px_rgba(16,185,129,0.25)] transition-all duration-300 cursor-pointer"
         style={{ background: 'rgba(16,24,40,0.95)', border: '1px solid rgba(16,185,129,0.3)', backdropFilter: 'blur(16px)' }}
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15">
@@ -143,7 +134,7 @@ function PayrollDashboardMockup() {
 
       {/* ── Floating Headcount card ── */}
       <div
-        className="animate-float animation-delay-200 absolute -left-6 bottom-12 rounded-xl p-3 shadow-2xl"
+        className="animate-float animation-delay-200 absolute -left-6 bottom-12 rounded-xl p-3 shadow-2xl hover:scale-105 hover:border-blue-400/60 hover:shadow-[0_20px_50px_rgba(37,99,235,0.25)] transition-all duration-300 cursor-pointer"
         style={{ background: 'rgba(16,24,40,0.95)', border: '1px solid rgba(37,99,235,0.25)', backdropFilter: 'blur(16px)', minWidth: '140px' }}
       >
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Headcount</p>
@@ -225,8 +216,6 @@ const avatars = [
 
 /* ── Main Component ─────────────────────────────────────── */
 export default function HeroSection() {
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-
   return (
     <section className="mx-auto max-w-7xl px-6 pb-0 pt-16 lg:pt-24">
       <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center lg:gap-16">
@@ -235,10 +224,10 @@ export default function HeroSection() {
         <div className="flex-1 text-center lg:text-left">
 
           {/* Badge */}
-          <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5" style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.25)' }}>
+          <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 shadow-[0_0_20px_rgba(37,99,235,0.15)] hover:shadow-[0_0_25px_rgba(37,99,235,0.25)] hover:border-blue-500/40 transition-all duration-300 cursor-pointer backdrop-blur-md" style={{ background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.25)' }}>
             <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
             <span className="text-xs font-bold uppercase tracking-widest text-blue-400">
-              Week 1 Launch — Enterprise HRMS Platform
+              Enterprise HRMS & Payroll Automation Suite
             </span>
           </div>
 
@@ -266,7 +255,7 @@ export default function HeroSection() {
           </p>
 
           {/* CTAs */}
-          <div className="animate-fade-in-up animation-delay-300 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+          <div className="animate-fade-in-up animation-delay-300 flex justify-center lg:justify-start">
             <Link
               to="/register"
               className="group flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-500 hover:shadow-blue-500/50 hover:scale-[1.02]"
@@ -274,17 +263,6 @@ export default function HeroSection() {
               Start Free Trial
               <ArrowRightIcon />
             </Link>
-            <button
-              type="button"
-              onClick={() => setIsVideoModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold transition-all hover:bg-white/5"
-              style={{ border: '1px solid rgba(255,255,255,0.12)', color: '#cbd5e1' }}
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10">
-                <PlayIcon />
-              </span>
-              Watch Demo
-            </button>
           </div>
 
           {/* Trust points */}
@@ -366,9 +344,6 @@ export default function HeroSection() {
           </div>
         ))}
       </div>
-
-      {/* Video Modal */}
-      <VideoModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
     </section>
   );
 }

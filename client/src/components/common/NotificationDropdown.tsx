@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, CalendarCheck, IndianRupee, Clock, FileText, Bell } from 'lucide-react';
+import { CalendarCheck, IndianRupee, Clock, FileText, Bell } from 'lucide-react';
 import { useNotifications, formatTimestamp } from '../../context/NotificationContext';
 import type { NotificationType } from '../../context/NotificationContext';
 
 function getIconForType(type: NotificationType) {
   switch (type) {
-    case 'employee':   return <UserPlus className="h-5 w-5 text-blue-500" />;
+    case 'document':   return <FileText className="h-5 w-5 text-blue-500" />;
     case 'leave':      return <CalendarCheck className="h-5 w-5 text-emerald-500" />;
     case 'payroll':    return <IndianRupee className="h-5 w-5 text-violet-500" />;
     case 'attendance': return <Clock className="h-5 w-5 text-amber-500" />;
-    case 'policy':     return <FileText className="h-5 w-5 text-pink-500" />;
+    case 'system':     return <Bell className="h-5 w-5 text-pink-500" />;
     default:           return <Bell className="h-5 w-5 text-slate-500" />;
   }
 }
@@ -23,7 +23,7 @@ export default function NotificationDropdown({ open, onClose }: { open: boolean;
 
   const displayed = notifications
     .filter((n) => (filter === 'all' ? true : !n.read))
-    .slice(0, 6); // show top 6 in dropdown
+    .slice(0, 5); // show top 5 in dropdown
 
   function handleViewAll() {
     onClose();

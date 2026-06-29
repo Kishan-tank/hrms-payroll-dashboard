@@ -4,10 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { employeeService } from '../services/hrmsApi';
-import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { ApiEmployee } from '../services/hrmsApi';
-import EmployeeDrawer from '../components/employees/EmployeeDrawer';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import ContextMenu from '../components/common/ContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
+import { useEmployeeDrawer } from '../context/EmployeeDrawerContext';
 import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
@@ -91,8 +94,10 @@ export default function EmployeeManagement() {
   const deleteModalRef = useRef<HTMLDivElement>(null);
   useFocusTrap(!!deleteTarget, () => setDeleteTarget(null), deleteModalRef);
 
-  // drawer
-  const [selectedEmployee, setSelectedEmployee] = useState<ApiEmployee | null>(null);
+  const { openDrawer } = useEmployeeDrawer();
+
+  const { menuProps, handleContextMenu } = useContextMenu();
+  const contextTargetRef = useRef<ApiEmployee | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   useFocusTrap(showModal, () => {
@@ -157,13 +162,23 @@ export default function EmployeeManagement() {
     setTimeout(() => setToastMsg(null), 3000);
   };
 
+  const [showBulkDeptModal, setShowBulkDeptModal] = useState(false);
+  const [bulkDeptSelect, setBulkDeptSelect] = useState('Engineering');
+
   const handleBulkChangeDepartment = () => {
-    showToast('Bulk action endpoint coming soon');
+    setShowBulkDeptModal(true);
   };
 
-  const handleBulkDeactivate = () => {
+  const handleBulkDeactivate = async () => {
     if (window.confirm(`Are you sure you want to deactivate ${selectedRowIds.size} selected employee(s)?`)) {
-      showToast('Bulk action endpoint coming soon');
+      try {
+        const res = await employeeService.bulkDeactivate(Array.from(selectedRowIds));
+        showToast(res.message || 'Employees deactivated successfully');
+        setSelectedRowIds(new Set());
+        void fetchEmployees();
+      } catch (err) {
+        showToast((err as Error).message);
+      }
     }
   };
 
@@ -262,16 +277,18 @@ export default function EmployeeManagement() {
         />
       ),
       render: (emp) => (
-        <input
-          type="checkbox"
-          checked={selectedRowIds.has(emp._id)}
-          onChange={(e) => {
-            e.stopPropagation();
-            toggleSelectOne(emp._id);
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900"
-        />
+        <div className="flex h-full w-full items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>
+          <input
+            type="checkbox"
+            checked={selectedRowIds.has(emp._id)}
+            onChange={(e) => {
+              e.stopPropagation();
+              toggleSelectOne(emp._id);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900"
+          />
+        </div>
       ),
       sortable: false,
     },
@@ -280,13 +297,14 @@ export default function EmployeeManagement() {
       header: 'Employee ID',
       sortable: true,
       className: 'font-mono text-sm text-blue-600 dark:text-blue-400',
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{emp.employeeId}</div>,
     },
     {
       key: 'name',
       header: 'Employee Name',
       sortable: true,
       render: (emp) => (
-        <div className="flex items-center gap-2.5">
+        <div className="flex h-full w-full items-center gap-2.5" onMouseEnter={() => { contextTargetRef.current = emp; }}>
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white dark:bg-white/10 dark:text-white">{emp.name.charAt(0)}</span>
           <span className="text-sm font-medium text-slate-950 dark:text-white">{emp.name}</span>
         </div>
@@ -296,36 +314,38 @@ export default function EmployeeManagement() {
       key: 'department',
       header: 'Department',
       sortable: true,
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{emp.department}</div>,
     },
     {
       key: 'role',
       header: 'Role',
       sortable: true,
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{emp.role}</div>,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (emp) => <StatusBadge status={emp.status} />,
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}><StatusBadge status={emp.status} /></div>,
     },
     {
       key: 'joinDate',
       header: 'Join Date',
       sortable: true,
-      render: (emp) => new Date(emp.joinDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{new Date(emp.joinDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>,
     },
     {
       key: 'basicPay',
       header: 'Basic Pay',
       sortable: true,
       className: 'font-bold text-slate-950 dark:text-white',
-      render: (emp) => `₹${emp.basicPay.toLocaleString('en-IN')}`,
+      render: (emp) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = emp; }}>{`₹${emp.basicPay.toLocaleString('en-IN')}`}</div>,
     },
     {
       key: 'actions',
       header: 'Actions',
       render: (emp) => (
-        <div className="flex items-center gap-1">
+        <div className="flex h-full w-full items-center gap-1" onMouseEnter={() => { contextTargetRef.current = emp; }}>
           <button type="button" onClick={(e) => { e.stopPropagation(); openEdit(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" title="Edit"><Icon name="edit" /></button>
           <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTarget(emp); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" title="Deactivate"><Icon name="trash" /></button>
         </div>
@@ -423,13 +443,22 @@ export default function EmployeeManagement() {
 
         {/* Error banner */}
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            ⚠ {error} &nbsp;<button className="font-bold underline" onClick={() => void fetchEmployees()}>Retry</button>
-          </div>
+          <ErrorState
+            size="sm"
+            description={error}
+            onRetry={() => void fetchEmployees()}
+          />
         )}
 
         {/* Table - Desktop Only */}
-        <div className="hidden md:block">
+        <div className="hidden md:block" onContextMenu={(e) => {
+          if (!contextTargetRef.current) return;
+          handleContextMenu(e, [
+            { label: 'View profile', icon: 'eye', onClick: () => openDrawer(contextTargetRef.current!) },
+            { label: 'Edit', icon: 'edit', onClick: () => openEdit(contextTargetRef.current!) },
+            { separator: true, label: 'Deactivate', icon: 'trash', variant: 'danger', onClick: () => setDeleteTarget(contextTargetRef.current!) },
+          ]);
+        }}>
           <DataTable
             columns={columns}
             data={employees}
@@ -442,7 +471,7 @@ export default function EmployeeManagement() {
             totalItems={total}
             currentPage={page}
             pageSize={perPage}
-            onRowClick={(emp) => setSelectedEmployee(emp)}
+            onRowClick={(emp) => openDrawer(emp)}
             minWidth={900}
             emptyState={
               <EmptyState
@@ -462,13 +491,13 @@ export default function EmployeeManagement() {
             <div 
               key={emp._id} 
               className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm cursor-pointer hover:shadow-md transition outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-white/10 dark:bg-[#0B1121]"
-              onClick={() => setSelectedEmployee(emp)}
+              onClick={() => openDrawer(emp)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  setSelectedEmployee(emp);
+                  openDrawer(emp);
                 }
               }}
             >
@@ -555,12 +584,6 @@ export default function EmployeeManagement() {
         </div>
       )}
 
-      {/* ── Employee Drawer ── */}
-      <EmployeeDrawer
-        open={selectedEmployee !== null}
-        employee={selectedEmployee}
-        onClose={() => setSelectedEmployee(null)}
-      />
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
@@ -677,6 +700,58 @@ export default function EmployeeManagement() {
           </div>
         </div>
       )}
+
+      {/* ── Bulk Change Department Modal ── */}
+      {showBulkDeptModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div 
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-dept-title"
+            tabIndex={-1}
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] outline-none dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+          >
+            <h2 id="bulk-dept-title" className="mb-2 text-lg font-bold text-slate-950 dark:text-white">Change Department</h2>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+              Select a new department for {selectedRowIds.size} selected employee(s).
+            </p>
+            <div className="mb-6">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Department</label>
+              <select
+                value={bulkDeptSelect}
+                onChange={(e) => setBulkDeptSelect(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+              >
+                {departments.filter((d) => d !== 'All').map((d) => (
+                  <option key={d} value={d} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{d}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowBulkDeptModal(false)} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">Cancel</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await employeeService.bulkChangeDepartment(Array.from(selectedRowIds), bulkDeptSelect);
+                    showToast(res.message || 'Department updated successfully');
+                    setSelectedRowIds(new Set());
+                    setShowBulkDeptModal(false);
+                    void fetchEmployees();
+                  } catch (err) {
+                    showToast((err as Error).message);
+                  }
+                }}
+                className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              >
+                Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ContextMenu {...menuProps} />
     </DashboardLayout>
   );
 }
