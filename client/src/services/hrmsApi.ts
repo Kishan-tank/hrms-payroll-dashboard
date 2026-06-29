@@ -426,3 +426,16 @@ export const notificationService = {
       'POST', '/notifications', payload
     ),
 };
+
+// ─── Onboarding ──────────────────────────────────────────────────────────────
+
+export const onboardingService = {
+  getState: () =>
+    request<{ success: boolean; onboarding: any }>('GET', '/onboarding'),
+
+  updateState: (payload: { steps: any[]; currentStepId: string; completedAt?: string }) =>
+    request<{ success: boolean; onboarding: any }>('PUT', '/onboarding', payload),
+
+  resetState: () =>
+    request<{ success: boolean; onboarding: any }>('POST', '/onboarding/reset'),
+};

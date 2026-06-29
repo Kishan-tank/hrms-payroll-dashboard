@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { onboardingService } from '../services/hrmsApi';
 
 export type StepId = 'profile' | 'documents' | 'bank' | 'handbook' | 'complete';
 export type StepStatus = 'pending' | 'in_progress' | 'completed';
@@ -74,6 +75,30 @@ export function useOnboarding(userId?: string) {
     };
   });
 
+  const [loading, setLoading] = useState(true);
+
+  // Fetch initial state from API
+  useEffect(() => {
+    async function fetchState() {
+      try {
+        const res = await onboardingService.getState();
+        if (res.success && res.onboarding) {
+          setState({
+            steps: res.onboarding.steps?.length ? res.onboarding.steps : DEFAULT_STEPS,
+            currentStepId: res.onboarding.currentStepId || 'profile',
+            completedAt: res.onboarding.completedAt,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch onboarding state from API, using local storage:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    void fetchState();
+  }, [userId]);
+
+  // Sync state changes to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state, STORAGE_KEY]);
@@ -84,7 +109,11 @@ export function useOnboarding(userId?: string) {
   const isComplete = completionPercent === 100;
 
   const setCurrentStep = useCallback((id: StepId) => {
-    setState(prev => ({ ...prev, currentStepId: id }));
+    setState(prev => {
+      const nextState = { ...prev, currentStepId: id };
+      onboardingService.updateState(nextState).catch(err => console.error('Failed to update step on API', err));
+      return nextState;
+    });
   }, []);
 
   const completeStep = useCallback((id: StepId) => {
@@ -130,19 +159,25 @@ export function useOnboarding(userId?: string) {
         completedAt = new Date().toISOString();
       }
 
-      return {
+      const nextState = {
         steps: newSteps,
         currentStepId: nextStepId,
         completedAt,
       };
+
+      onboardingService.updateState(nextState).catch(err => console.error('Failed to sync completeStep to API', err));
+
+      return nextState;
     });
   }, []);
 
   const resetOnboarding = useCallback(() => {
-    setState({
+    const resetState: OnboardingState = {
       steps: DEFAULT_STEPS,
       currentStepId: 'profile',
-    });
+    };
+    setState(resetState);
+    onboardingService.resetState().catch(err => console.error('Failed to reset onboarding on API', err));
   }, []);
 
   return {
@@ -150,8 +185,10 @@ export function useOnboarding(userId?: string) {
     currentStepId: state.currentStepId,
     isComplete,
     completionPercent,
+    loading,
     completeStep,
     setCurrentStep,
     resetOnboarding,
   };
 }
+

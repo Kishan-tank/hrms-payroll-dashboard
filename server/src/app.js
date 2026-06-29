@@ -15,6 +15,7 @@ import documentRoutes from "./routes/documentRoutes.js";
 import performanceRoutes from "./routes/performanceRoutes.js";
 import companyRoutes from "./routes/companyRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import onboardingRoutes from "./routes/onboardingRoutes.js";
 const app = express();
 
 app.use(express.json());
@@ -57,5 +58,6 @@ app.use("/api/documents", documentRoutes);
 app.use("/api/performance", performanceRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/onboarding", onboardingRoutes);
 
 export default app;
