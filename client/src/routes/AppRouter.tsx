@@ -65,8 +65,8 @@ export default function AppRouter() {
               <Route path="/payroll" element={<PayrollPage />} />
               
               <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
-            
               <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
+            </Route>
 
                 {/* ── Employee-only routes ── */}
                 <Route element={<ProtectedRoute allowedRoles={['employee']} />}>

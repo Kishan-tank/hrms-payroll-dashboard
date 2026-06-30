@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Award, Plus, Trash2, CheckCircle, AlertCircle, ThumbsUp, Sparkles, Users } from 'lucide-react';
+import { Calendar, Award, Plus, Trash2, CheckCircle, AlertCircle, ThumbsUp, Sparkles } from 'lucide-react';
 import { companyService, ApiEvent, ApiSkill } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 

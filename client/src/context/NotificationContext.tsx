@@ -15,6 +15,8 @@ export interface Notification {
   read: boolean;
   timestamp: string; // mapped from createdAt
   link?: string | null;
+  leaveId?: string | null;
+  priority?: 'high' | 'normal';
 }
 
 interface NotificationContextValue {
@@ -39,6 +41,8 @@ function mapApiToLocal(n: ApiNotification): Notification {
     read: n.read,
     timestamp: n.createdAt,
     link: n.link,
+    leaveId: n.leaveId ?? null,
+    priority: n.priority ?? 'normal',
   };
 }
 
