@@ -503,3 +503,16 @@ export const taskService = {
     request<{ success: boolean; task: ApiTask; message: string }>('PUT', `/tasks/${id}`, payload),
   delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/tasks/${id}`),
 };
+
+// ─── Onboarding ──────────────────────────────────────────────────────────────
+
+export const onboardingService = {
+  getState: () =>
+    request<{ success: boolean; onboarding: any }>('GET', '/onboarding'),
+
+  updateState: (payload: { steps: any[]; currentStepId: string; completedAt?: string }) =>
+    request<{ success: boolean; onboarding: any }>('PUT', '/onboarding', payload),
+
+  resetState: () =>
+    request<{ success: boolean; onboarding: any }>('POST', '/onboarding/reset'),
+};

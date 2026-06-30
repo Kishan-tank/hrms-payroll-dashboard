@@ -23,7 +23,8 @@ export const getAllEmployees = async (req, res) => {
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
-        { employeeId: { $regex: search, $options: "i" } }
+        { employeeId: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
       ];
     }
     
