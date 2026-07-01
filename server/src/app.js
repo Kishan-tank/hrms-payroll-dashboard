@@ -16,6 +16,7 @@ import performanceRoutes from "./routes/performanceRoutes.js";
 import companyRoutes from "./routes/companyRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import onboardingRoutes from "./routes/onboardingRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 const app = express();
 
 app.use(express.json());
@@ -59,5 +60,6 @@ app.use("/api/performance", performanceRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/onboarding", onboardingRoutes);
+app.use("/api/settings", settingsRoutes);
 
 export default app;

@@ -439,3 +439,25 @@ export const onboardingService = {
   resetState: () =>
     request<{ success: boolean; onboarding: any }>('POST', '/onboarding/reset'),
 };
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+export interface ApiSettings {
+  theme: string;
+  accentColor: string;
+  notifications: {
+    newLeaveRequests: boolean;
+    payrollProcessed: boolean;
+    attendanceAlerts: boolean;
+    newEmployeeJoined: boolean;
+    performanceReviewsDue: boolean;
+    systemMaintenance: boolean;
+  };
+}
+
+export const settingsService = {
+  getSettings: () =>
+    request<{ success: boolean; settings: ApiSettings }>('GET', '/settings'),
+  updateSettings: (payload: Partial<ApiSettings>) =>
+    request<{ success: boolean; settings: ApiSettings; message: string }>('PUT', '/settings', payload),
+};
