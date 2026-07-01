@@ -1,5 +1,6 @@
 import { useState, useRef, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useAuthContext } from '../context/AuthContext';
 import { useOnboarding, type OnboardingStep } from '../hooks/useOnboarding';
@@ -298,7 +299,7 @@ export default function OnboardingPage() {
           </p>
         </div>
       </div>
-      
+
       <div className="mt-5 flex items-center gap-3">
         <input
           type="checkbox"
@@ -370,13 +371,14 @@ export default function OnboardingPage() {
   return (
     <DashboardLayout title="Onboarding">
       <div className="mx-auto max-w-3xl space-y-6 pb-24 px-4 sm:px-0">
-        
+
         {/* SECTION A — Progress Header Card */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                Welcome aboard, {user?.name?.split(' ')[0] || 'User'}! 👋
+              <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-white">
+                Welcome aboard, {user?.name?.split(' ')[0] || 'User'}! 
+                <Sparkles className="h-6 w-6 text-amber-500 animate-[pulse_2s_ease-in-out_infinite]" strokeWidth={2.5} />
               </h1>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Complete these steps to finish your onboarding.
@@ -511,9 +513,9 @@ export default function OnboardingPage() {
                 )}
                 {/* Always show Complete celebration state if it is complete step and completed */}
                 {isCompleteStep && isCompleted && (
-                   <div className="overflow-hidden">
-                   {getStepBody(step)}
-                 </div>
+                  <div className="overflow-hidden">
+                    {getStepBody(step)}
+                  </div>
                 )}
               </div>
             );
