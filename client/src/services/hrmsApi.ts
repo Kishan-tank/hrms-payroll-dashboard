@@ -249,7 +249,71 @@ export const authService = {
       { name, email, password, role },
     ),
 };
+export interface ApiSettings {
+  theme: 'light' | 'dark' | 'system';
+  accentColor: string;
+  notifications: {
+    newLeaveRequests: boolean;
+    payrollProcessed: boolean;
+    attendanceAlerts: boolean;
+    newEmployeeJoined: boolean;
+    performanceReviewsDue: boolean;
+    systemMaintenance: boolean;
+  };
+}
 
+export const settingsService = {
+  getSettings: async () => {
+    if (typeof window === 'undefined') {
+      return {
+        success: true,
+        settings: {
+          theme: 'light' as const,
+          accentColor: '#2563EB',
+          notifications: {
+            newLeaveRequests: true,
+            payrollProcessed: true,
+            attendanceAlerts: false,
+            newEmployeeJoined: true,
+            performanceReviewsDue: false,
+            systemMaintenance: true,
+          },
+        },
+      };
+    }
+
+    const saved = window.localStorage.getItem('hrms-settings');
+    const settings = saved ? (JSON.parse(saved) as ApiSettings) : null;
+
+    return {
+      success: true,
+      settings: settings ?? {
+        theme: 'light' as const,
+        accentColor: '#2563EB',
+        notifications: {
+          newLeaveRequests: true,
+          payrollProcessed: true,
+          attendanceAlerts: false,
+          newEmployeeJoined: true,
+          performanceReviewsDue: false,
+          systemMaintenance: true,
+        },
+      },
+    };
+  },
+
+  updateSettings: async (settings: ApiSettings) => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hrms-settings', JSON.stringify(settings));
+    }
+
+    return {
+      success: true,
+      settings,
+      message: 'Settings updated successfully',
+    };
+  },
+};
 // ─── Employees ───────────────────────────────────────────────────────────────
 
 export const employeeService = {
