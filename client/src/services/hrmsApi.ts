@@ -11,6 +11,60 @@ function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+export interface ApiGoal {
+  _id: string;
+  employeeId: string;
+  title: string;
+  progress: number;
+  dueDate?: string;
+  createdAt: string;
+}
+
+export interface ApiTask {
+  _id: string;
+  employeeId: string;
+  title: string;
+  status: 'Pending' | 'In Progress' | 'Done';
+  priority: 'Low' | 'Medium' | 'High';
+  createdAt: string;
+}
+
+export interface ApiPerformanceReview {
+  _id: string;
+  employeeId: { _id: string; name: string; department: string; role: string };
+  score: number;
+  reviewPeriod: string;
+  managerFeedback?: string;
+  createdAt: string;
+}
+
+export const performanceService = {
+  // Goals
+  getGoals: (employeeId?: string) =>
+    request<{ success: boolean; goals: ApiGoal[] }>('GET', employeeId ? `/performance/goals?employeeId=${employeeId}` : '/performance/goals'),
+  createGoal: (title: string, dueDate?: string, employeeId?: string) =>
+    request<{ success: boolean; goal: ApiGoal; message: string }>('POST', '/performance/goals', { title, dueDate, employeeId }),
+  updateGoalProgress: (id: string, progress: number) =>
+    request<{ success: boolean; goal: ApiGoal; message: string }>('PUT', `/performance/goals/${id}`, { progress }),
+  deleteGoal: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/performance/goals/${id}`),
+
+  // Tasks
+  getTasks: (employeeId?: string) =>
+    request<{ success: boolean; tasks: ApiTask[] }>('GET', employeeId ? `/performance/tasks?employeeId=${employeeId}` : '/performance/tasks'),
+  createTask: (title: string, priority: string, employeeId?: string) =>
+    request<{ success: boolean; task: ApiTask; message: string }>('POST', '/performance/tasks', { title, priority, employeeId }),
+  updateTaskStatus: (id: string, status: string) =>
+    request<{ success: boolean; task: ApiTask; message: string }>('PUT', `/performance/tasks/${id}`, { status }),
+  deleteTask: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/performance/tasks/${id}`),
+
+  // Reviews
+  getReviews: (employeeId?: string) =>
+    request<{ success: boolean; reviews: ApiPerformanceReview[] }>('GET', employeeId ? `/performance/reviews?employeeId=${employeeId}` : '/performance/reviews'),
+  createReview: (employeeId: string, score: number, reviewPeriod: string, managerFeedback: string) =>
+    request<{ success: boolean; review: ApiPerformanceReview; message: string }>('POST', '/performance/reviews', { employeeId, score, reviewPeriod, managerFeedback }),
+};
 
 async function request<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -340,4 +394,94 @@ export const documentService = {
     return data;
   },
   delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/documents/${id}`),
+};
+
+
+// ─── Company Hub: Events & Skills ─────────────────────────────────────────────
+
+export interface ApiEvent {
+  _id: string;
+  title: string;
+  date: string;
+  type: 'Holiday' | 'Birthday' | 'Anniversary' | 'Training';
+  createdAt: string;
+}
+
+export interface ApiSkill {
+  _id: string;
+  employeeId: { _id: string; name: string; department: string; role: string };
+  name: string;
+  proficiency: number;
+  endorsements: number;
+  createdAt: string;
+}
+
+export const companyService = {
+  // Events
+  getEvents: () => request<{ success: boolean; events: ApiEvent[] }>('GET', '/company/events'),
+  createEvent: (title: string, date: string, type: string) =>
+    request<{ success: boolean; event: ApiEvent; message: string }>('POST', '/company/events', { title, date, type }),
+  deleteEvent: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/events/${id}`),
+
+  // Skills
+  getSkills: (department?: string) =>
+    request<{ success: boolean; skills: ApiSkill[] }>('GET', department ? `/company/skills?department=${department}` : '/company/skills'),
+  createSkill: (name: string, proficiency: number, employeeId?: string) =>
+    request<{ success: boolean; skill: ApiSkill; message: string }>('POST', '/company/skills', { name, proficiency, employeeId }),
+  endorseSkill: (id: string) =>
+    request<{ success: boolean; skill: ApiSkill; message: string }>('POST', `/company/skills/${id}/endorse`),
+  deleteSkill: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/skills/${id}`),
+};
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export interface ApiNotification {
+  _id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'leave' | 'payroll' | 'attendance' | 'document' | 'system';
+  read: boolean;
+  link?: string | null;
+  leaveId?: string | null;
+  priority?: 'high' | 'normal';
+  createdAt: string;
+}
+
+export const notificationService = {
+  // Fetch all notifications + unread count for the logged-in user
+  getAll: () =>
+    request<{ success: boolean; notifications: ApiNotification[]; unreadCount: number }>(
+      'GET', '/notifications'
+    ),
+
+  // Mark a single notification as read
+  markAsRead: (id: string) =>
+    request<{ success: boolean; notification: ApiNotification }>(
+      'PUT', `/notifications/${id}/read`
+    ),
+
+  // Mark ALL notifications as read
+  markAllAsRead: () =>
+    request<{ success: boolean; message: string }>(
+      'PUT', '/notifications/mark-all-read'
+    ),
+
+  // Delete a single notification
+  delete: (id: string) =>
+    request<{ success: boolean; message: string }>(
+      'DELETE', `/notifications/${id}`
+    ),
+
+  // Delete all read notifications (clear inbox)
+  clearRead: () =>
+    request<{ success: boolean; message: string }>(
+      'DELETE', '/notifications/clear-read'
+    ),
+
+  // HR only: broadcast a notification
+  create: (payload: { title: string; message: string; type?: string; targetUserId?: string; link?: string }) =>
+    request<{ success: boolean; message: string }>(
+      'POST', '/notifications', payload
+    ),
 };

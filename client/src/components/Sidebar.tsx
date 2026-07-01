@@ -14,7 +14,9 @@ type IconName =
   | 'building'
   | 'chevron'
   | 'briefcase'
-  | 'checklist';
+  | 'checklist'
+  | 'performance'
+  | 'companyHub';
 
 interface NavItem {
   label: string;
