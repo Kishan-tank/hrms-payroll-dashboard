@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useAuthContext } from '../context/AuthContext';
+import { useTheme, Theme } from '../context/ThemeContext';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
 
@@ -38,10 +39,12 @@ function Icon({ name }: { name: string }) {
   return <svg {...common}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>;
 }
 
+const THEME_OPTIONS: Theme[] = ['light', 'dark', 'system'];
+
 export default function SettingsPage() {
   const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
-  const [theme, setTheme] = useState('light');
+  const { theme, setTheme } = useTheme();
   const [notifications, setNotifications] = useState(notificationSettings);
 
   const userName = user?.name || 'Unknown User';
@@ -165,7 +168,7 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Theme Preferences</h2>
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
-                  {['light', 'dark', 'system'].map((item) => (
+                  {THEME_OPTIONS.map((item) => (
                     <button key={item} type="button" onClick={() => setTheme(item)} className={`rounded-2xl border-2 p-4 text-center transition ${theme === item ? 'border-blue-600 bg-blue-50/40 dark:bg-blue-500/10' : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/50'}`}>
                       <div className="mb-3 h-16 rounded-xl border border-slate-200 dark:border-white/10" style={{ background: item === 'dark' ? '#0F172A' : item === 'system' ? 'linear-gradient(135deg,#fff 50%,#0F172A 50%)' : '#fff' }} />
                       <p className={`text-sm font-medium ${theme === item ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{item === 'system' ? 'System Default' : `${item.charAt(0).toUpperCase() + item.slice(1)} Mode`}</p>

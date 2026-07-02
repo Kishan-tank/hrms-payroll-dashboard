@@ -23,6 +23,10 @@ export interface User {
   role: UserRole | string;
   department?: string;
   designation?: string;
+  phone?: string;
+  employeeId?: string;
+  location?: string;
+  joiningDate?: string;
 }
 
 export type LoginForm = LoginRequest;
