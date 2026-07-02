@@ -42,6 +42,7 @@ function Icon({ name }: { name: string }) {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const [theme, setTheme] = useState<ApiSettings['theme']>('light');
   const [accentColor, setAccentColor] = useState('#2563EB');
@@ -107,6 +108,10 @@ export default function SettingsPage() {
       </DashboardLayout>
     );
   }
+
+  const userName = user?.name || 'Unknown User';
+  const userRole = user?.role === 'hr' ? 'HR Manager' : 'Employee';
+  const initial = userName.charAt(0).toUpperCase();
 
   return (
     <DashboardLayout title="Settings" userName={user?.name || "Employee"} userRole={user?.role || "User"}>

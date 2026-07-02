@@ -1,4 +1,5 @@
 import type { HrSummary } from '../../services/hrmsApi';
+import { Trophy } from 'lucide-react';
 
 const SPOTLIGHT = {
   name: 'Aisha Verma',
@@ -18,11 +19,11 @@ export default function EmployeeSpotlight({ summary }: { summary?: HrSummary | n
       {/* Background Decorative Elements */}
       <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-amber-500/10 blur-[60px]" />
       <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-blue-500/10 blur-[60px]" />
-      
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-white/5">
         <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-500">
-          <span className="text-base">🏆</span> Employee of the Month
+          <Trophy className="h-4 w-4 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" /> Employee of the Month
         </span>
         <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-400">
           June 2026
@@ -46,7 +47,7 @@ export default function EmployeeSpotlight({ summary }: { summary?: HrSummary | n
             </svg>
           </div>
         </div>
-        
+
         {/* Profile Info */}
         <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{spotlight.name}</h3>
         <p className="text-sm font-semibold text-slate-500 dark:font-medium dark:text-slate-400">{spotlight.title} • {spotlight.department}</p>

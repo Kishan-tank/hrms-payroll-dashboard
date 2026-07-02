@@ -57,6 +57,19 @@ export const getAllEmployees = async (req, res) => {
   }
 };
 
+// Get logged-in user's employee profile
+export const getMe = async (req, res) => {
+  try {
+    const employee = await Employee.findOne({ email: req.user.email }) || await Employee.findOne({ userId: req.user.id });
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee profile not found" });
+    }
+    res.status(200).json({ success: true, employee });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch profile", error: error.message });
+  }
+};
+
 // Get single employee by ID
 export const getEmployeeById = async (req, res) => {
   try {

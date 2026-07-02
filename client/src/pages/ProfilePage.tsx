@@ -33,11 +33,9 @@ export default function ProfilePage() {
         return;
       }
       try {
-        const res = await employeeService.getAll({ search: user.email });
-        if (res.success && res.employees.length > 0) {
-          // Find exact match by email
-          const me = res.employees.find(e => e.email === user.email);
-          if (me) setEmployee(me);
+        const res = await employeeService.getMe();
+        if (res.success && res.employee) {
+          setEmployee(res.employee);
         }
       } catch (err) {
         console.error("Failed to fetch employee profile", err);
