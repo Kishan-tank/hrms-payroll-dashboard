@@ -203,8 +203,8 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
                   cy="75%"
                   innerRadius={60}
                   outerRadius={75}
-                  startAngle={0}
-                  endAngle={180}
+                  startAngle={180}
+                  endAngle={0}
                   paddingAngle={4}
                   cornerRadius={10}
                   dataKey="value"
@@ -227,7 +227,7 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
             {(activeIndex === -1 || activeIndex === 3) && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end pb-8">
                 <div className="text-[26px] font-extrabold text-slate-900 tracking-tight dark:text-white">
-                  {activeIndex === 3 ? leaveBalance : leaveBalance}
+                  {activeIndex === 3 ? leaveBalance : leavesTaken}
                 </div>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   {activeIndex === 3 ? 'Days Available' : 'Total Used'}
