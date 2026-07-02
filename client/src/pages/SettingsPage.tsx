@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
+import { settingsService, type ApiSettings } from '../services/hrmsApi';
+import { useToast } from '../context/ToastContext';
 import { useAuthContext } from '../context/AuthContext';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
@@ -12,14 +14,14 @@ const tabs: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'permissions', label: 'Role Permissions', icon: 'shield' },
 ];
 
-const notificationSettings = [
-  { label: 'New leave requests', desc: 'Get notified when employees apply for leave', enabled: true },
-  { label: 'Payroll processed', desc: 'Receive alerts when payroll cycle completes', enabled: true },
-  { label: 'Attendance alerts', desc: 'Get notified for late arrivals or absences', enabled: false },
-  { label: 'New employee joined', desc: 'Receive onboarding notifications', enabled: true },
-  { label: 'Performance reviews due', desc: 'Reminders for upcoming review cycles', enabled: false },
-  { label: 'System maintenance', desc: 'Platform maintenance and downtime alerts', enabled: true },
-];
+const defaultNotifications = {
+  newLeaveRequests: true,
+  payrollProcessed: true,
+  attendanceAlerts: false,
+  newEmployeeJoined: true,
+  performanceReviewsDue: false,
+  systemMaintenance: true,
+};
 
 const rolePermissions = [
   { role: 'HR Manager', permissions: ['View All Employees', 'Approve Leaves', 'Run Payroll', 'Generate Reports', 'Manage Settings', 'View Analytics'] },
@@ -35,23 +37,95 @@ function Icon({ name }: { name: string }) {
   if (name === 'bell') return <svg {...common}><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>;
   if (name === 'palette') return <svg {...common}><path d="M12 22a10 10 0 1 1 10-10 3 3 0 0 1-3 3h-1.5a1.5 1.5 0 0 0 0 3H18a4 4 0 0 1-4 4z" /><circle cx="7.5" cy="10.5" r=".5" /><circle cx="10.5" cy="7.5" r=".5" /><circle cx="14.5" cy="7.5" r=".5" /><circle cx="16.5" cy="11.5" r=".5" /></svg>;
   if (name === 'save') return <svg {...common}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>;
-  return <svg {...common}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>;
+  if (name === 'shield') return <svg {...common}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>;
+  return <svg {...common}><circle cx="12" cy="12" r="10" /></svg>;
 }
 
 export default function SettingsPage() {
   const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
-  const [theme, setTheme] = useState('light');
-  const [notifications, setNotifications] = useState(notificationSettings);
+  const [theme, setTheme] = useState<ApiSettings['theme']>('light');
+  const [accentColor, setAccentColor] = useState('#2563EB');
+  const [notifications, setNotifications] = useState(defaultNotifications);
+  
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  const toast = useToast();
+  const { user } = useAuthContext();
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      const res = await settingsService.getSettings();
+      if (res.success && res.settings) {
+        setTheme(res.settings.theme || 'light');
+        setAccentColor(res.settings.accentColor || '#2563EB');
+        setNotifications(res.settings.notifications || defaultNotifications);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      const res = await settingsService.updateSettings({
+        theme,
+        accentColor,
+        notifications
+      });
+      if (res.success) {
+        toast.success('Settings updated successfully');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleNotification = (key: keyof typeof defaultNotifications) => {
+    setNotifications(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Settings">
+        <div className="flex h-[400px] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const userName = user?.name || 'Unknown User';
   const userRole = user?.role === 'hr' ? 'HR Manager' : 'Employee';
   const initial = userName.charAt(0).toUpperCase();
 
   return (
-    <DashboardLayout title="Settings" userName={userName} userRole={userRole}>
+    <DashboardLayout title="Settings" userName={user?.name || "Employee"} userRole={user?.role || "User"}>
       <div className="space-y-5">
-        <h1 className="text-xl font-bold text-slate-950 dark:text-white">Settings</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-slate-950 dark:text-white">Settings</h1>
+          <button 
+            onClick={handleSaveSettings}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <Icon name="save" /> {saving ? 'Saving...' : 'Save All Changes'}
+          </button>
+        </div>
 
         <div className="flex flex-col gap-5 lg:flex-row">
           <aside className="w-full shrink-0 lg:w-56">
@@ -80,33 +154,25 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Profile Settings</h2>
                 <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6 dark:border-white/10">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">{initial}</div>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
                   <div>
-                    <div className="font-semibold text-slate-950 dark:text-white">{userName}</div>
-                    <div className="text-sm text-slate-400">{userRole} - HRMSPro</div>
+                    <div className="font-semibold text-slate-950 dark:text-white">{user?.name || 'Employee Name'}</div>
+                    <div className="text-sm capitalize text-slate-400">{user?.role || 'Employee'}</div>
                     <button type="button" className="mt-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">Change Photo</button>
                   </div>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
-                  {[
-                    ['Full Name', userName],
-                    ['Email Address', user?.email || 'N/A'],
-                    ['Phone Number', user?.phone || 'N/A'],
-                    ['Employee ID', user?.employeeId || 'N/A'],
-                    ['Department', user?.department || 'N/A'],
-                    ['Designation', user?.designation || 'N/A'],
-                    ['Location', user?.location || 'N/A'],
-                    ['Joining Date', user?.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : 'N/A'],
-                  ].map(([label, value]) => (
-                    <label key={label} className="block">
-                      <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
-                      <input defaultValue={value} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
-                    </label>
-                  ))}
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Full Name</span>
+                    <input disabled value={user?.name || ''} className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-400" />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Email Address</span>
+                    <input disabled value={user?.email || ''} className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-400" />
+                  </label>
                 </div>
-                <button type="button" className="mt-6 flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white">
-                  <Icon name="save" /> Save Changes
-                </button>
               </div>
             )}
 
@@ -122,18 +188,8 @@ export default function SettingsPage() {
                         <input type="password" placeholder="********" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
                       </label>
                     ))}
+                    <button type="button" className="mt-4 rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">Update Password</button>
                   </div>
-                  <div className="border-t border-slate-100 pt-4 dark:border-white/10">
-                    <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Two-Factor Authentication</h3>
-                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/50">
-                      <div>
-                        <div className="text-sm font-medium text-slate-950 dark:text-white">Authenticator App</div>
-                        <div className="text-xs text-slate-400">Use an app like Google Authenticator</div>
-                      </div>
-                      <span className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-medium text-white">Enabled</span>
-                    </div>
-                  </div>
-                  <button type="button" className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white"><Icon name="save" /> Update Security</button>
                 </div>
               </div>
             )}
@@ -142,21 +198,31 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Notification Preferences</h2>
                 <div className="space-y-4">
-                  {notifications.map((item, index) => (
-                    <div key={item.label} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/50">
-                      <div>
-                        <div className="text-sm font-medium text-slate-950 dark:text-white">{item.label}</div>
-                        <div className="text-xs text-slate-400">{item.desc}</div>
+                  {[
+                    { key: 'newLeaveRequests', label: 'New leave requests', desc: 'Get notified when employees apply for leave' },
+                    { key: 'payrollProcessed', label: 'Payroll processed', desc: 'Receive alerts when payroll cycle completes' },
+                    { key: 'attendanceAlerts', label: 'Attendance alerts', desc: 'Get notified for late arrivals or absences' },
+                    { key: 'newEmployeeJoined', label: 'New employee joined', desc: 'Receive onboarding notifications' },
+                    { key: 'performanceReviewsDue', label: 'Performance reviews due', desc: 'Reminders for upcoming review cycles' },
+                    { key: 'systemMaintenance', label: 'System maintenance', desc: 'Platform maintenance and downtime alerts' }
+                  ].map((item) => {
+                    const isEnabled = notifications[item.key as keyof typeof defaultNotifications];
+                    return (
+                      <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/50">
+                        <div>
+                          <div className="text-sm font-medium text-slate-950 dark:text-white">{item.label}</div>
+                          <div className="text-xs text-slate-400">{item.desc}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleNotification(item.key as keyof typeof defaultNotifications)}
+                          className={`relative h-6 w-11 rounded-full transition ${isEnabled ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+                        >
+                          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${isEnabled ? 'left-[22px]' : 'left-0.5'}`} />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setNotifications((items) => items.map((entry, entryIndex) => entryIndex === index ? { ...entry, enabled: !entry.enabled } : entry))}
-                        className={`relative h-6 w-11 rounded-full transition ${item.enabled ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}
-                      >
-                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${item.enabled ? 'left-[22px]' : 'left-0.5'}`} />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -165,7 +231,7 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Theme Preferences</h2>
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
-                  {['light', 'dark', 'system'].map((item) => (
+                  {(['light', 'dark', 'system'] as const).map((item) => (
                     <button key={item} type="button" onClick={() => setTheme(item)} className={`rounded-2xl border-2 p-4 text-center transition ${theme === item ? 'border-blue-600 bg-blue-50/40 dark:bg-blue-500/10' : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/50'}`}>
                       <div className="mb-3 h-16 rounded-xl border border-slate-200 dark:border-white/10" style={{ background: item === 'dark' ? '#0F172A' : item === 'system' ? 'linear-gradient(135deg,#fff 50%,#0F172A 50%)' : '#fff' }} />
                       <p className={`text-sm font-medium ${theme === item ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{item === 'system' ? 'System Default' : `${item.charAt(0).toUpperCase() + item.slice(1)} Mode`}</p>
@@ -174,7 +240,15 @@ export default function SettingsPage() {
                 </div>
                 <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">Accent Color</h3>
                 <div className="flex gap-3">
-                  {['#2563EB', '#7C3AED', '#DB2777', '#DC2626', '#059669', '#D97706'].map((color) => <button key={color} type="button" className="h-8 w-8 rounded-full border-2" style={{ background: color, borderColor: color === '#2563EB' ? '#0F172A' : 'transparent' }} />)}
+                  {['#2563EB', '#7C3AED', '#DB2777', '#DC2626', '#059669', '#D97706'].map((color) => (
+                    <button 
+                      key={color} 
+                      type="button" 
+                      onClick={() => setAccentColor(color)}
+                      className="h-8 w-8 rounded-full border-2 transition-transform hover:scale-110" 
+                      style={{ background: color, borderColor: accentColor === color ? '#0F172A' : 'transparent' }} 
+                    />
+                  ))}
                 </div>
               </div>
             )}
