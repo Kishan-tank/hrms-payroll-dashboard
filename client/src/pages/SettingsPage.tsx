@@ -52,7 +52,6 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   
   const toast = useToast();
-  const { user } = useAuthContext();
 
   useEffect(() => {
     fetchSettings();
@@ -108,10 +107,6 @@ export default function SettingsPage() {
       </DashboardLayout>
     );
   }
-
-  const userName = user?.name || 'Unknown User';
-  const userRole = user?.role === 'hr' ? 'HR Manager' : 'Employee';
-  const initial = userName.charAt(0).toUpperCase();
 
   return (
     <DashboardLayout title="Settings" userName={user?.name || "Employee"} userRole={user?.role || "User"}>
