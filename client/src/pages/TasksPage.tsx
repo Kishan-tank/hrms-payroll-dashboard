@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, CheckCircle2, Circle, Clock, Trash2, ShieldAlert, Filter, ListTodo, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Clock, Trash2, Filter, ListTodo, AlertCircle, RefreshCw } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { taskService, type ApiTask } from '../services/hrmsApi';
 import { useToast } from '../context/ToastContext';
-import { useAuthContext } from '../context/AuthContext';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<ApiTask[]>([]);
@@ -19,8 +18,6 @@ export default function TasksPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const toast = useToast();
-  const { user } = useAuthContext();
-  const isHrManager = user?.role === 'hr-manager' || user?.role === 'hr';
 
   useEffect(() => {
     fetchTasks();
@@ -321,7 +318,7 @@ export default function TasksPage() {
                       </span>
                       
                       <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                        {task.employeeId && (
+                        {task.employeeId && typeof task.employeeId !== 'string' && (
                           <span className="font-semibold text-slate-600 dark:text-slate-300">
                             👤 {task.employeeId.name} ({task.employeeId.department})
                           </span>

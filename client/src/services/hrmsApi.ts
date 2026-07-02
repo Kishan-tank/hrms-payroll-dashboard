@@ -22,7 +22,7 @@ export interface ApiGoal {
 
 export interface ApiTask {
   _id: string;
-  employeeId: string;
+  employeeId: string | { _id: string; name: string; department: string; role?: string };
   title: string;
   status: 'Pending' | 'In Progress' | 'Done';
   priority: 'Low' | 'Medium' | 'High';
@@ -497,6 +497,75 @@ export const companyService = {
   deleteSkill: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/skills/${id}`),
 };
 
+// ─── Help Center ───────────────────────────────────────────────────────────
+
+export interface ApiFAQItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface ApiFAQCategory {
+  id: string;
+  label: string;
+  icon: string;
+  items: ApiFAQItem[];
+}
+
+const DEFAULT_FAQS: ApiFAQCategory[] = [
+  {
+    id: 'getting-started',
+    label: 'Getting Started',
+    icon: 'Rocket',
+    items: [
+      {
+        id: 'account-access',
+        question: 'How do I access my HRMSPro account?',
+        answer: 'Use your company email and the password you received from HR. If you forgot your password, use the reset option on the login page.',
+      },
+      {
+        id: 'dashboard-overview',
+        question: 'What can I see on the dashboard?',
+        answer: 'The dashboard shows attendance, approvals, payroll status, and quick links to key HR workflows.',
+      },
+    ],
+  },
+  {
+    id: 'leave-payroll',
+    label: 'Leave & Payroll',
+    icon: 'Coins',
+    items: [
+      {
+        id: 'leave-request',
+        question: 'How do I request leave?',
+        answer: 'Open the Leave section, select your dates, add a note, and submit the request for manager review.',
+      },
+      {
+        id: 'payslip-download',
+        question: 'Where can I download my payslip?',
+        answer: 'Go to Payroll and open the latest payslip entry to download or preview your statement.',
+      },
+    ],
+  },
+  {
+    id: 'security',
+    label: 'Security & Privacy',
+    icon: 'Lock',
+    items: [
+      {
+        id: 'account-security',
+        question: 'How is my data protected?',
+        answer: 'All sessions use secure authentication and sensitive actions are guarded by role-based permissions.',
+      },
+    ],
+  },
+];
+
+export const helpCenterService = {
+  getFAQs: async () => ({ success: true as const, categories: DEFAULT_FAQS }),
+  seedFAQs: async () => ({ success: true as const, message: 'FAQs seeded successfully.', categories: DEFAULT_FAQS }),
+};
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export interface ApiNotification {
@@ -551,15 +620,6 @@ export const notificationService = {
 };
 
 // ─── Tasks ───────────────────────────────────────────────────────────────────
-
-export interface ApiTask {
-  _id: string;
-  employeeId: { _id: string; name: string; department: string; role: string };
-  title: string;
-  status: 'Pending' | 'In Progress' | 'Done';
-  priority: 'Low' | 'Medium' | 'High';
-  createdAt: string;
-}
 
 export const taskService = {
   getAll: () => request<{ success: boolean; tasks: ApiTask[] }>('GET', '/tasks'),
