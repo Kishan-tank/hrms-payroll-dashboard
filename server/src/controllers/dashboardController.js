@@ -301,7 +301,7 @@ export const getEmployeeSummary = async (req, res) => {
             department: user.department || "General"
           },
           workspace: { attendanceStatus: "Not Checked In", checkInTime: null },
-          payrollLeave: { leavesTaken: 0, leaveBalance: 24, latestNetPay: 0 }
+          payrollLeave: { leavesTaken: 0, leaveBalance: 36, latestNetPay: 0 }
         }
       });
     }
@@ -315,7 +315,7 @@ export const getEmployeeSummary = async (req, res) => {
       { $group: { _id: null, total: { $sum: "$days" } } }
     ]);
     const leavesTaken = totalLeaves.length > 0 ? totalLeaves[0].total : 0;
-    const leaveBalance = Math.max(0, 24 - leavesTaken);
+    const leaveBalance = Math.max(0, 36 - leavesTaken);
 
     // Calculate Attendance Rate for current month
     const currentYear = new Date().getFullYear();

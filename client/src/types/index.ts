@@ -23,6 +23,9 @@ export interface User {
   role: UserRole | string;
   department?: string;
   designation?: string;
+  phone?: string;
+  employeeId?: string;
+  joinDate?: string;
 }
 
 export type LoginForm = LoginRequest;
