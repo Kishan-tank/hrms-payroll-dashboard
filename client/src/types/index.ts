@@ -25,8 +25,7 @@ export interface User {
   designation?: string;
   phone?: string;
   employeeId?: string;
-  location?: string;
-  joiningDate?: string;
+  joinDate?: string;
 }
 
 export type LoginForm = LoginRequest;

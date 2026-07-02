@@ -98,8 +98,7 @@ export default function SettingsPage() {
                     ['Employee ID', user?.employeeId || 'N/A'],
                     ['Department', user?.department || 'N/A'],
                     ['Designation', user?.designation || 'N/A'],
-                    ['Location', user?.location || 'N/A'],
-                    ['Joining Date', user?.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : 'N/A'],
+                    ['Joining Date', user?.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'],
                   ].map(([label, value]) => (
                     <label key={label} className="block">
                       <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
