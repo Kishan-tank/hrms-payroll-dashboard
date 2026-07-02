@@ -2,6 +2,7 @@ import { useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useAuthContext } from '../context/AuthContext';
 import { useTheme, Theme } from '../context/ThemeContext';
+import { useNotificationPreferences } from '../hooks/useNotificationPreferences';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
 
@@ -13,14 +14,7 @@ const tabs: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'permissions', label: 'Role Permissions', icon: 'shield' },
 ];
 
-const notificationSettings = [
-  { label: 'New leave requests', desc: 'Get notified when employees apply for leave', enabled: true },
-  { label: 'Payroll processed', desc: 'Receive alerts when payroll cycle completes', enabled: true },
-  { label: 'Attendance alerts', desc: 'Get notified for late arrivals or absences', enabled: false },
-  { label: 'New employee joined', desc: 'Receive onboarding notifications', enabled: true },
-  { label: 'Performance reviews due', desc: 'Reminders for upcoming review cycles', enabled: false },
-  { label: 'System maintenance', desc: 'Platform maintenance and downtime alerts', enabled: true },
-];
+
 
 const rolePermissions = [
   { role: 'HR Manager', permissions: ['View All Employees', 'Approve Leaves', 'Run Payroll', 'Generate Reports', 'Manage Settings', 'View Analytics'] },
@@ -45,7 +39,7 @@ export default function SettingsPage() {
   const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const { theme, setTheme } = useTheme();
-  const [notifications, setNotifications] = useState(notificationSettings);
+  const { notifications, setNotifications } = useNotificationPreferences(user?.id);
 
   const userName = user?.name || 'Unknown User';
   const userRole = user?.role === 'hr' ? 'HR Manager' : 'Employee';
