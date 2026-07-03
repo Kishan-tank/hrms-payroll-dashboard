@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user', JSON.stringify(u));
       
       setUser(u); 
-      redirectByRole(u);
+      navigate(u.role === 'employee' ? '/employee-dashboard' : '/hr-dashboard');
     } catch (err: unknown) {
       setError(((err as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Registration failed');
     } finally { 
