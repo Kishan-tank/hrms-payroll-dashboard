@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { leaveService, ApiLeave } from '../services/hrmsApi';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
@@ -28,7 +28,7 @@ const leaveSchema = z.object({
 type LeaveFormData = z.infer<typeof leaveSchema>;
 
 export default function LeavePage() {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const { success, info, error: toastError } = useToast();
   // Safely check role regardless of casing
   const normalizedRole = user?.role?.toLowerCase() || '';

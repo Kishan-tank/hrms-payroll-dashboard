@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally { 
       setIsLoading(false); 
     }
-  }, [redirectByRole]);
+  }, [navigate]);
 
   /**
    * Demo / mock login — used by the two login buttons so the app works
