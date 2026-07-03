@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Target, CheckSquare, Award, Plus, Trash2, CheckCircle, Clock, AlertCircle, UserCheck } from 'lucide-react';
 import { performanceService, employeeService, ApiGoal, ApiTask, ApiPerformanceReview, ApiEmployee } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
+import DashboardLayout from '../layouts/DashboardLayout';
 
 export default function PerformancePage() {
   const { user } = useAuthContext();
@@ -138,7 +139,8 @@ const fetchData = async () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1121] p-6 lg:p-8">
+    <DashboardLayout title="Performance">
+      <div className="space-y-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
@@ -485,7 +487,8 @@ const fetchData = async () => {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
 
