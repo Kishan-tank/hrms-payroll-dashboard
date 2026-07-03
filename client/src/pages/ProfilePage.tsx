@@ -64,8 +64,8 @@ export default function ProfilePage() {
 
   // Fallback if not found in DB but logged in (e.g. admin or missing record)
   const displayEmployee: ApiEmployee = employee || {
-    _id: (user as any)?._id || 'EMP-MOCK',
-    employeeId: (user as any)?.employeeId || 'EMP-000',
+    _id: 'EMP-MOCK',
+    employeeId: user?.employeeId || 'EMP-000',
     name: user?.name || 'Unknown User',
     email: user?.email || 'unknown@example.com',
     department: user?.department || 'Unassigned',
