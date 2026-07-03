@@ -19,8 +19,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('user');
-    return stored ? (JSON.parse(stored) as User) : null;
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? (JSON.parse(stored) as User) : null;
+    } catch (err) {
+      console.error('Failed to parse stored user from localStorage', err);
+      return null;
+    }
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     authAPI.logout();
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setUser(null);
     navigate('/login');
   }, [navigate]);
