@@ -22,20 +22,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-      root.classList.add(systemTheme);
-      root.style.colorScheme = systemTheme;
-      setResolvedTheme(systemTheme);
-    } else {
-      root.classList.add(theme);
-      root.style.colorScheme = theme;
-      setResolvedTheme(theme);
+    const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const targetTheme = theme === 'system' ? (isSystemDark ? 'dark' : 'light') : theme;
+    
+    if (!root.classList.contains(targetTheme)) {
+      root.classList.remove('light', 'dark');
+      root.classList.add(targetTheme);
+      root.style.colorScheme = targetTheme;
     }
+    setResolvedTheme(targetTheme);
   }, [theme]);
 
   // Listen for system preference changes
