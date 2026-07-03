@@ -461,3 +461,25 @@ export const settingsService = {
   updateSettings: (payload: Partial<ApiSettings>) =>
     request<{ success: boolean; settings: ApiSettings; message: string }>('PUT', '/settings', payload),
 };
+
+// ─── Help Center ─────────────────────────────────────────────────────────────
+
+export interface ApiFAQItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface ApiFAQCategory {
+  id: string;
+  label: string;
+  icon: string;
+  items: ApiFAQItem[];
+}
+
+export const helpCenterService = {
+  getFAQs: () =>
+    request<{ success: boolean; categories: ApiFAQCategory[] }>('GET', '/help-center/faqs'),
+  seedFAQs: () =>
+    request<{ success: boolean; message: string; categories: ApiFAQCategory[] }>('POST', '/help-center/seed'),
+};
