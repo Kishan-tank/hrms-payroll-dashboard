@@ -225,11 +225,13 @@ export interface ApiLeave {
 
 export interface ApiDocument {
   _id: string;
-  employeeId?: string;
+  employeeId: string | null;
   title: string;
   type: string;
   fileUrl: string;
+  uploadedBy: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -382,7 +384,6 @@ export const analyticsService = {
 export const documentService = {
   getAll: (employeeId?: string) => request<{ success: boolean; documents: ApiDocument[] }>('GET', employeeId ? `/documents?employeeId=${employeeId}` : '/documents'),
   upload: async (formData: FormData) => {
-    // FormData requires different fetch logic because of multipart/form-data
     const token = localStorage.getItem('token');
     const res = await fetch(`${BASE}/documents/upload`, {
       method: 'POST',
