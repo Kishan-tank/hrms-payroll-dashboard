@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 export type Theme = 'dark' | 'light' | 'system';
 
@@ -11,13 +12,10 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    return (localStorage.getItem('theme-preference') as Theme) || 'system';
-  });
+  const [theme, setThemeState] = useLocalStorage<Theme>('theme-preference', 'system', { legacyStringFallback: true });
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem('theme-preference', newTheme);
   };
 
   const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark');

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useLocalStorage } from './useLocalStorage';
 
 export interface NotificationPreference {
   label: string;
@@ -18,21 +19,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationPreference[] = [
 export function useNotificationPreferences(userId?: string) {
   const STORAGE_KEY = `hrms_notification_prefs_${userId ?? 'default'}`;
 
-  const [notifications, setNotifications] = useState<NotificationPreference[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored) as NotificationPreference[];
-      }
-    } catch (err) {
-      console.error('Failed to parse notification preferences from local storage', err);
-    }
-    return DEFAULT_NOTIFICATION_SETTINGS;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-  }, [notifications, STORAGE_KEY]);
+  const [notifications, setNotifications] = useLocalStorage<NotificationPreference[]>(STORAGE_KEY, DEFAULT_NOTIFICATION_SETTINGS);
 
   return {
     notifications,
