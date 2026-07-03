@@ -88,10 +88,6 @@ export default function LeavePage() {
       setLoading(true);
       const res = await leaveService.getAll();
       let leaves = res.leaves || [];
-      if (isEmployee) {
-        // Optimistic filtering if API returns all
-        leaves = leaves.filter(l => l.employeeId?._id === (user as any)?._id || l.employeeId?.name === user?.name);
-      }
       setLeaveRequests(leaves);
       setError('');
     } catch (err: any) {
@@ -128,7 +124,6 @@ export default function LeavePage() {
       const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
 
       await leaveService.apply({
-        employeeId: (user as any)?._id || 'placeholder', // Backend will auto-resolve if employee
         type: data.leaveType,
         fromDate: data.fromDate,
         toDate: data.toDate,

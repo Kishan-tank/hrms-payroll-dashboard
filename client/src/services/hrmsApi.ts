@@ -356,7 +356,7 @@ export const attendanceService = {
 
 export const leaveService = {
   getAll: () => request<{ success: boolean; leaves: ApiLeave[] }>('GET', '/leave'),
-  apply: (payload: { employeeId: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
+  apply: (payload: { employeeId?: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
     request<{ success: boolean; message: string; leave: ApiLeave }>('POST', '/leave', payload),
   updateStatus: (id: string, status: "Approved" | "Rejected" | "Pending") =>
     request<{ success: boolean; leave: ApiLeave }>('PUT', `/leave/${id}/status`, { status }),
