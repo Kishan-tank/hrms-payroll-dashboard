@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import { Calendar, Award, Plus, Trash2, CheckCircle, AlertCircle, ThumbsUp, Sparkles, Users } from 'lucide-react';
+=======
+import { Calendar, Award, Plus, Trash2, CheckCircle, AlertCircle, ThumbsUp, Sparkles } from 'lucide-react';
+>>>>>>> origin/main
 import { companyService, ApiEvent, ApiSkill } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 
@@ -143,7 +147,11 @@ export default function CompanyHubPage() {
           onClick={() => setActiveTab('events')}
           className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-semibold transition-all ${
             activeTab === 'events'
+<<<<<<< HEAD
               ? 'border-blue-600 text-blue-600 dark:border-blue-50 dark:text-blue-400'
+=======
+              ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-400'
+>>>>>>> origin/main
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
           }`}
         >
@@ -154,7 +162,11 @@ export default function CompanyHubPage() {
           onClick={() => setActiveTab('skills')}
           className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-semibold transition-all ${
             activeTab === 'skills'
+<<<<<<< HEAD
               ? 'border-blue-600 text-blue-600 dark:border-blue-50 dark:text-blue-400'
+=======
+              ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-400'
+>>>>>>> origin/main
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
           }`}
         >

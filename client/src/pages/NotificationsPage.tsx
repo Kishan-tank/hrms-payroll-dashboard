@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import { CalendarCheck, IndianRupee, Clock, FileText, Bell, CheckCheck, Inbox, Mail, CheckCircle, Coins, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
@@ -36,30 +36,16 @@ type CombinedFilter = 'all' | 'unread' | 'approvals' | 'payroll' | 'system';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
+<<<<<<< HEAD
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearReadNotifications, dismiss } = useNotifications();
+=======
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+>>>>>>> origin/main
   const [filter, setFilter] = useState<CombinedFilter>('all');
-  const navigate = useNavigate();
-  const { success, info, error: toastError } = useToast();
-
-  // Track which notification IDs are currently processing an action
+  const [pendingConfirm, setPendingConfirm] = useState<{ notifId: string; action: 'Approved' | 'Rejected' } | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
-
-  // Inline confirm state
-  const [pendingConfirm, setPendingConfirm] = useState<{
-    notifId: string;
-    action: 'Approved' | 'Rejected';
-  } | null>(null);
-
-  // Close confirm banner on outside click
-  useEffect(() => {
-    function handleClickOutside() {
-      setPendingConfirm(null);
-    }
-    if (pendingConfirm) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [pendingConfirm]);
+  const navigate = useNavigate();
+  const toast = useToast();
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
@@ -80,9 +66,8 @@ export default function NotificationsPage() {
     { label: 'System',    value: 'system',    icon: Monitor },
   ] as const;
 
-  // 1. Request confirmation before leave actions
   function requestLeaveAction(
-    e: React.MouseEvent,
+    e: MouseEvent<HTMLButtonElement>,
     notifId: string,
     action: 'Approved' | 'Rejected'
   ) {
@@ -95,28 +80,27 @@ export default function NotificationsPage() {
     setPendingConfirm({ notifId, action });
   }
 
-  // 2. Execute confirmed leave action
   async function confirmLeaveAction() {
     if (!pendingConfirm) return;
     const { notifId, action } = pendingConfirm;
-    const notif = notifications.find(n => n.id === notifId);
+    const notif = notifications.find((n) => n.id === notifId);
     if (!notif?.leaveId) {
-      info('No leave record linked to this notification');
+      toast.info('No leave record linked to this notification');
       setPendingConfirm(null);
       return;
     }
-    setProcessingIds(prev => new Set(prev).add(notifId));
+    setProcessingIds((prev) => new Set(prev).add(notifId));
     setPendingConfirm(null);
     try {
       await leaveService.updateStatus(notif.leaveId, action);
       markAsRead(notifId);
-      success(`Leave request ${action.toLowerCase()}.`);
+      toast.success(`Leave request ${action.toLowerCase()}.`);
       // Brief delay so user sees the success state before dismiss
-      setTimeout(() => dismiss(notifId), 800);
+      setTimeout(() => deleteNotification(notifId), 800);
     } catch (err: any) {
-      toastError(err?.message || `Failed to ${action.toLowerCase()} leave request`);
+      toast.error(err?.message || `Failed to ${action.toLowerCase()} leave request`);
     } finally {
-      setProcessingIds(prev => {
+      setProcessingIds((prev) => {
         const next = new Set(prev);
         next.delete(notifId);
         return next;
@@ -124,8 +108,7 @@ export default function NotificationsPage() {
     }
   }
 
-  // 3. Navigation and simple actions
-  function handleSimpleAction(e: React.MouseEvent, action: string, n: Notification) {
+  function handleSimpleAction(e: MouseEvent<HTMLButtonElement>, action: string, n: Notification) {
     e.stopPropagation();
     if (action === 'mark_read') {
       markAsRead(n.id);

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuthContext } from '../../context/AuthContext';
+import { useEmployeeDrawer } from '../../context/EmployeeDrawerContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { ArrowRight } from 'lucide-react';
 import { employeeService, ApiEmployee } from '../../services/hrmsApi';
@@ -18,7 +19,12 @@ function CommandIcon({ type }: { type: string }) {
   switch (type) {
     case 'action': return <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
     case 'nav':    return <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>;
-    case 'search': return <SearchIcon />;
+    case 'search': 
+      return (
+        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      );
     default:       return <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />;
   }
 }
@@ -36,12 +42,14 @@ interface CommandItem {
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
+  const { openDrawer } = useEmployeeDrawer();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
+  const lastFocusedRef = useRef<Element | null>(null);
 
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [employees, setEmployees] = useState<ApiEmployee[]>([]);
@@ -76,6 +84,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     { id: 'nav-doc', label: 'Documents', cat: 'Navigation', type: 'nav', path: '/documents' },
     { id: 'nav-prof', label: 'Profile', cat: 'Navigation', type: 'nav', path: '/profile' },
     { id: 'nav-help', label: 'Help Center', cat: 'Navigation', type: 'nav', path: '/help' },
+    { id: 'nav-onboarding', label: 'Onboarding', cat: 'Navigation', type: 'nav', path: '/onboarding' },
     { id: 'nav-set', label: 'Settings', cat: 'Navigation', type: 'nav', path: '/settings' },
     
     { id: 'act-req-leave', label: 'Request Leave', cat: 'Actions', type: 'action', path: '/leave', keywords: ['apply', 'time off'] },
@@ -83,6 +92,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     { id: 'act-my-att', label: 'Open My Attendance', cat: 'Actions', type: 'action', path: '/attendance', keywords: ['time', 'clock'] },
     { id: 'act-my-doc', label: 'Open My Documents', cat: 'Actions', type: 'action', path: '/documents', keywords: ['files', 'upload'] },
     { id: 'act-my-prof', label: 'Open My Profile', cat: 'Actions', type: 'action', path: '/profile', keywords: ['edit', 'personal'] },
+    { id: 'act-onboarding', label: 'Complete Onboarding Steps', cat: 'Actions', type: 'action', path: '/onboarding', keywords: ['setup', 'profile', 'documents', 'bank'] },
   ];
 
   const normalizedRole = user?.role?.toLowerCase() || '';
@@ -126,7 +136,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
       label: e.name,
       cat: e.department || 'Employee',
       type: 'search' as const,
-      path: `/employees?highlight=${e.employeeId}`,
+      action: () => openDrawer(e),
     }));
 
     if (empMatched.length > 0) groups.push({ title: 'Employees', items: empMatched });
@@ -150,6 +160,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
 
   useEffect(() => {
     if (open) {
+      lastFocusedRef.current = document.activeElement;
       setQuery('');
       setDebouncedQuery('');
       setSelectedIndex(0);
@@ -158,6 +169,10 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
       }).catch(() => {});
     } else {
       setEmployees([]);
+      if (lastFocusedRef.current instanceof HTMLElement) {
+        lastFocusedRef.current.focus();
+      }
+      lastFocusedRef.current = null;
     }
   }, [open]);
 
@@ -309,7 +324,9 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
                               <span className="flex-1 truncate">{cmd.label}</span>
                               {isSelected && (
                                 <span className="flex items-center text-blue-400 gap-1.5 opacity-80">
-                                  <span className="text-[11px] font-semibold tracking-wide">Jump</span>
+                                  <span className="text-[11px] font-semibold tracking-wide">
+                                    {cmd.type === 'search' ? 'View' : 'Jump'}
+                                  </span>
                                   <ArrowRight size={14} />
                                 </span>
                               )}

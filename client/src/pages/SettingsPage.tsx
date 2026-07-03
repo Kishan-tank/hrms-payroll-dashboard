@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
+import { useAuthContext } from '../context/AuthContext';
+import { useTheme, Theme } from '../context/ThemeContext';
+import { useNotificationPreferences } from '../hooks/useNotificationPreferences';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
 
@@ -11,14 +14,7 @@ const tabs: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'permissions', label: 'Role Permissions', icon: 'shield' },
 ];
 
-const notificationSettings = [
-  { label: 'New leave requests', desc: 'Get notified when employees apply for leave', enabled: true },
-  { label: 'Payroll processed', desc: 'Receive alerts when payroll cycle completes', enabled: true },
-  { label: 'Attendance alerts', desc: 'Get notified for late arrivals or absences', enabled: false },
-  { label: 'New employee joined', desc: 'Receive onboarding notifications', enabled: true },
-  { label: 'Performance reviews due', desc: 'Reminders for upcoming review cycles', enabled: false },
-  { label: 'System maintenance', desc: 'Platform maintenance and downtime alerts', enabled: true },
-];
+
 
 const rolePermissions = [
   { role: 'HR Manager', permissions: ['View All Employees', 'Approve Leaves', 'Run Payroll', 'Generate Reports', 'Manage Settings', 'View Analytics'] },
@@ -37,13 +33,20 @@ function Icon({ name }: { name: string }) {
   return <svg {...common}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>;
 }
 
+const THEME_OPTIONS: Theme[] = ['light', 'dark', 'system'];
+
 export default function SettingsPage() {
+  const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
-  const [theme, setTheme] = useState('light');
-  const [notifications, setNotifications] = useState(notificationSettings);
+  const { theme, setTheme } = useTheme();
+  const { notifications, setNotifications } = useNotificationPreferences(user?.id);
+
+  const userName = user?.name || 'Unknown User';
+  const userRole = user?.role === 'hr' ? 'HR Manager' : 'Employee';
+  const initial = userName.charAt(0).toUpperCase();
 
   return (
-    <DashboardLayout title="Settings" userName="Anil Kumar" userRole="HR Manager">
+    <DashboardLayout title="Settings" userName={userName} userRole={userRole}>
       <div className="space-y-5">
         <h1 className="text-xl font-bold text-slate-950 dark:text-white">Settings</h1>
 
@@ -74,23 +77,22 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Profile Settings</h2>
                 <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6 dark:border-white/10">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">A</div>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">{initial}</div>
                   <div>
-                    <div className="font-semibold text-slate-950 dark:text-white">Anil Kumar</div>
-                    <div className="text-sm text-slate-400">HR Manager - HRMSPro</div>
+                    <div className="font-semibold text-slate-950 dark:text-white">{userName}</div>
+                    <div className="text-sm text-slate-400">{userRole} - HRMSPro</div>
                     <button type="button" className="mt-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">Change Photo</button>
                   </div>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   {[
-                    ['Full Name', 'Anil Kumar'],
-                    ['Email Address', 'anil.kumar@hrms.com'],
-                    ['Phone Number', '+91 98765 43210'],
-                    ['Employee ID', 'EMP001'],
-                    ['Department', 'Human Resources'],
-                    ['Designation', 'HR Manager'],
-                    ['Location', 'Hyderabad, India'],
-                    ['Joining Date', 'January 15, 2022'],
+                    ['Full Name', userName],
+                    ['Email Address', user?.email || 'N/A'],
+                    ['Phone Number', user?.phone || 'N/A'],
+                    ['Employee ID', user?.employeeId || 'N/A'],
+                    ['Department', user?.department || 'N/A'],
+                    ['Designation', user?.designation || 'N/A'],
+                    ['Joining Date', user?.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'],
                   ].map(([label, value]) => (
                     <label key={label} className="block">
                       <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
@@ -159,7 +161,7 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Theme Preferences</h2>
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
-                  {['light', 'dark', 'system'].map((item) => (
+                  {THEME_OPTIONS.map((item) => (
                     <button key={item} type="button" onClick={() => setTheme(item)} className={`rounded-2xl border-2 p-4 text-center transition ${theme === item ? 'border-blue-600 bg-blue-50/40 dark:bg-blue-500/10' : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/50'}`}>
                       <div className="mb-3 h-16 rounded-xl border border-slate-200 dark:border-white/10" style={{ background: item === 'dark' ? '#0F172A' : item === 'system' ? 'linear-gradient(135deg,#fff 50%,#0F172A 50%)' : '#fff' }} />
                       <p className={`text-sm font-medium ${theme === item ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{item === 'system' ? 'System Default' : `${item.charAt(0).toUpperCase() + item.slice(1)} Mode`}</p>

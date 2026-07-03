@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useAuthContext } from '../context/AuthContext';
@@ -21,6 +22,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [employee, setEmployee] = useState<ApiEmployee | null>(null);
@@ -33,11 +35,9 @@ export default function ProfilePage() {
         return;
       }
       try {
-        const res = await employeeService.getAll({ search: user.email });
-        if (res.success && res.employees.length > 0) {
-          // Find exact match by email
-          const me = res.employees.find(e => e.email === user.email);
-          if (me) setEmployee(me);
+        const res = await employeeService.getMe();
+        if (res.success && res.employee) {
+          setEmployee(res.employee);
         }
       } catch (err) {
         console.error("Failed to fetch employee profile", err);
@@ -93,7 +93,7 @@ export default function ProfilePage() {
                 {initials}
               </div>
               <div className="mb-4 flex gap-3">
-                <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 dark:hover:bg-white/10">
+                <button onClick={() => navigate('/leave')} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 dark:hover:bg-white/10">
                   Request Time Off
                 </button>
               </div>
