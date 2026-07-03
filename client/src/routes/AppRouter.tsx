@@ -27,8 +27,8 @@ const ProfilePage = lazy(() => import('../pages/ProfilePage'));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
 const DocumentsPage = lazy(() => import('../pages/DocumentsPage'));
 const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
-const PerformancePage = lazy(() => import('../pages/PerformancePage')); // <-- ADD THIS
-const CompanyHubPage = lazy(() => import('../pages/CompanyHubPage')); // <-- ADD THIS
+const CompanyHubPage = lazy(() => import('../pages/CompanyHubPage'));
+const PerformancePage = lazy(() => import('../pages/PerformancePage'));
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -52,20 +52,20 @@ export default function AppRouter() {
                   <Route path="/design-system" element={<DesignSystemPage />} />
                 )}
 
-            {/* ── Any logged-in user ── */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/documents" element={<DocumentsPage />} />
-              <Route path="/help" element={<HelpCenterPage />} />
-              <Route path="/attendance" element={<AttendancePage />} />
-              <Route path="/leave" element={<LeavePage />} />
-              <Route path="/payroll" element={<PayrollPage />} />
-              
-              <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
-              <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
-            </Route>
+                {/* ── Authenticated routes — wrapped with EmployeeDrawerProvider ── */}
+                <Route element={<ProtectedRoute />}>
+                  {/* Any logged-in user */}
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/documents" element={<DocumentsPage />} />
+                  <Route path="/help" element={<HelpCenterPage />} />
+                  <Route path="/attendance" element={<AttendancePage />} />
+                  <Route path="/leave" element={<LeavePage />} />
+                  <Route path="/payroll" element={<PayrollPage />} />
+                  <Route path="/company-hub" element={<CompanyHubPage />} />
+                  <Route path="/performance" element={<PerformancePage />} />
+                </Route>
 
                 {/* ── Employee-only routes ── */}
                 <Route element={<ProtectedRoute allowedRoles={['employee']} />}>

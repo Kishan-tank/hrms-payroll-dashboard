@@ -12,23 +12,23 @@ import { leaveService } from '../services/hrmsApi';
 
 function getIconForType(type: NotificationType) {
   switch (type) {
-    case 'document':   return { icon: <FileText className="h-5 w-5" />,      color: 'text-blue-500   bg-blue-50   dark:bg-blue-500/20'   };
-    case 'leave':      return { icon: <CalendarCheck className="h-5 w-5" />, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/20' };
-    case 'payroll':    return { icon: <IndianRupee className="h-5 w-5" />,   color: 'text-violet-500  bg-violet-50  dark:bg-violet-500/20'  };
-    case 'attendance': return { icon: <Clock className="h-5 w-5" />,         color: 'text-amber-500   bg-amber-50   dark:bg-amber-500/20'   };
-    case 'system':     return { icon: <Bell className="h-5 w-5" />,          color: 'text-pink-500    bg-pink-50    dark:bg-pink-500/20'     };
-    default:           return { icon: <Bell className="h-5 w-5" />,          color: 'text-slate-500   bg-slate-100  dark:bg-slate-500/20'   };
+    case 'document': return { icon: <FileText className="h-5 w-5" />, color: 'text-blue-500   bg-blue-50   dark:bg-blue-500/20' };
+    case 'leave': return { icon: <CalendarCheck className="h-5 w-5" />, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/20' };
+    case 'payroll': return { icon: <IndianRupee className="h-5 w-5" />, color: 'text-violet-500  bg-violet-50  dark:bg-violet-500/20' };
+    case 'attendance': return { icon: <Clock className="h-5 w-5" />, color: 'text-amber-500   bg-amber-50   dark:bg-amber-500/20' };
+    case 'system': return { icon: <Bell className="h-5 w-5" />, color: 'text-pink-500    bg-pink-50    dark:bg-pink-500/20' };
+    default: return { icon: <Bell className="h-5 w-5" />, color: 'text-slate-500   bg-slate-100  dark:bg-slate-500/20' };
   }
 }
 
 // ─── Label map ────────────────────────────────────────────────────────────────
 
 const TYPE_LABELS: Record<string, string> = {
-  document:   'Document',
-  leave:      'Leave',
-  payroll:    'Payroll',
+  document: 'Document',
+  leave: 'Leave',
+  payroll: 'Payroll',
   attendance: 'Attendance',
-  system:     'System',
+  system: 'System',
 };
 
 type CombinedFilter = 'all' | 'unread' | 'approvals' | 'payroll' | 'system';
@@ -36,7 +36,7 @@ type CombinedFilter = 'all' | 'unread' | 'approvals' | 'payroll' | 'system';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearReadNotifications } = useNotifications();
   const [filter, setFilter] = useState<CombinedFilter>('all');
   const [pendingConfirm, setPendingConfirm] = useState<{ notifId: string; action: 'Approved' | 'Rejected' } | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
@@ -55,11 +55,11 @@ export default function NotificationsPage() {
   }, [notifications, filter]);
 
   const filterTabs = [
-    { label: 'All',       value: 'all',       icon: Inbox },
-    { label: 'Unread',    value: 'unread',    icon: Mail },
+    { label: 'All', value: 'all', icon: Inbox },
+    { label: 'Unread', value: 'unread', icon: Mail },
     { label: 'Approvals', value: 'approvals', icon: CheckCircle },
-    { label: 'Payroll',   value: 'payroll',   icon: Coins },
-    { label: 'System',    value: 'system',    icon: Monitor },
+    { label: 'Payroll', value: 'payroll', icon: Coins },
+    { label: 'System', value: 'system', icon: Monitor },
   ] as const;
 
   function requestLeaveAction(
@@ -266,16 +266,27 @@ export default function NotificationsPage() {
                 : 'You\'re all caught up — no unread notifications.'}
             </p>
           </div>
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={markAllAsRead}
-              className="flex items-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5"
-            >
-              <CheckCheck className="h-4 w-4" />
-              Mark all as read
-            </button>
-          )}
+          <div className="flex items-center gap-2 self-start flex-wrap">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={markAllAsRead}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5"
+              >
+                <CheckCheck className="h-4 w-4" />
+                Mark all as read
+              </button>
+            )}
+            {notifications.some(n => n.read) && (
+              <button
+                type="button"
+                onClick={clearReadNotifications}
+                className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-600 transition-all duration-200 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+              >
+                Clear read
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Filters ── */}
@@ -288,11 +299,10 @@ export default function NotificationsPage() {
                   key={tab.value}
                   type="button"
                   onClick={() => setFilter(tab.value as CombinedFilter)}
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
-                    filter === tab.value
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${filter === tab.value
                       ? 'bg-slate-900 text-white shadow-md dark:bg-blue-500/10 dark:text-blue-400 dark:shadow-none'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Icon className="h-4 w-4" /> {tab.label}
                   {tab.value === 'unread' && unreadCount > 0 && (
@@ -374,10 +384,21 @@ export default function NotificationsPage() {
                         {renderActions(n)}
                       </span>
 
-                      {/* Unread dot */}
-                      {!n.read && (
-                        <span className="mt-2 shrink-0 h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-                      )}
+                      {/* Right side actions: unread dot + delete */}
+                      <div className="flex flex-col items-center gap-2 shrink-0">
+                        {!n.read && (
+                          <span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity rounded-lg p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                          title="Delete notification"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   </li>
                 );
