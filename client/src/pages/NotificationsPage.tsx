@@ -36,7 +36,7 @@ type CombinedFilter = 'all' | 'unread' | 'approvals' | 'payroll' | 'system';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearReadNotifications, dismiss } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearReadNotifications } = useNotifications();
   const [filter, setFilter] = useState<CombinedFilter>('all');
   const [pendingConfirm, setPendingConfirm] = useState<{ notifId: string; action: 'Approved' | 'Rejected' } | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
