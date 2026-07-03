@@ -346,9 +346,9 @@ export const attendanceService = {
   getAll: () => request<{ success: boolean; records: ApiAttendance[] }>('GET', '/attendance'),
   checkIn: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-in'),
   checkOut: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-out'),
-  regularize: (payload: { date: string; reason: string; checkIn?: string; checkOut?: string }) => 
+  regularize: (payload: { date: string; reason: string; checkIn?: string; checkOut?: string }) =>
     request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/regularize', payload),
-  updateStatus: (id: string, status: string) => 
+  updateStatus: (id: string, status: string) =>
     request<{ success: boolean; message: string; record: ApiAttendance }>('PUT', `/attendance/${id}/status`, { status }),
 };
 
@@ -396,10 +396,6 @@ export const documentService = {
   delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/documents/${id}`),
 };
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 // ─── Company Hub: Events & Skills ─────────────────────────────────────────────
 
 export interface ApiEvent {
@@ -446,11 +442,6 @@ export interface ApiNotification {
   type: 'leave' | 'payroll' | 'attendance' | 'document' | 'system';
   read: boolean;
   link?: string | null;
-<<<<<<< HEAD
-=======
-  leaveId?: string | null;
-  priority?: 'high' | 'normal';
->>>>>>> origin/main
   createdAt: string;
 }
 
@@ -490,7 +481,6 @@ export const notificationService = {
     request<{ success: boolean; message: string }>(
       'POST', '/notifications', payload
     ),
-<<<<<<< HEAD
 };
 
 // ─── Onboarding ──────────────────────────────────────────────────────────────
@@ -549,6 +539,3 @@ export const helpCenterService = {
   seedFAQs: () =>
     request<{ success: boolean; message: string; categories: ApiFAQCategory[] }>('POST', '/help-center/seed'),
 };
-=======
-};
->>>>>>> origin/main

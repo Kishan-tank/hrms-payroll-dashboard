@@ -36,11 +36,7 @@ type CombinedFilter = 'all' | 'unread' | 'approvals' | 'payroll' | 'system';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-<<<<<<< HEAD
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearReadNotifications, dismiss } = useNotifications();
-=======
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
->>>>>>> origin/main
   const [filter, setFilter] = useState<CombinedFilter>('all');
   const [pendingConfirm, setPendingConfirm] = useState<{ notifId: string; action: 'Approved' | 'Rejected' } | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
@@ -59,11 +55,11 @@ export default function NotificationsPage() {
   }, [notifications, filter]);
 
   const filterTabs = [
-    { label: 'All',       value: 'all',       icon: Inbox },
-    { label: 'Unread',    value: 'unread',    icon: Mail },
+    { label: 'All', value: 'all', icon: Inbox },
+    { label: 'Unread', value: 'unread', icon: Mail },
     { label: 'Approvals', value: 'approvals', icon: CheckCircle },
-    { label: 'Payroll',   value: 'payroll',   icon: Coins },
-    { label: 'System',    value: 'system',    icon: Monitor },
+    { label: 'Payroll', value: 'payroll', icon: Coins },
+    { label: 'System', value: 'system', icon: Monitor },
   ] as const;
 
   function requestLeaveAction(
@@ -303,11 +299,10 @@ export default function NotificationsPage() {
                   key={tab.value}
                   type="button"
                   onClick={() => setFilter(tab.value as CombinedFilter)}
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
-                    filter === tab.value
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${filter === tab.value
                       ? 'bg-slate-900 text-white shadow-md dark:bg-blue-500/10 dark:text-blue-400 dark:shadow-none'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Icon className="h-4 w-4" /> {tab.label}
                   {tab.value === 'unread' && unreadCount > 0 && (
