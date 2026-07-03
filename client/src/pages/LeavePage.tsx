@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { leaveService, ApiLeave } from '../services/hrmsApi';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
@@ -28,7 +28,7 @@ const leaveSchema = z.object({
 type LeaveFormData = z.infer<typeof leaveSchema>;
 
 export default function LeavePage() {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const { success, info, error: toastError } = useToast();
   // Safely check role regardless of casing
   const normalizedRole = user?.role?.toLowerCase() || '';
@@ -88,10 +88,6 @@ export default function LeavePage() {
       setLoading(true);
       const res = await leaveService.getAll();
       let leaves = res.leaves || [];
-      if (isEmployee) {
-        // Optimistic filtering if API returns all
-        leaves = leaves.filter(l => l.employeeId?._id === (user as any)?._id || l.employeeId?.name === user?.name);
-      }
       setLeaveRequests(leaves);
       setError('');
     } catch (err: any) {
@@ -128,7 +124,6 @@ export default function LeavePage() {
       const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
 
       await leaveService.apply({
-        employeeId: (user as any)?._id || 'placeholder', // Backend will auto-resolve if employee
         type: data.leaveType,
         fromDate: data.fromDate,
         toDate: data.toDate,

@@ -225,11 +225,13 @@ export interface ApiLeave {
 
 export interface ApiDocument {
   _id: string;
-  employeeId?: string;
+  employeeId: string | null;
   title: string;
   type: string;
   fileUrl: string;
+  uploadedBy: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -356,7 +358,7 @@ export const attendanceService = {
 
 export const leaveService = {
   getAll: () => request<{ success: boolean; leaves: ApiLeave[] }>('GET', '/leave'),
-  apply: (payload: { employeeId: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
+  apply: (payload: { employeeId?: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
     request<{ success: boolean; message: string; leave: ApiLeave }>('POST', '/leave', payload),
   updateStatus: (id: string, status: "Approved" | "Rejected" | "Pending") =>
     request<{ success: boolean; leave: ApiLeave }>('PUT', `/leave/${id}/status`, { status }),
@@ -382,7 +384,6 @@ export const analyticsService = {
 export const documentService = {
   getAll: (employeeId?: string) => request<{ success: boolean; documents: ApiDocument[] }>('GET', employeeId ? `/documents?employeeId=${employeeId}` : '/documents'),
   upload: async (formData: FormData) => {
-    // FormData requires different fetch logic because of multipart/form-data
     const token = localStorage.getItem('token');
     const res = await fetch(`${BASE}/documents/upload`, {
       method: 'POST',

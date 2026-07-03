@@ -1,51 +1,12 @@
-import { useState } from 'react';
-import { FileText, FileImage, FileArchive, File, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, FileImage, FileArchive, File, Download, AlertCircle } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { useToast } from '../context/ToastContext';
 import EmptyState from '../components/common/EmptyState';
+import { documentService, ApiDocument } from '../services/hrmsApi';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type DocType = 'PDF' | 'DOCX' | 'XLSX' | 'JPG' | 'PNG' | 'ZIP';
-
-interface Document {
-  id: string;
-  name: string;
-  type: DocType;
-  size: string;
-  uploadDate: string;
-  category: string;
-}
-
-// ─── Mock Data ───────────────────────────────────────────────────────────────
-
-const MOCK_DOCUMENTS: Document[] = [
-  // Employment Letters
-  { id: 'd-001', name: 'Offer Letter — Jun 2024',         type: 'PDF',  size: '142 KB', uploadDate: '2024-06-01', category: 'Employment Letters' },
-  { id: 'd-002', name: 'Appointment Letter',               type: 'PDF',  size: '98 KB',  uploadDate: '2024-06-15', category: 'Employment Letters' },
-  { id: 'd-003', name: 'Confirmation Letter — Dec 2024',  type: 'PDF',  size: '115 KB', uploadDate: '2024-12-01', category: 'Employment Letters' },
-  { id: 'd-004', name: 'Salary Revision Letter — 2025',   type: 'DOCX', size: '87 KB',  uploadDate: '2025-04-10', category: 'Employment Letters' },
-
-  // Tax Documents
-  { id: 'd-005', name: 'Form 16 — FY 2023-24',            type: 'PDF',  size: '320 KB', uploadDate: '2024-06-15', category: 'Tax Documents' },
-  { id: 'd-006', name: 'Form 16 — FY 2024-25',            type: 'PDF',  size: '348 KB', uploadDate: '2025-06-15', category: 'Tax Documents' },
-  { id: 'd-007', name: 'Investment Declaration Form',      type: 'XLSX', size: '64 KB',  uploadDate: '2025-01-08', category: 'Tax Documents' },
-  { id: 'd-008', name: 'TDS Certificate Q2 2025',         type: 'PDF',  size: '210 KB', uploadDate: '2025-10-15', category: 'Tax Documents' },
-
-  // Identity & Verification
-  { id: 'd-009', name: 'Aadhaar Card (Masked)',            type: 'PDF',  size: '52 KB',  uploadDate: '2024-06-02', category: 'Identity & Verification' },
-  { id: 'd-010', name: 'PAN Card Copy',                    type: 'JPG',  size: '38 KB',  uploadDate: '2024-06-02', category: 'Identity & Verification' },
-  { id: 'd-011', name: 'Passport Copy',                    type: 'PDF',  size: '74 KB',  uploadDate: '2024-06-02', category: 'Identity & Verification' },
-  { id: 'd-012', name: 'Address Proof',                    type: 'PNG',  size: '45 KB',  uploadDate: '2024-06-05', category: 'Identity & Verification' },
-
-  // Company Policies
-  { id: 'd-013', name: 'Employee Handbook v3.2',           type: 'PDF',  size: '1.2 MB', uploadDate: '2025-01-01', category: 'Company Policies' },
-  { id: 'd-014', name: 'Leave Policy FY 2025-26',          type: 'PDF',  size: '228 KB', uploadDate: '2025-04-01', category: 'Company Policies' },
-  { id: 'd-015', name: 'Work From Home Policy',            type: 'DOCX', size: '180 KB', uploadDate: '2025-06-01', category: 'Company Policies' },
-  { id: 'd-016', name: 'Code of Conduct — 2025',          type: 'PDF',  size: '295 KB', uploadDate: '2025-01-01', category: 'Company Policies' },
-];
-
-const CATEGORIES = ['All', ...Array.from(new Set(MOCK_DOCUMENTS.map((d) => d.category)))];
+type DocType = 'PDF' | 'DOCX' | 'XLSX' | 'JPG' | 'PNG' | 'ZIP' | string;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -74,27 +35,58 @@ function getTypeBadge(type: DocType): string {
 }
 
 function formatDate(iso: string): string {
+  if (!iso) return 'Unknown Date';
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DocumentsPage() {
-  const toast = useToast();
+  const [documents, setDocuments] = useState<ApiDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
 
-  const filtered = MOCK_DOCUMENTS.filter((doc) => {
-    const matchCat  = activeCategory === 'All' || doc.category === activeCategory;
-    const matchSearch = doc.name.toLowerCase().includes(search.toLowerCase());
+  useEffect(() => {
+    async function fetchDocs() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await documentService.getAll();
+        setDocuments(res.documents || []);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDocs();
+  }, []);
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Documents">
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const CATEGORIES = ['All', ...Array.from(new Set(documents.map((d) => d.type)))];
+
+  const filtered = documents.filter((doc) => {
+    const matchCat  = activeCategory === 'All' || doc.type === activeCategory;
+    const matchSearch = doc.title.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
 
   // Group by category for display
-  const grouped: Record<string, Document[]> = {};
+  const grouped: Record<string, ApiDocument[]> = {};
   for (const doc of filtered) {
-    if (!grouped[doc.category]) grouped[doc.category] = [];
-    grouped[doc.category].push(doc);
+    if (!grouped[doc.type]) grouped[doc.type] = [];
+    grouped[doc.type].push(doc);
   }
 
   return (
@@ -116,9 +108,24 @@ export default function DocumentsPage() {
             </p>
           </div>
           <div className="text-xs font-semibold text-slate-400 dark:text-slate-500">
-            {MOCK_DOCUMENTS.length} documents
+            {documents.length} documents
           </div>
         </div>
+
+        {error && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl bg-red-50 p-4 text-red-600 dark:bg-red-500/10 dark:text-red-400 gap-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="rounded-lg bg-red-100 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-200 transition dark:bg-red-500/20 dark:text-red-300 dark:hover:bg-red-500/30"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* ── Filters ── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
@@ -177,42 +184,47 @@ export default function DocumentsPage() {
 
                 {/* Document rows */}
                 <ul>
-                  {docs.map((doc, index) => (
+                  {docs.map((doc, index) => {
+                    const ext = (doc.fileUrl?.split('.').pop() || 'PDF').toUpperCase() as DocType;
+                    const backendUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000';
+                    const downloadUrl = `${backendUrl}${doc.fileUrl}`;
+                    
+                    return (
                     <li
-                      key={doc.id}
+                      key={doc._id}
                       className={`${index < docs.length - 1 ? 'border-b border-slate-100 dark:border-white/5' : ''}`}
                     >
                       <div className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]">
                         {/* File icon */}
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm font-bold ${getTypeBadge(doc.type)}`}>
-                          {getFileIcon(doc.type)}
+                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm font-bold ${getTypeBadge(ext)}`}>
+                          {getFileIcon(ext)}
                         </span>
 
                         {/* Name + meta */}
                         <span className="flex-1 min-w-0">
-                          <span className="block truncate text-sm font-semibold text-slate-900 dark:text-white">{doc.name}</span>
+                          <span className="block truncate text-sm font-semibold text-slate-900 dark:text-white">{doc.title}</span>
                           <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <span className={`rounded border px-1.5 py-px text-[10px] font-bold uppercase tracking-wide ${getTypeBadge(doc.type)}`}>
-                              {doc.type}
+                            <span className={`rounded border px-1.5 py-px text-[10px] font-bold uppercase tracking-wide ${getTypeBadge(ext)}`}>
+                              {ext}
                             </span>
-                            <span>{doc.size}</span>
-                            <span className="hidden sm:inline">·</span>
-                            <span className="hidden sm:inline">Uploaded {formatDate(doc.uploadDate)}</span>
+                            <span className="hidden sm:inline">Uploaded {formatDate(doc.createdAt)}</span>
                           </span>
                         </span>
 
                         {/* Download button */}
-                        <button
-                          type="button"
-                          onClick={() => toast.info('Document download coming soon.')}
+                        <a
+                          href={downloadUrl}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
                         >
                           <Download className="h-3.5 w-3.5" />
                           Download
-                        </button>
+                        </a>
                       </div>
                     </li>
-                  ))}
+                  )})}
                 </ul>
               </div>
             ))}
