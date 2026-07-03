@@ -348,9 +348,9 @@ export const attendanceService = {
   getAll: () => request<{ success: boolean; records: ApiAttendance[] }>('GET', '/attendance'),
   checkIn: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-in'),
   checkOut: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-out'),
-  regularize: (payload: { date: string; reason: string; checkIn?: string; checkOut?: string }) => 
+  regularize: (payload: { date: string; reason: string; checkIn?: string; checkOut?: string }) =>
     request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/regularize', payload),
-  updateStatus: (id: string, status: string) => 
+  updateStatus: (id: string, status: string) =>
     request<{ success: boolean; message: string; record: ApiAttendance }>('PUT', `/attendance/${id}/status`, { status }),
 };
 
@@ -396,7 +396,6 @@ export const documentService = {
   },
   delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/documents/${id}`),
 };
-
 
 // ─── Company Hub: Events & Skills ─────────────────────────────────────────────
 
@@ -485,4 +484,61 @@ export const notificationService = {
     request<{ success: boolean; message: string }>(
       'POST', '/notifications', payload
     ),
+};
+
+// ─── Onboarding ──────────────────────────────────────────────────────────────
+
+export const onboardingService = {
+  getState: () =>
+    request<{ success: boolean; onboarding: any }>('GET', '/onboarding'),
+
+  updateState: (payload: { steps: any[]; currentStepId: string; completedAt?: string }) =>
+    request<{ success: boolean; onboarding: any }>('PUT', '/onboarding', payload),
+
+  resetState: () =>
+    request<{ success: boolean; onboarding: any }>('POST', '/onboarding/reset'),
+};
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+export interface ApiSettings {
+  theme: string;
+  accentColor: string;
+  notifications: {
+    newLeaveRequests: boolean;
+    payrollProcessed: boolean;
+    attendanceAlerts: boolean;
+    newEmployeeJoined: boolean;
+    performanceReviewsDue: boolean;
+    systemMaintenance: boolean;
+  };
+}
+
+export const settingsService = {
+  getSettings: () =>
+    request<{ success: boolean; settings: ApiSettings }>('GET', '/settings'),
+  updateSettings: (payload: Partial<ApiSettings>) =>
+    request<{ success: boolean; settings: ApiSettings; message: string }>('PUT', '/settings', payload),
+};
+
+// ─── Help Center ─────────────────────────────────────────────────────────────
+
+export interface ApiFAQItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface ApiFAQCategory {
+  id: string;
+  label: string;
+  icon: string;
+  items: ApiFAQItem[];
+}
+
+export const helpCenterService = {
+  getFAQs: () =>
+    request<{ success: boolean; categories: ApiFAQCategory[] }>('GET', '/help-center/faqs'),
+  seedFAQs: () =>
+    request<{ success: boolean; message: string; categories: ApiFAQCategory[] }>('POST', '/help-center/seed'),
 };
