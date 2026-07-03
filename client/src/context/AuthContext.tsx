@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { User } from '../types';
+import type { User, RegisterRequest } from '../types';
 import { authAPI } from '../services/api';
 import { useTheme } from './ThemeContext';
 
 interface AuthContextValue {
   user: User | null;
   login: (credentials: { email: string; password: string }, selectedRole: 'employee' | 'hr-manager') => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   loginAs: (role: 'employee' | 'hr-manager') => void;
   logout: () => void;
   isLoading: boolean;
@@ -93,6 +94,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [redirectByRole],
   );
 
+  const register = useCallback(async (data: RegisterRequest) => {
+    setIsLoading(true); setError(null);
+    try {
+      const res = await authAPI.register(data);
+      const { token, user: u } = res.data as { token: string; user: User };
+      
+      const value = String(u.role || data.role || '').toLowerCase().replace(/\s+/g, "-");
+      u.role = value.includes("hr") ? "hr-manager" : "employee";
+
+      localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
+      localStorage.setItem('token', token); 
+      localStorage.setItem('user', JSON.stringify(u));
+      
+      setUser(u); 
+      redirectByRole(u);
+    } catch (err: unknown) {
+      setError(((err as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Registration failed');
+    } finally { 
+      setIsLoading(false); 
+    }
+  }, [redirectByRole]);
+
   /**
    * Demo / mock login — used by the two login buttons so the app works
    * without a real backend running.
@@ -136,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, loginAs, logout, isLoading, error, clearError }}
+      value={{ user, login, register, loginAs, logout, isLoading, error, clearError }}
     >
       {children}
     </AuthContext.Provider>
