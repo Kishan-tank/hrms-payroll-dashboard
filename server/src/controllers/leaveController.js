@@ -30,15 +30,13 @@ export const applyLeave = async (req, res) => {
   try {
     let { employeeId, type, fromDate, toDate, days, reason } = req.body;
 
-    // Auto-resolve employeeId for employees to prevent spoofing
-    if (req.user?.role === "employee") {
-      const userId = req.user?._id || req.user?.id;
-      const employee = await Employee.findOne({ userId });
-      if (!employee) {
-        return res.status(404).json({ success: false, message: "Employee profile not found" });
-      }
-      employeeId = employee._id;
+    // Auto-resolve employeeId for all roles to prevent spoofing
+    const userId = req.user?._id || req.user?.id;
+    const employee = await Employee.findOne({ userId });
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee profile not found" });
     }
+    employeeId = employee._id;
 
     // Validation
     if (!employeeId || !type || !fromDate || !toDate || !days) {
