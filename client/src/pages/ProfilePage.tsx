@@ -161,7 +161,7 @@ export default function ProfilePage() {
           {activeTab === 'personal' && <PersonalTab employee={displayEmployee} />}
           {activeTab === 'employment' && <EmploymentTab employee={displayEmployee} />}
           {activeTab === 'payroll' && <PayrollBankTab employee={displayEmployee} />}
-          {activeTab === 'documents' && <DocumentsTab />}
+          {activeTab === 'documents' && <DocumentsTab employee={displayEmployee} />}
           {activeTab === 'skills' && <SkillsActivityTab />}
         </motion.div>
       </div>
