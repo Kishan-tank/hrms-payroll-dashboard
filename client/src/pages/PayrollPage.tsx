@@ -59,40 +59,22 @@ export default function PayrollPage() {
     setLoading(true);
     setError(null);
 
-    // MOCK DATA FOR EMPLOYEE VIEW UNTIL BACKEND IS READY
-    if (isEmployee) {
-      setTimeout(() => {
-        setRecords([
-          {
-            _id: `mock-pr-${filterMonth}-${filterYear}`,
-            employeeId: { name: user?.name, employeeId: currentEmployeeId, department: user?.department || 'Engineering' } as any,
-            basicPay: 75000,
-            deductions: 3500,
-            netPay: 71500,
-            status: 'Paid',
-            month: filterMonth,
-            year: filterYear,
-            processedAt: new Date().toISOString(),
-          }
-        ]);
-        setSummary({
-          totalAmount: 75000,
-          paidCount: 1,
-          processingCount: 0,
-          pendingCount: 0
-        });
-        setLoading(false);
-      }, 600);
-      return;
-    }
-
     try {
-      const [recs, sum] = await Promise.all([
-        payrollService.getRecords({ month: filterMonth, year: filterYear }),
-        payrollService.getSummary(filterMonth, filterYear),
-      ]);
-      setRecords(recs.records);
-      setSummary(sum.summary);
+      if (isEmployee) {
+        const recs = await payrollService.getRecords({ month: filterMonth, year: filterYear });
+        setRecords(recs.records);
+        // Do NOT call getSummary() for employees — it returns company-wide
+        // aggregate financials with no role/identity scoping on the backend,
+        // and would leak that data into the employee's network tab even
+        // though the UI never renders it.
+      } else {
+        const [recs, sum] = await Promise.all([
+          payrollService.getRecords({ month: filterMonth, year: filterYear }),
+          payrollService.getSummary(filterMonth, filterYear),
+        ]);
+        setRecords(recs.records);
+        setSummary(sum.summary);
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -116,14 +98,9 @@ export default function PayrollPage() {
     }
   }
 
-  const getCurrentEmployeeId = () => {
-    return (user as any)?.employeeId || user?.id || (user as any)?._id || "";
-  };
-  const currentEmployeeId = getCurrentEmployeeId();
-
   function handleDownloadPayslip(rec: PayrollRecord) {
     const employeeName = rec.employeeId?.name || user?.name || 'Employee';
-    const empId = rec.employeeId?.employeeId || currentEmployeeId || '—';
+    const empId = rec.employeeId?.employeeId || '—';
     const department = rec.employeeId?.department || user?.department || '—';
     const payDate = rec.processedAt ? new Date(rec.processedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
     const fmtNum = (n: number | undefined) => n !== undefined ? `₹${n.toLocaleString('en-IN')}` : '₹0';
@@ -258,13 +235,7 @@ export default function PayrollPage() {
   }
 
   // Employee Specific Data
-  const myRecords = records.filter(
-    (r) =>
-      r.employeeId?.employeeId &&
-      currentEmployeeId &&
-      r.employeeId.employeeId === currentEmployeeId
-  );
-  const latestMyRecord = myRecords.length > 0 ? myRecords[0] : null;
+  const latestMyRecord = records.length > 0 ? records[0] : null;
 
   const hrSummaryCards = summary
     ? [
@@ -395,7 +366,7 @@ export default function PayrollPage() {
         </div>
       ),
     },
-  ], [toast, currentEmployeeId, user]); // Added dependencies to satisfy linter, though handleDownloadPayslip uses them implicitly
+  ], [toast, user]); // Added dependencies to satisfy linter, though handleDownloadPayslip uses them implicitly
 
   return (
     <DashboardLayout title={isEmployee ? "My Payslips" : "Payroll Management"}>
@@ -517,7 +488,7 @@ export default function PayrollPage() {
             }}>
               <DataTable<PayrollRecord>
                 columns={employeeColumns}
-                data={myRecords}
+                data={records}
                 rowKey={(row, i) => row._id ?? i}
                 loading={loading}
                 searchable={false}
@@ -539,7 +510,7 @@ export default function PayrollPage() {
 
             {/* Mobile Cards View */}
             <div className="flex flex-col gap-3 md:hidden">
-              {myRecords.map((record, i) => (
+              {records.map((record, i) => (
                 <div key={record._id ?? i} className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -580,7 +551,7 @@ export default function PayrollPage() {
                   </div>
                 </div>
               ))}
-              {myRecords.length === 0 && !loading && (
+              {records.length === 0 && !loading && (
                 <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
                   <p className="text-sm font-semibold text-slate-500">No payslips available yet.</p>
                 </div>

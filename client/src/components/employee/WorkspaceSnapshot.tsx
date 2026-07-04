@@ -175,7 +175,7 @@ export default function WorkspaceSnapshot({ summary }: { summary?: EmployeeSumma
       sub: "Days remaining · Annual",
       badge: (summary?.payrollLeave.leaveBalance || 0) > 5 ? "Healthy" : "Low",
       badgeColor: "#10b981",
-      progress: Math.min(100, Math.round(((summary?.payrollLeave.leaveBalance || 0) / 24) * 100)),
+      progress: Math.min(100, Math.round(((summary?.payrollLeave.leaveBalance || 0) / 36) * 100)),
       sparklineData: [22, 22, 20, 20, 18, 18],
       route: '/leave',
     },

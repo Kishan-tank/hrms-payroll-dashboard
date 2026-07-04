@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Award, Plus, Trash2, CheckCircle, AlertCircle, ThumbsUp, Sparkles } from 'lucide-react';
 import { companyService, ApiEvent, ApiSkill } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
+import DashboardLayout from '../layouts/DashboardLayout';
 
 export default function CompanyHubPage() {
   const { user } = useAuthContext();
@@ -114,7 +115,8 @@ export default function CompanyHubPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1121] p-6 lg:p-8">
+    <DashboardLayout title="Company Hub">
+      <div className="space-y-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
@@ -364,6 +366,7 @@ export default function CompanyHubPage() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

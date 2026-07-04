@@ -36,7 +36,6 @@ export default function AppRouter() {
     <BrowserRouter>
       {/*
         AuthProvider lives INSIDE BrowserRouter so useNavigate() works.
-        ProtectedRoute reads localStorage directly so it needs no context.
         EmployeeDrawerProvider wraps all authenticated routes so any page
         can call useEmployeeDrawer() to open the global employee drawer.
       */}

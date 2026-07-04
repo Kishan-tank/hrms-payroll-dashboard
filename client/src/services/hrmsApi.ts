@@ -225,11 +225,13 @@ export interface ApiLeave {
 
 export interface ApiDocument {
   _id: string;
-  employeeId?: string;
+  employeeId: string | null;
   title: string;
   type: string;
   fileUrl: string;
+  uploadedBy: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -410,9 +412,9 @@ export const attendanceService = {
   getAll: () => request<{ success: boolean; records: ApiAttendance[] }>('GET', '/attendance'),
   checkIn: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-in'),
   checkOut: () => request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/check-out'),
-  regularize: (payload: { date: string; reason: string; checkIn?: string; checkOut?: string }) => 
+  regularize: (payload: { date: string; reason: string; checkIn?: string; checkOut?: string }) =>
     request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/regularize', payload),
-  updateStatus: (id: string, status: string) => 
+  updateStatus: (id: string, status: string) =>
     request<{ success: boolean; message: string; record: ApiAttendance }>('PUT', `/attendance/${id}/status`, { status }),
 };
 
@@ -420,7 +422,7 @@ export const attendanceService = {
 
 export const leaveService = {
   getAll: () => request<{ success: boolean; leaves: ApiLeave[] }>('GET', '/leave'),
-  apply: (payload: { employeeId: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
+  apply: (payload: { employeeId?: string; type: string; fromDate: string; toDate: string; days: number; reason?: string }) =>
     request<{ success: boolean; message: string; leave: ApiLeave }>('POST', '/leave', payload),
   updateStatus: (id: string, status: "Approved" | "Rejected" | "Pending") =>
     request<{ success: boolean; leave: ApiLeave }>('PUT', `/leave/${id}/status`, { status }),
@@ -446,7 +448,6 @@ export const analyticsService = {
 export const documentService = {
   getAll: (employeeId?: string) => request<{ success: boolean; documents: ApiDocument[] }>('GET', employeeId ? `/documents?employeeId=${employeeId}` : '/documents'),
   upload: async (formData: FormData) => {
-    // FormData requires different fetch logic because of multipart/form-data
     const token = localStorage.getItem('token');
     const res = await fetch(`${BASE}/documents/upload`, {
       method: 'POST',
@@ -459,7 +460,6 @@ export const documentService = {
   },
   delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/documents/${id}`),
 };
-
 
 // ─── Company Hub: Events & Skills ─────────────────────────────────────────────
 

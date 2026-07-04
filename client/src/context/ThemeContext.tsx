@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
-type Theme = 'dark' | 'light' | 'system';
+export type Theme = 'dark' | 'light' | 'system';
 
 interface ThemeContextType {
   theme: Theme;
@@ -11,33 +12,25 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    return (localStorage.getItem('theme-preference') as Theme) || 'system';
-  });
+  const [theme, setThemeState] = useLocalStorage<Theme>('theme-preference', 'system', { legacyStringFallback: true });
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem('theme-preference', newTheme);
   };
 
   const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-      root.classList.add(systemTheme);
-      root.style.colorScheme = systemTheme;
-      setResolvedTheme(systemTheme);
-    } else {
-      root.classList.add(theme);
-      root.style.colorScheme = theme;
-      setResolvedTheme(theme);
+    const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const targetTheme = theme === 'system' ? (isSystemDark ? 'dark' : 'light') : theme;
+    
+    if (!root.classList.contains(targetTheme)) {
+      root.classList.remove('light', 'dark');
+      root.classList.add(targetTheme);
+      root.style.colorScheme = targetTheme;
     }
+    setResolvedTheme(targetTheme);
   }, [theme]);
 
   // Listen for system preference changes

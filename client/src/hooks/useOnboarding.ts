@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocalStorage } from './useLocalStorage';
 import { onboardingService } from '../services/hrmsApi';
 
 export type StepId = 'profile' | 'documents' | 'bank' | 'handbook' | 'complete';
@@ -60,19 +61,9 @@ const DEFAULT_STEPS: OnboardingStep[] = [
 export function useOnboarding(userId?: string) {
   const STORAGE_KEY = `hrms_onboarding_${userId ?? 'default'}`;
 
-  const [state, setState] = useState<OnboardingState>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored) as OnboardingState;
-      }
-    } catch (err) {
-      console.error('Failed to parse onboarding state from local storage', err);
-    }
-    return {
-      steps: DEFAULT_STEPS,
-      currentStepId: 'profile',
-    };
+  const [state, setState] = useLocalStorage<OnboardingState>(STORAGE_KEY, {
+    steps: DEFAULT_STEPS,
+    currentStepId: 'profile',
   });
 
   const [loading, setLoading] = useState(true);
@@ -103,6 +94,26 @@ export function useOnboarding(userId?: string) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state, STORAGE_KEY]);
 
+  // Fetch initial state from API
+  useEffect(() => {
+    async function fetchState() {
+      try {
+        const res = await onboardingService.getState();
+        if (res.success && res.onboarding) {
+          setState({
+            steps: res.onboarding.steps?.length ? res.onboarding.steps : DEFAULT_STEPS,
+            currentStepId: res.onboarding.currentStepId || 'profile',
+            completedAt: res.onboarding.completedAt,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch onboarding state from API, using local storage:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    void fetchState();
+  }, [userId, setState]);
   const completedCount = state.steps.filter(s => s.id !== 'complete' && s.status === 'completed').length;
   const totalSteps = state.steps.filter(s => s.id !== 'complete').length;
   const completionPercent = Math.round((completedCount / totalSteps) * 100);
