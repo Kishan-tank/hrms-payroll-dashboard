@@ -71,6 +71,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const fetchNotifications = useCallback(async () => {
+    if (!localStorage.getItem('token')) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await notificationService.getAll();
       if (res.success) {
