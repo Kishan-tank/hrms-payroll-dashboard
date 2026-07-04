@@ -22,6 +22,7 @@ const AttendancePage = lazy(() => import('../pages/AttendancePage'));
 const PayrollPage = lazy(() => import('../pages/PayrollPage'));
 const LeavePage = lazy(() => import('../pages/LeavePage'));
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
+const AnalyticsPage = lazy(() => import('../pages/AnalyticsPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
@@ -63,6 +64,7 @@ export default function AppRouter() {
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/leave" element={<LeavePage />} />
               <Route path="/payroll" element={<PayrollPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
               
               <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
               <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
