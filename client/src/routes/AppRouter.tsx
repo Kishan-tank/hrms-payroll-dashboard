@@ -22,13 +22,15 @@ const AttendancePage = lazy(() => import('../pages/AttendancePage'));
 const PayrollPage = lazy(() => import('../pages/PayrollPage'));
 const LeavePage = lazy(() => import('../pages/LeavePage'));
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
+const AnalyticsPage = lazy(() => import('../pages/AnalyticsPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
 const DocumentsPage = lazy(() => import('../pages/DocumentsPage'));
 const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
-const CompanyHubPage = lazy(() => import('../pages/CompanyHubPage'));
-const PerformancePage = lazy(() => import('../pages/PerformancePage'));
+const PerformancePage = lazy(() => import('../pages/PerformancePage')); // <-- ADD THIS
+const CompanyHubPage = lazy(() => import('../pages/CompanyHubPage')); // <-- ADD THIS
+const TasksPage = lazy(() => import('../pages/TasksPage'));
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -51,24 +53,26 @@ export default function AppRouter() {
                   <Route path="/design-system" element={<DesignSystemPage />} />
                 )}
 
-                {/* ── Authenticated routes — wrapped with EmployeeDrawerProvider ── */}
-                <Route element={<ProtectedRoute />}>
-                  {/* Any logged-in user */}
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route path="/documents" element={<DocumentsPage />} />
-                  <Route path="/help" element={<HelpCenterPage />} />
-                  <Route path="/attendance" element={<AttendancePage />} />
-                  <Route path="/leave" element={<LeavePage />} />
-                  <Route path="/payroll" element={<PayrollPage />} />
-                  <Route path="/company-hub" element={<CompanyHubPage />} />
-                  <Route path="/performance" element={<PerformancePage />} />
-                </Route>
+            {/* ── Any logged-in user ── */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/help" element={<HelpCenterPage />} />
+              <Route path="/attendance" element={<AttendancePage />} />
+              <Route path="/leave" element={<LeavePage />} />
+              <Route path="/payroll" element={<PayrollPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              
+              <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
+              <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
+            </Route>
 
                 {/* ── Employee-only routes ── */}
                 <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
                   <Route path="/onboarding" element={<OnboardingPage />} />
+                  <Route path="/tasks" element={<TasksPage />} />
                   <Route path="/dashboard" element={<EmployeeDashboard />} />
                   <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
                   <Route path="/employee-dashboard" element={<EmployeeDashboard />} />

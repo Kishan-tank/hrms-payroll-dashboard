@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Target, Rocket, CheckCircle2, Circle, Clock, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { EmployeeSummary } from '../../services/hrmsApi';
 
 const mockQuarterGoals = [
@@ -53,6 +54,7 @@ function ProgressRing({ radius, stroke, progress, color }: { radius: number; str
 }
 
 export default function MyGoals({ summary }: { summary?: EmployeeSummary | null }) {
+  const navigate = useNavigate();
   const backendGoals = summary?.productivity?.goals || [];
   const quarterGoals = backendGoals.length > 0
     ? backendGoals.map((g: any, index: number) => {
@@ -191,7 +193,7 @@ export default function MyGoals({ summary }: { summary?: EmployeeSummary | null 
             </motion.div>
           ))}
           <div className="mt-3 flex items-center justify-center pt-2 border-t border-slate-100 dark:border-white/5">
-             <button className="text-[12px] font-extrabold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider flex items-center gap-1 group/btn dark:text-slate-400 dark:hover:text-white">
+             <button onClick={() => navigate('/tasks')} className="text-[12px] font-extrabold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider flex items-center gap-1 group/btn dark:text-slate-400 dark:hover:text-white">
                View All Tasks 
                <span className="transition-transform group-hover/btn:translate-x-1">→</span>
              </button>

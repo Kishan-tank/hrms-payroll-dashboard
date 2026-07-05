@@ -15,6 +15,8 @@ import documentRoutes from "./routes/documentRoutes.js";
 import performanceRoutes from "./routes/performanceRoutes.js";
 import companyRoutes from "./routes/companyRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import taskRoutes from "./routes/taskRoutes.js";
+import onboardingRoutes from "./routes/onboardingRoutes.js";
 import onboardingRoutes from "./routes/onboardingRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import helpCenterRoutes from "./routes/helpCenterRoutes.js";

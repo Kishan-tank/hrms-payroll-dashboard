@@ -37,6 +37,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Dashboard', path: '/employee-dashboard', icon: 'dashboard', roles: ['EMPLOYEE'] },
       { label: 'Onboarding', path: '/onboarding', icon: 'checklist', roles: ['EMPLOYEE'] },
+      { label: 'Tasks', path: '/tasks', icon: 'checklist', roles: ['EMPLOYEE'] },
       { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['HR_MANAGER'] },
       { label: 'Attendance', path: '/attendance', icon: 'attendance' },
       { label: 'Leave Management', path: '/leave', icon: 'leave' },
@@ -48,6 +49,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Employees', path: '/employees', icon: 'employees', roles: ['HR_MANAGER'] },
       { label: 'Payroll', path: '/payroll', icon: 'payroll' },
+      { label: 'Analytics', path: '/analytics', icon: 'reports', roles: ['HR_MANAGER'] },
       { label: 'Reports', path: '/reports', icon: 'reports', roles: ['HR_MANAGER'] },
       { label: 'Company Hub', path: '/company-hub', icon: 'companyHub' },
       { label: 'Performance', path: '/performance', icon: 'performance' },

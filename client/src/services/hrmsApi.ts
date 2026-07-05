@@ -22,7 +22,7 @@ export interface ApiGoal {
 
 export interface ApiTask {
   _id: string;
-  employeeId: string;
+  employeeId: string | { _id: string; name: string; department: string; role?: string };
   title: string;
   status: 'Pending' | 'In Progress' | 'Done';
   priority: 'Low' | 'Medium' | 'High';
@@ -251,7 +251,71 @@ export const authService = {
       { name, email, password, role },
     ),
 };
+export interface ApiSettings {
+  theme: 'light' | 'dark' | 'system';
+  accentColor: string;
+  notifications: {
+    newLeaveRequests: boolean;
+    payrollProcessed: boolean;
+    attendanceAlerts: boolean;
+    newEmployeeJoined: boolean;
+    performanceReviewsDue: boolean;
+    systemMaintenance: boolean;
+  };
+}
 
+export const settingsService = {
+  getSettings: async () => {
+    if (typeof window === 'undefined') {
+      return {
+        success: true,
+        settings: {
+          theme: 'light' as const,
+          accentColor: '#2563EB',
+          notifications: {
+            newLeaveRequests: true,
+            payrollProcessed: true,
+            attendanceAlerts: false,
+            newEmployeeJoined: true,
+            performanceReviewsDue: false,
+            systemMaintenance: true,
+          },
+        },
+      };
+    }
+
+    const saved = window.localStorage.getItem('hrms-settings');
+    const settings = saved ? (JSON.parse(saved) as ApiSettings) : null;
+
+    return {
+      success: true,
+      settings: settings ?? {
+        theme: 'light' as const,
+        accentColor: '#2563EB',
+        notifications: {
+          newLeaveRequests: true,
+          payrollProcessed: true,
+          attendanceAlerts: false,
+          newEmployeeJoined: true,
+          performanceReviewsDue: false,
+          systemMaintenance: true,
+        },
+      },
+    };
+  },
+
+  updateSettings: async (settings: ApiSettings) => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hrms-settings', JSON.stringify(settings));
+    }
+
+    return {
+      success: true,
+      settings,
+      message: 'Settings updated successfully',
+    };
+  },
+};
 // ─── Employees ───────────────────────────────────────────────────────────────
 
 export const employeeService = {
@@ -433,6 +497,75 @@ export const companyService = {
   deleteSkill: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/skills/${id}`),
 };
 
+// ─── Help Center ───────────────────────────────────────────────────────────
+
+export interface ApiFAQItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface ApiFAQCategory {
+  id: string;
+  label: string;
+  icon: string;
+  items: ApiFAQItem[];
+}
+
+const DEFAULT_FAQS: ApiFAQCategory[] = [
+  {
+    id: 'getting-started',
+    label: 'Getting Started',
+    icon: 'Rocket',
+    items: [
+      {
+        id: 'account-access',
+        question: 'How do I access my HRMSPro account?',
+        answer: 'Use your company email and the password you received from HR. If you forgot your password, use the reset option on the login page.',
+      },
+      {
+        id: 'dashboard-overview',
+        question: 'What can I see on the dashboard?',
+        answer: 'The dashboard shows attendance, approvals, payroll status, and quick links to key HR workflows.',
+      },
+    ],
+  },
+  {
+    id: 'leave-payroll',
+    label: 'Leave & Payroll',
+    icon: 'Coins',
+    items: [
+      {
+        id: 'leave-request',
+        question: 'How do I request leave?',
+        answer: 'Open the Leave section, select your dates, add a note, and submit the request for manager review.',
+      },
+      {
+        id: 'payslip-download',
+        question: 'Where can I download my payslip?',
+        answer: 'Go to Payroll and open the latest payslip entry to download or preview your statement.',
+      },
+    ],
+  },
+  {
+    id: 'security',
+    label: 'Security & Privacy',
+    icon: 'Lock',
+    items: [
+      {
+        id: 'account-security',
+        question: 'How is my data protected?',
+        answer: 'All sessions use secure authentication and sensitive actions are guarded by role-based permissions.',
+      },
+    ],
+  },
+];
+
+export const helpCenterService = {
+  getFAQs: async () => ({ success: true as const, categories: DEFAULT_FAQS }),
+  seedFAQs: async () => ({ success: true as const, message: 'FAQs seeded successfully.', categories: DEFAULT_FAQS }),
+};
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export interface ApiNotification {
@@ -486,6 +619,17 @@ export const notificationService = {
     ),
 };
 
+// ─── Tasks ───────────────────────────────────────────────────────────────────
+
+export const taskService = {
+  getAll: () => request<{ success: boolean; tasks: ApiTask[] }>('GET', '/tasks'),
+  create: (title: string, priority?: string, employeeId?: string) =>
+    request<{ success: boolean; task: ApiTask; message: string }>('POST', '/tasks', { title, priority, employeeId }),
+  update: (id: string, payload: { title?: string; status?: string; priority?: string }) =>
+    request<{ success: boolean; task: ApiTask; message: string }>('PUT', `/tasks/${id}`, payload),
+  delete: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/tasks/${id}`),
+};
+
 // ─── Onboarding ──────────────────────────────────────────────────────────────
 
 export const onboardingService = {
@@ -497,48 +641,4 @@ export const onboardingService = {
 
   resetState: () =>
     request<{ success: boolean; onboarding: any }>('POST', '/onboarding/reset'),
-};
-
-// ─── Settings ────────────────────────────────────────────────────────────────
-
-export interface ApiSettings {
-  theme: string;
-  accentColor: string;
-  notifications: {
-    newLeaveRequests: boolean;
-    payrollProcessed: boolean;
-    attendanceAlerts: boolean;
-    newEmployeeJoined: boolean;
-    performanceReviewsDue: boolean;
-    systemMaintenance: boolean;
-  };
-}
-
-export const settingsService = {
-  getSettings: () =>
-    request<{ success: boolean; settings: ApiSettings }>('GET', '/settings'),
-  updateSettings: (payload: Partial<ApiSettings>) =>
-    request<{ success: boolean; settings: ApiSettings; message: string }>('PUT', '/settings', payload),
-};
-
-// ─── Help Center ─────────────────────────────────────────────────────────────
-
-export interface ApiFAQItem {
-  id: string;
-  question: string;
-  answer: string;
-}
-
-export interface ApiFAQCategory {
-  id: string;
-  label: string;
-  icon: string;
-  items: ApiFAQItem[];
-}
-
-export const helpCenterService = {
-  getFAQs: () =>
-    request<{ success: boolean; categories: ApiFAQCategory[] }>('GET', '/help-center/faqs'),
-  seedFAQs: () =>
-    request<{ success: boolean; message: string; categories: ApiFAQCategory[] }>('POST', '/help-center/seed'),
 };
