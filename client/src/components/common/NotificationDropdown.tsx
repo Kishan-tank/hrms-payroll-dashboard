@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarCheck, IndianRupee, Clock, FileText, Bell } from 'lucide-react';
@@ -17,6 +18,9 @@ function getIconForType(type: NotificationType) {
 }
 
 export default function NotificationDropdown({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, onClose, dropdownRef);
+  
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const navigate = useNavigate();
@@ -36,6 +40,11 @@ export default function NotificationDropdown({ open, onClose }: { open: boolean;
         <>
           <div className="fixed inset-0 z-40" onClick={onClose} />
           <motion.div
+            ref={dropdownRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notification-dropdown-title"
+            tabIndex={-1}
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -44,7 +53,7 @@ export default function NotificationDropdown({ open, onClose }: { open: boolean;
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/5">
-              <h3 className="text-[15px] font-extrabold tracking-wide text-slate-800 dark:text-white">Notifications</h3>
+              <h3 id="notification-dropdown-title" className="text-[15px] font-extrabold tracking-wide text-slate-800 dark:text-white">Notifications</h3>
               {unreadCount > 0 && (
                 <button
                   type="button"

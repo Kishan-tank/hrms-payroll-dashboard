@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { BarChart2, Users, Clock, Umbrella, Coins, Download, Calendar, ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { reportsService, employeeService, attendanceService, leaveService } from '../services/hrmsApi';
+import { reportsService, employeeService, attendanceService, leaveService, analyticsService } from '../services/hrmsApi';
 import type { ApiEmployee, ApiAttendance, ApiLeave } from '../services/hrmsApi';
+import { useAuthContext } from '../context/AuthContext';
 
 import ExecutiveOverview from '../components/analytics/ExecutiveOverview';
 import WorkforceAnalytics from '../components/analytics/WorkforceAnalytics';
@@ -39,6 +40,11 @@ const TABS = [
 ];
 
 export default function ReportsPage() {
+  const { user } = useAuthContext();
+  // Safely check role regardless of casing — same pattern as LeavePage.tsx / ProfilePage.tsx
+  const normalizedRole = user?.role?.toLowerCase() || '';
+  const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
+
   const [activeTab, setActiveTab] = useState('executive');
   const [loading, setLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -54,6 +60,11 @@ export default function ReportsPage() {
   const [attendanceRecords, setAttendanceRecords] = useState<ApiAttendance[]>([]);
   const [leaveRecords, setLeaveRecords] = useState<ApiLeave[]>([]);
 
+  // Payroll distribution analytics
+  const [salaryDistribution, setSalaryDistribution] = useState<any[]>([]);
+  const [deptPayrollCost, setDeptPayrollCost] = useState<any[]>([]);
+  const [compensationBreakdown, setCompensationBreakdown] = useState<any[]>([]);
+
   // Filters
   const [dateRange, setDateRange] = useState('Last 6 Months');
 
@@ -61,7 +72,7 @@ export default function ReportsPage() {
     async function load() {
       setLoading(true);
       try {
-        const [hc, pt, lb, da, empRes, attRes, levRes] = await Promise.allSettled([
+        const [hc, pt, lb, da, empRes, attRes, levRes, pdRes] = await Promise.allSettled([
           reportsService.getHeadcountTrend(),
           reportsService.getPayrollTrend(),
           reportsService.getLeaveBreakdown(),
@@ -69,6 +80,7 @@ export default function ReportsPage() {
           employeeService.getAll({ limit: 1000 }),
           attendanceService.getAll(),
           leaveService.getAll(),
+          analyticsService.getPayrollDistribution(),
         ]);
         
         if (hc.status === 'fulfilled') setHeadcountData(hc.value.trend.map(([name, headcount]) => ({ name, headcount })));
@@ -78,6 +90,11 @@ export default function ReportsPage() {
         if (empRes.status === 'fulfilled') setEmployees(empRes.value.employees);
         if (attRes.status === 'fulfilled') setAttendanceRecords(attRes.value.records);
         if (levRes.status === 'fulfilled') setLeaveRecords(levRes.value.leaves);
+        if (pdRes.status === 'fulfilled') {
+          setSalaryDistribution(pdRes.value.salaryDistribution || []);
+          setDeptPayrollCost(pdRes.value.departmentPayrollCost || []);
+          setCompensationBreakdown(pdRes.value.compensationBreakdown || []);
+        }
       } catch (err) {
         console.error("Failed to load analytics data", err);
       } finally {
@@ -201,11 +218,23 @@ export default function ReportsPage() {
             <PayrollAnalytics 
               payrollTrend={payrollTrend} 
               loading={loading} 
-              CustomTooltip={CustomTooltip} 
+              CustomTooltip={CustomTooltip}
+              salaryDistribution={salaryDistribution}
+              deptPayrollCost={deptPayrollCost}
+              compensationBreakdown={compensationBreakdown}
             />
           )}
           {activeTab === 'export' && (
-            <ExportCenter />
+            <ExportCenter
+              employees={employees}
+              attendanceRecords={attendanceRecords}
+              leaveRecords={leaveRecords}
+              payrollTrend={payrollTrend}
+              salaryDistribution={salaryDistribution}
+              deptPayrollCost={deptPayrollCost}
+              compensationBreakdown={compensationBreakdown}
+              isEmployee={isEmployee}
+            />
           )}
         </div>
         

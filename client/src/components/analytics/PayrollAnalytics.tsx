@@ -1,13 +1,18 @@
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { mockSalaryDistribution, mockDepartmentPayrollCost, mockCompensationBreakdown } from './mockData';
+
+// Original mock palette — kept here so chart colours are stable after the switch to real API data
+const COMP_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b'];
 
 interface PayrollAnalyticsProps {
-  payrollTrend: any[]; // Existing data from reportsService.getPayrollTrend()
+  payrollTrend: any[];
+  salaryDistribution: { range: string; count: number }[];
+  deptPayrollCost: { department: string; cost: number }[];
+  compensationBreakdown: { name: string; value: number }[];
   loading: boolean;
   CustomTooltip: any;
 }
 
-export default function PayrollAnalytics({ payrollTrend, loading, CustomTooltip }: PayrollAnalyticsProps) {
+export default function PayrollAnalytics({ payrollTrend, salaryDistribution, deptPayrollCost, compensationBreakdown, loading, CustomTooltip }: PayrollAnalyticsProps) {
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
@@ -29,15 +34,14 @@ export default function PayrollAnalytics({ payrollTrend, loading, CustomTooltip 
           )}
         </section>
 
-        {/* Department Payroll Cost (Mock Data) */}
+        {/* Department Payroll Cost (Real Data) */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-400">Department Cost</h2>
-            <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-inset ring-white/10">MOCK</span>
           </div>
           <div className="h-[300px] min-h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockDepartmentPayrollCost} layout="vertical" margin={{ left: 30 }}>
+              <BarChart data={deptPayrollCost} layout="vertical" margin={{ left: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={(val: any) => `₹${val/100000}L`} />
                 <YAxis dataKey="department" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} dx={-10} />
@@ -48,15 +52,14 @@ export default function PayrollAnalytics({ payrollTrend, loading, CustomTooltip 
           </div>
         </section>
 
-        {/* Salary Distribution (Mock Data) */}
+        {/* Salary Distribution (Real Data) */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-400">Salary Distribution</h2>
-            <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-inset ring-white/10">MOCK</span>
           </div>
           <div className="h-[300px] min-h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockSalaryDistribution} margin={{ bottom: 20 }}>
+              <BarChart data={salaryDistribution} margin={{ bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
                 <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dx={-10} />
@@ -67,17 +70,16 @@ export default function PayrollAnalytics({ payrollTrend, loading, CustomTooltip 
           </div>
         </section>
 
-        {/* Compensation Breakdown (Mock Data) */}
+        {/* Compensation Breakdown (Real Data) */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-400">Comp Breakdown</h2>
-            <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-inset ring-white/10">MOCK</span>
           </div>
           <div className="h-[300px] min-h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={mockCompensationBreakdown}
+                  data={compensationBreakdown}
                   cx="50%"
                   cy="45%"
                   innerRadius={70}
@@ -86,8 +88,8 @@ export default function PayrollAnalytics({ payrollTrend, loading, CustomTooltip 
                   dataKey="value"
                   stroke="none"
                 >
-                  {mockCompensationBreakdown.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {compensationBreakdown.map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COMP_COLORS[index % COMP_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} formatter={(val: any) => `${val}%`} />
