@@ -1,7 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { mockApprovalRateTrend } from './mockData';
-import type { ApiLeave } from '../../services/hrmsApi';
+import { analyticsService, type ApiLeave } from '../../services/hrmsApi';
 
 interface LeaveAnalyticsProps {
   leaveRecords: ApiLeave[];
@@ -11,6 +10,36 @@ interface LeaveAnalyticsProps {
 }
 
 export default function LeaveAnalytics({ leaveRecords, leaveByType, loading, CustomTooltip }: LeaveAnalyticsProps) {
+  const [approvalTrendData, setApprovalTrendData] = useState<Array<{ month: string; approvalRate: number }>>([]);
+  const [approvalTrendLoading, setApprovalTrendLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadApprovalTrend = async () => {
+      setApprovalTrendLoading(true);
+      try {
+        const response = await analyticsService.getLeaveApprovalTrend();
+        if (active) {
+          setApprovalTrendData(Array.isArray(response?.trend) ? response.trend : []);
+        }
+      } catch (error) {
+        console.error('Failed to load leave approval trend', error);
+        if (active) {
+          setApprovalTrendData([]);
+        }
+      } finally {
+        if (active) {
+          setApprovalTrendLoading(false);
+        }
+      }
+    };
+
+    void loadApprovalTrend();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Compute Leave Trend (Monthly)
   const leaveTrend = useMemo(() => {
@@ -118,29 +147,35 @@ export default function LeaveAnalytics({ leaveRecords, leaveByType, loading, Cus
           )}
         </section>
 
-        {/* Approval Rate Trend (Mock Data) */}
+        {/* Approval Rate Trend */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-400">Approval Rate</h2>
-            <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-inset ring-white/10">MOCK</span>
+            <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">LIVE</span>
           </div>
-          <div className="h-[300px] min-h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mockApprovalRateTrend}>
-                <defs>
-                  <linearGradient id="colorApp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-                <YAxis domain={[80, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dx={-10} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="approvalRate" name="Approval %" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorApp)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {approvalTrendLoading ? (
+            <div className="flex h-[300px] min-h-[300px] w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50">
+              <div className="h-24 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+            </div>
+          ) : (
+            <div className="h-[300px] min-h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={approvalTrendData}>
+                  <defs>
+                    <linearGradient id="colorApp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
+                  <YAxis domain={[80, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dx={-10} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area type="monotone" dataKey="approvalRate" name="Approval %" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorApp)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </section>
       </div>
     </div>
