@@ -3,6 +3,7 @@ import { BarChart2, Users, Clock, Umbrella, Coins, Download, Calendar, ChevronDo
 import DashboardLayout from '../layouts/DashboardLayout';
 import { reportsService, employeeService, attendanceService, leaveService, analyticsService } from '../services/hrmsApi';
 import type { ApiEmployee, ApiAttendance, ApiLeave } from '../services/hrmsApi';
+import { useAuthContext } from '../context/AuthContext';
 
 import ExecutiveOverview from '../components/analytics/ExecutiveOverview';
 import WorkforceAnalytics from '../components/analytics/WorkforceAnalytics';
@@ -39,6 +40,11 @@ const TABS = [
 ];
 
 export default function ReportsPage() {
+  const { user } = useAuthContext();
+  // Safely check role regardless of casing — same pattern as LeavePage.tsx / ProfilePage.tsx
+  const normalizedRole = user?.role?.toLowerCase() || '';
+  const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
+
   const [activeTab, setActiveTab] = useState('executive');
   const [loading, setLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -219,7 +225,16 @@ export default function ReportsPage() {
             />
           )}
           {activeTab === 'export' && (
-            <ExportCenter />
+            <ExportCenter
+              employees={employees}
+              attendanceRecords={attendanceRecords}
+              leaveRecords={leaveRecords}
+              payrollTrend={payrollTrend}
+              salaryDistribution={salaryDistribution}
+              deptPayrollCost={deptPayrollCost}
+              compensationBreakdown={compensationBreakdown}
+              isEmployee={isEmployee}
+            />
           )}
         </div>
         
