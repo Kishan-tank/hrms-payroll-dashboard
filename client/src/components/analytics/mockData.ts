@@ -1,4 +1,8 @@
-// TODO: Replace with API when backend analytics endpoint exists
+// The three exports below remain in use by ExecutiveOverview, AttendanceAnalytics, and LeaveAnalytics.
+// Their corresponding backend endpoints (getAttritionRisk, getAttendanceHeatmap, getLeaveApprovalTrend)
+// return equally-fake data (hardcoded rows or Math.random() scores) — wiring them frontend-side
+// would not be a genuine improvement over these static values.
+// Flagged for backend fix (real DB aggregation) before frontend wiring is worth doing.
 
 // 1. Attrition Risk
 export const mockAttritionRisk = [
@@ -19,31 +23,6 @@ export const mockAttendanceHeatmap = [
   { day: 'Fri', 'Engineering': 88, 'Sales': 85, 'Marketing': 89, 'HR': 95, 'Operations': 92 },
 ];
 
-// 3. Compensation Breakdown
-export const mockCompensationBreakdown = [
-  { name: 'Base Salary', value: 75, color: '#3b82f6' }, // Blue
-  { name: 'Bonuses', value: 15, color: '#10b981' }, // Emerald
-  { name: 'Benefits', value: 7, color: '#8b5cf6' }, // Purple
-  { name: 'Equity', value: 3, color: '#f59e0b' }, // Amber
-];
-
-// 4. Department Payroll Cost
-export const mockDepartmentPayrollCost = [
-  { department: 'Engineering', cost: 1250000 },
-  { department: 'Sales', cost: 850000 },
-  { department: 'Marketing', cost: 420000 },
-  { department: 'Operations', cost: 680000 },
-  { department: 'HR', cost: 250000 },
-];
-
-// 5. Salary Distribution
-export const mockSalaryDistribution = [
-  { range: '< 5L', count: 12 },
-  { range: '5L-10L', count: 45 },
-  { range: '10L-15L', count: 32 },
-  { range: '15L-20L', count: 18 },
-  { range: '> 20L', count: 8 },
-];
 
 // 6. Approval Rate Trend
 export const mockApprovalRateTrend = [
