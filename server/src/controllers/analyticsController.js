@@ -97,9 +97,7 @@ export const getAttritionRisk = async (req, res) => {
       const totalLeaves = leaveMap[deptName] || 0;
       const leaveFrequency = d.empCount > 0 ? (totalLeaves / d.empCount) : 0;
       
-      const performanceDrop = Math.floor(Math.random() * 10);
-
-      let riskScore = 10 + (leaveFrequency * 2) - (tenureYears * 2) + performanceDrop;
+      let riskScore = 10 + (leaveFrequency * 2) - (tenureYears * 2);
       riskScore = Math.max(5, Math.min(95, Math.round(riskScore)));
       
       return {
@@ -107,20 +105,11 @@ export const getAttritionRisk = async (req, res) => {
         riskScore,
         factors: {
           leaveFrequency: Math.round(leaveFrequency),
-          performanceDrop: performanceDrop,
           tenure: Math.round(tenureYears * 10) / 10
         }
       };
     });
 
-    if(riskData.length === 0) {
-      riskData = [
-        { department: 'Engineering', riskScore: 35, factors: { leaveFrequency: 20, performanceDrop: 15, tenure: 25 } },
-        { department: 'Marketing', riskScore: 42, factors: { leaveFrequency: 25, performanceDrop: 10, tenure: 30 } },
-        { department: 'Sales', riskScore: 28, factors: { leaveFrequency: 15, performanceDrop: 8, tenure: 40 } },
-        { department: 'HR', riskScore: 15, factors: { leaveFrequency: 5, performanceDrop: 5, tenure: 50 } }
-      ];
-    }
     res.status(200).json({ success: true, attritionRisk: riskData });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch attrition risk", error: error.message });
@@ -164,11 +153,6 @@ export const getLeaveApprovalTrend = async (req, res) => {
     trend.sort((a, b) => a.order - b.order);
     trend = trend.map(t => ({ month: t.month, approvalRate: t.approvalRate }));
 
-    // Fallback if no data to not break the UI
-    if (trend.length === 0) {
-      trend = monthNames.slice(0, 6).map(m => ({ month: m, approvalRate: 0 }));
-    }
-
     res.status(200).json({ success: true, trend });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch leave approval trend", error: error.message });
@@ -205,12 +189,8 @@ export const getPayrollDistribution = async (req, res) => {
 
     res.status(200).json({ 
       success: true, 
-      salaryDistribution: salaryDistribution.length && salaryDistribution.some(s => s.count > 0) ? salaryDistribution : [
-        { range: '<30k', count: 12 }, { range: '30k-50k', count: 35 }, { range: '50k-80k', count: 28 }, { range: '80k-120k', count: 15 }, { range: '>120k', count: 5 }
-      ], 
-      departmentPayrollCost: departmentPayrollCost.length ? departmentPayrollCost : [
-        { department: 'Engineering', cost: 1200000 }, { department: 'Marketing', cost: 600000 }, { department: 'Sales', cost: 800000 }, { department: 'HR', cost: 400000 }, { department: 'Finance', cost: 500000 }
-      ], 
+      salaryDistribution, 
+      departmentPayrollCost, 
       compensationBreakdown 
     });
   } catch (error) {

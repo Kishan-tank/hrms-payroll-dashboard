@@ -37,7 +37,11 @@ export const getAllEmployees = async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    const isHR = req.user && ["admin", "hr", "hr-manager"].includes(req.user.role);
+    const selectFields = isHR ? "" : "-basicPay -phone -joinDate -status";
+
     const employees = await Employee.find(query)
+      .select(selectFields)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
