@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BarChart2, Users, Clock, Umbrella, Coins, Download, Calendar, ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { reportsService, employeeService, attendanceService, leaveService, analyticsService } from '../services/hrmsApi';
@@ -107,10 +107,46 @@ export default function ReportsPage() {
   const latestHeadcount = headcountData.length > 0 ? headcountData[headcountData.length - 1].headcount : 0;
   const latestPayroll = payrollTrend.length > 0 ? payrollTrend[payrollTrend.length - 1].amount : 0;
 
+  const averageAttendancePercent = useMemo(() => {
+    const total = attendanceRecords.length;
+    if (total === 0) return '—';
+
+    const presentCount = attendanceRecords.filter((record) => record.status === 'Present').length;
+    return `${((presentCount / total) * 100).toFixed(1)}%`;
+  }, [attendanceRecords]);
+
+  const attendanceTrend = useMemo(() => {
+    if (attendanceRecords.length === 0) return '—';
+
+    const monthStats = attendanceRecords.reduce((acc, record) => {
+      const date = new Date(record.date);
+      if (Number.isNaN(date.getTime())) return acc;
+
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const current = acc[monthKey] ?? { present: 0, total: 0 };
+      current.total += 1;
+      if (record.status === 'Present') current.present += 1;
+      acc[monthKey] = current;
+      return acc;
+    }, {} as Record<string, { present: number; total: number }>);
+
+    const months = Object.keys(monthStats).sort();
+    if (months.length < 2) return '—';
+
+    const lastMonth = monthStats[months[months.length - 1]];
+    const prevMonth = monthStats[months[months.length - 2]];
+    const lastPct = (lastMonth.present / lastMonth.total) * 100;
+    const prevPct = (prevMonth.present / prevMonth.total) * 100;
+    const diff = lastPct - prevPct;
+    const sign = diff >= 0 ? '+' : '';
+
+    return `${sign}${diff.toFixed(1)}%`;
+  }, [attendanceRecords]);
+
   // Real data KPI summaries passed to Executive
   const summaryCards: [string, string | number, string, string, string][] = [
     ['Total Headcount', latestHeadcount > 0 ? String(latestHeadcount) : '—', '+12%', 'text-blue-500', 'bg-blue-50 dark:bg-blue-500/10'],
-    ['Avg Attendance', '94.2%', '+2.1%', 'text-emerald-500', 'bg-emerald-50 dark:bg-emerald-500/10'], // Still hardcoded % as per original, or could be computed
+    ['Avg Attendance', averageAttendancePercent, attendanceTrend, 'text-emerald-500', 'bg-emerald-50 dark:bg-emerald-500/10'],
     ['Total Payroll', latestPayroll > 0 ? `₹${latestPayroll}L` : '—', '+8.4%', 'text-purple-500', 'bg-purple-50 dark:bg-purple-500/10'],
   ];
 
