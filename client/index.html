@@ -13,12 +13,13 @@
       (function() {
         try {
           var raw = localStorage.getItem('theme-preference');
-          var theme = 'system';
+          var theme = 'dark';
           if (raw) {
             try {
-              theme = JSON.parse(raw);
+              var parsed = JSON.parse(raw);
+              if (parsed === 'light' || parsed === 'dark' || parsed === 'system') theme = parsed;
             } catch (e) {
-              theme = raw;
+              if (raw === 'light' || raw === 'dark' || raw === 'system') theme = raw;
             }
           }
           var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
