@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { PayrollRecord } from '../../services/hrmsApi';
 
 interface PayslipPreviewModalProps {
@@ -25,36 +26,17 @@ export default function PayslipPreviewModal({
 }: PayslipPreviewModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const triggerElementRef = useRef<HTMLElement | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open && record) {
-      triggerElementRef.current = document.activeElement as HTMLElement;
-      // Slight delay to allow DOM to render before triggering transition
       requestAnimationFrame(() => setIsOpen(true));
-      
-      // Focus close button
-      setTimeout(() => {
-        closeBtnRef.current?.focus();
-      }, 50);
     } else {
       setIsOpen(false);
-      // Return focus
-      if (triggerElementRef.current) {
-        triggerElementRef.current.focus();
-      }
     }
   }, [open, record]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && record) {
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [record, onClose]);
+  useFocusTrap(open && !!record, onClose, modalRef, { initialFocusRef: closeBtnRef });
 
   if (!open || !record) return null;
 
@@ -99,6 +81,8 @@ export default function PayslipPreviewModal({
         className="fixed inset-0 z-[60] flex items-end justify-center md:items-center pointer-events-none"
       >
         <div 
+          ref={modalRef}
+          tabIndex={-1}
           className={`pointer-events-auto flex flex-col w-full max-w-[680px] bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[90vh] md:max-h-[85vh] transition-all duration-150 origin-bottom md:origin-center overflow-hidden
             ${isOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 md:translate-y-0 scale-95 md:scale-97'}
           `}

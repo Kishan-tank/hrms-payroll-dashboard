@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { settingsService, type ApiSettings } from '../services/hrmsApi';
+import { settingsService } from '../services/hrmsApi';
 import { useToast } from '../context/ToastContext';
 import { useAuthContext } from '../context/AuthContext';
 import { useTheme, Theme } from '../context/ThemeContext';
-import { useNotificationPreferences } from '../hooks/useNotificationPreferences';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
 
@@ -48,7 +47,7 @@ const THEME_OPTIONS: Theme[] = ['light', 'dark', 'system'];
 export default function SettingsPage() {
   const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
-  const [theme, setTheme] = useState<ApiSettings['theme']>('light');
+  const { theme, setTheme } = useTheme();
   const [accentColor, setAccentColor] = useState('#2563EB');
   const [notifications, setNotifications] = useState(defaultNotifications);
   
@@ -66,7 +65,9 @@ export default function SettingsPage() {
       setLoading(true);
       const res = await settingsService.getSettings();
       if (res.success && res.settings) {
-        setTheme(res.settings.theme || 'light');
+        // Theme is managed by ThemeContext via localStorage — do not override it here.
+        // Calling setTheme() from fetchSettings would overwrite the user's saved
+        // local preference with the backend value on every page load.
         setAccentColor(res.settings.accentColor || '#2563EB');
         setNotifications(res.settings.notifications || defaultNotifications);
       }
@@ -230,7 +231,7 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Theme Preferences</h2>
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
-                  {(['light', 'dark', 'system'] as const).map((item) => (
+                  {THEME_OPTIONS.map((item) => (
                     <button key={item} type="button" onClick={() => setTheme(item)} className={`rounded-2xl border-2 p-4 text-center transition ${theme === item ? 'border-blue-600 bg-blue-50/40 dark:bg-blue-500/10' : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/50'}`}>
                       <div className="mb-3 h-16 rounded-xl border border-slate-200 dark:border-white/10" style={{ background: item === 'dark' ? '#0F172A' : item === 'system' ? 'linear-gradient(135deg,#fff 50%,#0F172A 50%)' : '#fff' }} />
                       <p className={`text-sm font-medium ${theme === item ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{item === 'system' ? 'System Default' : `${item.charAt(0).toUpperCase() + item.slice(1)} Mode`}</p>
