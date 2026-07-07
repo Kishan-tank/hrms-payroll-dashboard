@@ -63,7 +63,6 @@ export default function AppRouter() {
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/leave" element={<LeavePage />} />
               <Route path="/payroll" element={<PayrollPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
               
               <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
               <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
@@ -84,6 +83,7 @@ export default function AppRouter() {
                   <Route path="/dashboard/hr" element={<HRDashboard />} />
                   <Route path="/employees" element={<EmployeeManagement />} />
                   <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/analytics" element={<AnalyticsPage />} />
                 </Route>
 
                 {/* ── Catch-all: proper 404 instead of silent redirect ── */}

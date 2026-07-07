@@ -41,7 +41,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['HR_MANAGER'] },
       { label: 'Attendance', path: '/attendance', icon: 'attendance' },
       { label: 'Leave Management', path: '/leave', icon: 'leave' },
-      { label: 'Company Hub', path: '/company-hub', icon: 'companyHub' },
     ]
   },
   {
