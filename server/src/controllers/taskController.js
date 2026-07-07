@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Task from "../models/Task.js";
 import Employee from "../models/employee.js";
 
@@ -62,6 +63,10 @@ export const updateTask = async (req, res) => {
     const { id } = req.params;
     const { title, status, priority } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid task ID format." });
+    }
+
     const task = await Task.findById(id);
     if (!task) {
       return res.status(404).json({ success: false, message: "Task not found." });
@@ -92,6 +97,10 @@ export const updateTask = async (req, res) => {
 export const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid task ID format." });
+    }
 
     const task = await Task.findById(id);
     if (!task) {
