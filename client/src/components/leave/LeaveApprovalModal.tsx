@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { ApiLeave } from '../../services/hrmsApi';
 
 interface LeaveApprovalModalProps {
@@ -20,26 +21,13 @@ export default function LeaveApprovalModal({
 }: LeaveApprovalModalProps) {
   const [mounted, setMounted] = useState(false);
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) {
-      setMounted(true);
-      // Small delay to allow the element to render before focusing
-      setTimeout(() => cancelBtnRef.current?.focus(), 10);
-    } else {
-      setMounted(false);
-    }
+    setMounted(open);
   }, [open]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open && !loading) {
-        onCancel();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, loading, onCancel]);
+  useFocusTrap(open, loading ? () => {} : onCancel, modalRef, { initialFocusRef: cancelBtnRef });
 
   if (!open || !leave) return null;
 
@@ -65,13 +53,18 @@ export default function LeaveApprovalModal({
       
       <div className="fixed inset-0 z-[61] flex items-center justify-center p-4 pointer-events-none">
         <div 
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="leave-approval-modal-title"
+          tabIndex={-1}
           className={`pointer-events-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl transition-all duration-150 dark:border-white/10 dark:bg-slate-900 ${mounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
         >
           <div className="mb-6 flex flex-col items-center text-center">
             <div className={`mb-4 flex h-[56px] w-[56px] items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
               <i className={`ti ${iconClass} text-3xl`} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h2>
+            <h2 id="leave-approval-modal-title" className="text-xl font-bold text-slate-900 dark:text-white">{title}</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               This action will update the leave status and notify the employee.
             </p>

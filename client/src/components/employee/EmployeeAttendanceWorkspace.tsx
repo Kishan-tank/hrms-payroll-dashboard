@@ -6,6 +6,7 @@ import type { DataTableColumn } from '../common/DataTable';
 import StatusBadge from '../common/StatusBadge';
 import EmptyState from '../common/EmptyState';
 import { useToast } from '../../context/ToastContext';
+import { User } from '../../types';
 import { Clock, AlertCircle, ArrowRight, CalendarDays, LogIn, LogOut, FileText } from 'lucide-react';
 
 interface EmployeeAttendanceWorkspaceProps {
@@ -13,7 +14,7 @@ interface EmployeeAttendanceWorkspaceProps {
   loading: boolean;
   error: string;
   onRefresh: () => void;
-  user: any; 
+  user: User | null; 
 }
 
 function calculateHours(checkIn?: string, checkOut?: string): string {
@@ -86,41 +87,14 @@ export default function EmployeeAttendanceWorkspace({
   records,
   loading,
   error,
-  onRefresh,
-  user
+  onRefresh
 }: EmployeeAttendanceWorkspaceProps) {
   const toast = useToast();
 
-  const currentUserIds = [
-    user?.employeeId,
-    user?.id,
-    user?._id,
-  ].filter(Boolean).map(String);
-
-  const currentUserEmails = [user?.email].filter(Boolean).map(e => String(e).toLowerCase());
-
-  const myRecords = useMemo(() => {
-    return records.filter((r) => {
-      const recordIds = [
-        r.employeeId?._id,
-        r.employeeId?.employeeId,
-        r.employeeId?.userId,
-      ].filter(Boolean).map(String);
-      
-      const recordEmails = [
-        r.employeeId?.email,
-        (r as any).email
-      ].filter(Boolean).map(e => String(e).toLowerCase());
-
-      return recordIds.some((id) => currentUserIds.includes(id)) || 
-             recordEmails.some((email) => currentUserEmails.includes(email));
-    });
-  }, [records, currentUserIds, currentUserEmails]);
-
   const todayRecord = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    return myRecords.find(r => r.date && r.date.startsWith(todayStr)) || null;
-  }, [myRecords]);
+    return records.find(r => r.date && r.date.startsWith(todayStr)) || null;
+  }, [records]);
 
   const handleCheckIn = async () => {
     try {
@@ -192,21 +166,11 @@ export default function EmployeeAttendanceWorkspace({
     }
   };
 
-  if (currentUserIds.length === 0) {
-    return (
-      <div className="rounded-xl bg-red-50 p-6 text-center text-red-600 dark:bg-red-500/10 dark:text-red-400">
-        <AlertCircle className="mx-auto mb-2 h-8 w-8" />
-        <h3 className="text-lg font-bold">Identity Error</h3>
-        <p>Could not verify your employee identity. Please re-login or contact IT.</p>
-      </div>
-    );
-  }
-
-  const presentCount = myRecords.filter((r) => r.status === 'Present').length;
-  const lateCount    = myRecords.filter((r) => r.status === 'Late').length;
-  const absentCount  = myRecords.filter((r) => r.status === 'Absent').length;
-  const leaveCount   = myRecords.filter((r) => r.status === 'Leave').length;
-  const totalDays    = myRecords.length || 1;
+  const presentCount = records.filter((r) => r.status === 'Present').length;
+  const lateCount    = records.filter((r) => r.status === 'Late').length;
+  const absentCount  = records.filter((r) => r.status === 'Absent').length;
+  const leaveCount   = records.filter((r) => r.status === 'Leave').length;
+  const totalDays    = records.length || 1;
   const attendanceRate = Math.round(((presentCount + lateCount) / totalDays) * 100);
 
   const last7Days = useMemo(() => {
@@ -216,14 +180,14 @@ export default function EmployeeAttendanceWorkspace({
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const rec = myRecords.find(r => r.date && r.date.startsWith(dateStr));
+      const rec = records.find(r => r.date && r.date.startsWith(dateStr));
       arr.push({
         dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
         status: rec?.status || 'Unknown'
       });
     }
     return arr;
-  }, [myRecords]);
+  }, [records]);
 
   const calendarDays = useMemo(() => {
     const days = [];
@@ -234,11 +198,11 @@ export default function EmployeeAttendanceWorkspace({
     
     for (let i = 1; i <= daysInMonth; i++) {
       const dStr = new Date(year, month, i).toISOString().split('T')[0];
-      const rec = myRecords.find(r => r.date && r.date.startsWith(dStr));
+      const rec = records.find(r => r.date && r.date.startsWith(dStr));
       days.push({ day: i, status: rec?.status });
     }
     return days;
-  }, [myRecords]);
+  }, [records]);
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -263,7 +227,7 @@ export default function EmployeeAttendanceWorkspace({
         </div>
       </div>
 
-      {error && myRecords.length > 0 && (
+      {error && records.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl bg-red-50 p-4 text-red-600 dark:bg-red-500/10 dark:text-red-400 gap-4">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 shrink-0" />
@@ -278,7 +242,7 @@ export default function EmployeeAttendanceWorkspace({
         </div>
       )}
 
-      {error && myRecords.length === 0 ? (
+      {error && records.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[24px] border border-red-500/20 bg-white p-12 text-center shadow-xl dark:border-red-400/10 dark:bg-[#0B1121]">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 dark:bg-red-500/10">
             <AlertCircle className="h-8 w-8 text-red-500" />
@@ -474,7 +438,7 @@ export default function EmployeeAttendanceWorkspace({
           <div className="hidden md:block">
             <DataTable<ApiAttendance>
               columns={MY_COLUMNS}
-              data={myRecords}
+              data={records}
               rowKey={(row, i) => row._id ?? i}
               loading={loading}
               searchable
@@ -492,7 +456,7 @@ export default function EmployeeAttendanceWorkspace({
             />
           </div>
           <div className="flex flex-col gap-3 md:hidden">
-            {myRecords.map((record, i) => (
+            {records.map((record, i) => (
               <div 
                 key={record._id ?? i} 
                 className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]"
@@ -522,7 +486,7 @@ export default function EmployeeAttendanceWorkspace({
                 </div>
               </div>
             ))}
-            {myRecords.length === 0 && !loading && (
+            {records.length === 0 && !loading && (
               <div className="rounded-[16px] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
                 <p className="text-sm font-semibold text-slate-500">Your attendance history will appear here once you start checking in.</p>
               </div>

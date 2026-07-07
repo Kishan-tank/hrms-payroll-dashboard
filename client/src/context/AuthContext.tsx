@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { User } from '../types';
+import type { User, RegisterRequest } from '../types';
 import { authAPI } from '../services/api';
 import { useTheme } from './ThemeContext';
 
 interface AuthContextValue {
   user: User | null;
   login: (credentials: { email: string; password: string }, selectedRole: 'employee' | 'hr-manager') => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   loginAs: (role: 'employee' | 'hr-manager') => void;
   logout: () => void;
   isLoading: boolean;
@@ -19,8 +20,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('user');
-    return stored ? (JSON.parse(stored) as User) : null;
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? (JSON.parse(stored) as User) : null;
+    } catch (err) {
+      console.error('Failed to parse stored user from localStorage', err);
+      return null;
+    }
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +94,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [redirectByRole],
   );
 
+  const register = useCallback(async (data: RegisterRequest) => {
+    setIsLoading(true); setError(null);
+    try {
+      const res = await authAPI.register(data);
+      const { token, user: u } = res.data as { token: string; user: User };
+      
+      const value = String(u.role || data.role || '').toLowerCase().replace(/\s+/g, "-");
+      u.role = value.includes("hr") ? "hr-manager" : "employee";
+
+      localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
+      localStorage.setItem('token', token); 
+      localStorage.setItem('user', JSON.stringify(u));
+      
+      setUser(u); 
+      navigate(u.role === 'employee' ? '/employee-dashboard' : '/hr-dashboard');
+    } catch (err: unknown) {
+      const message = ((err as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Registration failed';
+      setError(message);
+      throw err;
+    } finally { 
+      setIsLoading(false); 
+    }
+  }, [navigate]);
+
   /**
    * Demo / mock login — used by the two login buttons so the app works
    * without a real backend running.
@@ -121,6 +151,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     authAPI.logout();
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setUser(null);
     navigate('/login');
   }, [navigate]);
@@ -129,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, loginAs, logout, isLoading, error, clearError }}
+      value={{ user, login, register, loginAs, logout, isLoading, error, clearError }}
     >
       {children}
     </AuthContext.Provider>

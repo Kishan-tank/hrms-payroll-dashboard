@@ -24,6 +24,10 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
+
+  const normalizedRole = user?.role?.toLowerCase() || '';
+  const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
+
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [employee, setEmployee] = useState<ApiEmployee | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,8 +64,8 @@ export default function ProfilePage() {
 
   // Fallback if not found in DB but logged in (e.g. admin or missing record)
   const displayEmployee: ApiEmployee = employee || {
-    _id: (user as any)?._id || 'EMP-MOCK',
-    employeeId: (user as any)?.employeeId || 'EMP-000',
+    _id: 'EMP-MOCK',
+    employeeId: user?.employeeId || 'EMP-000',
     name: user?.name || 'Unknown User',
     email: user?.email || 'unknown@example.com',
     department: user?.department || 'Unassigned',
@@ -93,9 +97,11 @@ export default function ProfilePage() {
                 {initials}
               </div>
               <div className="mb-4 flex gap-3">
-                <button onClick={() => navigate('/leave')} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 dark:hover:bg-white/10">
-                  Request Time Off
-                </button>
+                {isEmployee && (
+                  <button onClick={() => navigate('/leave')} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 dark:hover:bg-white/10">
+                    Request Time Off
+                  </button>
+                )}
               </div>
             </div>
 
@@ -155,7 +161,7 @@ export default function ProfilePage() {
           {activeTab === 'personal' && <PersonalTab employee={displayEmployee} />}
           {activeTab === 'employment' && <EmploymentTab employee={displayEmployee} />}
           {activeTab === 'payroll' && <PayrollBankTab employee={displayEmployee} />}
-          {activeTab === 'documents' && <DocumentsTab />}
+          {activeTab === 'documents' && <DocumentsTab employee={displayEmployee} />}
           {activeTab === 'skills' && <SkillsActivityTab />}
         </motion.div>
       </div>

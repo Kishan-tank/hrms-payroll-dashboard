@@ -12,7 +12,16 @@
     <script>
       (function() {
         try {
-          var theme = localStorage.getItem('theme-preference') || 'system';
+          var raw = localStorage.getItem('theme-preference');
+          var theme = 'dark';
+          if (raw) {
+            try {
+              var parsed = JSON.parse(raw);
+              if (parsed === 'light' || parsed === 'dark' || parsed === 'system') theme = parsed;
+            } catch (e) {
+              if (raw === 'light' || raw === 'dark' || raw === 'system') theme = raw;
+            }
+          }
           var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (isDark) {
             document.documentElement.classList.add('dark');

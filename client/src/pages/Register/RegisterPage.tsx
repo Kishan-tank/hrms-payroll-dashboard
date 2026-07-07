@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthContext } from '../../context/AuthContext';
 import { hasErrors, validateRegisterForm } from '../../utils/validation';
 import type { RegisterRequest } from '../../types';
 
@@ -29,7 +29,7 @@ function Icon({ name, className = 'h-4 w-4' }: { name: 'building' | 'mail' | 'lo
 }
 
 export default function RegisterPage() {
-  const { register, isLoading, error: apiError, clearError } = useAuth();
+  const { register, isLoading, error: apiError, clearError } = useAuthContext();
   const [step, setStep] = useState<Step>(1);
   const [role, setRole] = useState('HR Manager');
   const [showPassword, setShowPassword] = useState(false);

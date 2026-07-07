@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockAttritionRisk } from './mockData';
+import { analyticsService } from '../../services/hrmsApi';
 
 interface ExecutiveOverviewProps {
   summaryCards: [string, string | number, string, string, string][];
@@ -10,16 +10,50 @@ interface ExecutiveOverviewProps {
 }
 
 export default function ExecutiveOverview({ summaryCards, headcountData, loading, CustomTooltip }: ExecutiveOverviewProps) {
-  // Calculate average attrition risk from mock data
-  const avgRisk = useMemo(() => {
-    return Math.round(mockAttritionRisk.reduce((acc, curr) => acc + curr.riskScore, 0) / mockAttritionRisk.length);
+  const [attritionRiskData, setAttritionRiskData] = useState<Array<{ department: string; riskScore: number }>>([]);
+  const [attritionRiskLoading, setAttritionRiskLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAttritionRisk = async () => {
+      setAttritionRiskLoading(true);
+      try {
+        const response = await analyticsService.getAttritionRisk();
+        if (active) {
+          setAttritionRiskData(Array.isArray(response?.attritionRisk) ? response.attritionRisk : []);
+        }
+      } catch (error) {
+        console.error('Failed to load attrition risk', error);
+        if (active) {
+          setAttritionRiskData([]);
+        }
+      } finally {
+        if (active) {
+          setAttritionRiskLoading(false);
+        }
+      }
+    };
+
+    void loadAttritionRisk();
+    return () => {
+      active = false;
+    };
   }, []);
+
+  const avgRisk = useMemo(() => {
+    if (!attritionRiskData.length) {
+      return 0;
+    }
+
+    return Math.round(attritionRiskData.reduce((acc, curr) => acc + curr.riskScore, 0) / attritionRiskData.length);
+  }, [attritionRiskData]);
 
   const allCards = [
     ...summaryCards,
     // Add mock-based cards
     ['Leave Utilization', '68%', '+5.2%', 'text-violet-500', 'bg-violet-50 dark:bg-violet-500/10'],
-    ['Attrition Risk', `${avgRisk}%`, '-1.5%', 'text-red-500', 'bg-red-50 dark:bg-red-500/10'],
+    ['Attrition Risk', loading || attritionRiskLoading ? '—' : `${avgRisk}%`, '-1.5%', 'text-red-500', 'bg-red-50 dark:bg-red-500/10'],
   ];
 
   return (
@@ -77,29 +111,42 @@ export default function ExecutiveOverview({ summaryCards, headcountData, loading
           )}
         </section>
 
-        {/* Attrition Risk - Mock Data */}
+        {/* Attrition Risk */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-400">Attrition Risk Profile</h2>
-            <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-inset ring-white/10">MOCK</span>
+            <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">LIVE</span>
           </div>
-          <div className="space-y-4">
-            {mockAttritionRisk.map((dept) => (
-              <div key={dept.department}>
-                <div className="mb-1 flex justify-between text-xs font-semibold">
-                  <span className="text-slate-700 dark:text-slate-300">{dept.department}</span>
-                  <span className={dept.riskScore > 20 ? 'text-red-500' : 'text-slate-500'}>{dept.riskScore}%</span>
+          {attritionRiskLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="h-3 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800/50" />
+                  <div className="h-2 w-full animate-pulse rounded-full bg-slate-100 dark:bg-slate-800/50" />
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
-                  <div 
-                    className={`h-full rounded-full ${dept.riskScore > 20 ? 'bg-red-500' : dept.riskScore > 10 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                    style={{ width: `${dept.riskScore}%` }} 
-                  />
-                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                {attritionRiskData.map((dept) => (
+                  <div key={dept.department}>
+                    <div className="mb-1 flex justify-between text-xs font-semibold">
+                      <span className="text-slate-700 dark:text-slate-300">{dept.department}</span>
+                      <span className={dept.riskScore > 20 ? 'text-red-500' : 'text-slate-500'}>{dept.riskScore}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                      <div
+                        className={`h-full rounded-full ${dept.riskScore > 20 ? 'bg-red-500' : dept.riskScore > 10 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                        style={{ width: `${Math.min(dept.riskScore, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <p className="mt-4 text-center text-xs text-slate-500">Based on predictive analysis models</p>
+              <p className="mt-4 text-center text-xs text-slate-500">Based on leave frequency and average tenure per department</p>
+            </>
+          )}
         </section>
       </div>
     </div>

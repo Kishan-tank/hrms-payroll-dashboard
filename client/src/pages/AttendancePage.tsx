@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { attendanceService, ApiAttendance } from '../services/hrmsApi';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthContext } from '../context/AuthContext';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
@@ -40,7 +40,7 @@ function calculateHours(checkIn?: string, checkOut?: string): string {
 }
 
 export default function AttendancePage() {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const displayName = user?.name || 'HR Manager';
   const isHR = ['hr-manager', 'admin', 'hr'].includes(user?.role?.toLowerCase() || '');
 

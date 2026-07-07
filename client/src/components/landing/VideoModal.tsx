@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 function CheckIcon() {
   return (
@@ -10,15 +11,9 @@ function CheckIcon() {
 
 export default function VideoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [showToast, setShowToast] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  // Handle ESC key to close
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  useFocusTrap(isOpen, onClose, modalRef);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -67,6 +62,11 @@ export default function VideoModal({ isOpen, onClose }: { isOpen: boolean; onClo
       
       {/* Modal Content */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="video-modal-title"
+        tabIndex={-1}
         className="animate-fade-in-up relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[24px] shadow-2xl"
         style={{
           background: 'rgba(15,23,42,0.95)',
@@ -77,7 +77,7 @@ export default function VideoModal({ isOpen, onClose }: { isOpen: boolean; onClo
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-          <h3 className="text-xl font-bold text-white">2-Minute HRMSPro Walkthrough</h3>
+          <h3 id="video-modal-title" className="text-xl font-bold text-white">2-Minute HRMSPro Walkthrough</h3>
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/10 hover:text-white"

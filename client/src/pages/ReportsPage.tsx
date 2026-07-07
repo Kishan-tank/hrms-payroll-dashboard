@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BarChart2, Users, Clock, Umbrella, Coins, Download, Calendar, ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { reportsService, employeeService, attendanceService, leaveService } from '../services/hrmsApi';
+import { reportsService, employeeService, attendanceService, leaveService, analyticsService } from '../services/hrmsApi';
 import type { ApiEmployee, ApiAttendance, ApiLeave } from '../services/hrmsApi';
+import { useAuthContext } from '../context/AuthContext';
 
 import ExecutiveOverview from '../components/analytics/ExecutiveOverview';
 import WorkforceAnalytics from '../components/analytics/WorkforceAnalytics';
@@ -39,6 +40,11 @@ const TABS = [
 ];
 
 export default function ReportsPage() {
+  const { user } = useAuthContext();
+  // Safely check role regardless of casing — same pattern as LeavePage.tsx / ProfilePage.tsx
+  const normalizedRole = user?.role?.toLowerCase() || '';
+  const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
+
   const [activeTab, setActiveTab] = useState('executive');
   const [loading, setLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -54,6 +60,11 @@ export default function ReportsPage() {
   const [attendanceRecords, setAttendanceRecords] = useState<ApiAttendance[]>([]);
   const [leaveRecords, setLeaveRecords] = useState<ApiLeave[]>([]);
 
+  // Payroll distribution analytics
+  const [salaryDistribution, setSalaryDistribution] = useState<any[]>([]);
+  const [deptPayrollCost, setDeptPayrollCost] = useState<any[]>([]);
+  const [compensationBreakdown, setCompensationBreakdown] = useState<any[]>([]);
+
   // Filters
   const [dateRange, setDateRange] = useState('Last 6 Months');
 
@@ -61,7 +72,7 @@ export default function ReportsPage() {
     async function load() {
       setLoading(true);
       try {
-        const [hc, pt, lb, da, empRes, attRes, levRes] = await Promise.allSettled([
+        const [hc, pt, lb, da, empRes, attRes, levRes, pdRes] = await Promise.allSettled([
           reportsService.getHeadcountTrend(),
           reportsService.getPayrollTrend(),
           reportsService.getLeaveBreakdown(),
@@ -69,6 +80,7 @@ export default function ReportsPage() {
           employeeService.getAll({ limit: 1000 }),
           attendanceService.getAll(),
           leaveService.getAll(),
+          analyticsService.getPayrollDistribution(),
         ]);
         
         if (hc.status === 'fulfilled') setHeadcountData(hc.value.trend.map(([name, headcount]) => ({ name, headcount })));
@@ -78,6 +90,11 @@ export default function ReportsPage() {
         if (empRes.status === 'fulfilled') setEmployees(empRes.value.employees);
         if (attRes.status === 'fulfilled') setAttendanceRecords(attRes.value.records);
         if (levRes.status === 'fulfilled') setLeaveRecords(levRes.value.leaves);
+        if (pdRes.status === 'fulfilled') {
+          setSalaryDistribution(pdRes.value.salaryDistribution || []);
+          setDeptPayrollCost(pdRes.value.departmentPayrollCost || []);
+          setCompensationBreakdown(pdRes.value.compensationBreakdown || []);
+        }
       } catch (err) {
         console.error("Failed to load analytics data", err);
       } finally {
@@ -90,10 +107,46 @@ export default function ReportsPage() {
   const latestHeadcount = headcountData.length > 0 ? headcountData[headcountData.length - 1].headcount : 0;
   const latestPayroll = payrollTrend.length > 0 ? payrollTrend[payrollTrend.length - 1].amount : 0;
 
+  const averageAttendancePercent = useMemo(() => {
+    const total = attendanceRecords.length;
+    if (total === 0) return '—';
+
+    const presentCount = attendanceRecords.filter((record) => record.status === 'Present').length;
+    return `${((presentCount / total) * 100).toFixed(1)}%`;
+  }, [attendanceRecords]);
+
+  const attendanceTrend = useMemo(() => {
+    if (attendanceRecords.length === 0) return '—';
+
+    const monthStats = attendanceRecords.reduce((acc, record) => {
+      const date = new Date(record.date);
+      if (Number.isNaN(date.getTime())) return acc;
+
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const current = acc[monthKey] ?? { present: 0, total: 0 };
+      current.total += 1;
+      if (record.status === 'Present') current.present += 1;
+      acc[monthKey] = current;
+      return acc;
+    }, {} as Record<string, { present: number; total: number }>);
+
+    const months = Object.keys(monthStats).sort();
+    if (months.length < 2) return '—';
+
+    const lastMonth = monthStats[months[months.length - 1]];
+    const prevMonth = monthStats[months[months.length - 2]];
+    const lastPct = (lastMonth.present / lastMonth.total) * 100;
+    const prevPct = (prevMonth.present / prevMonth.total) * 100;
+    const diff = lastPct - prevPct;
+    const sign = diff >= 0 ? '+' : '';
+
+    return `${sign}${diff.toFixed(1)}%`;
+  }, [attendanceRecords]);
+
   // Real data KPI summaries passed to Executive
   const summaryCards: [string, string | number, string, string, string][] = [
     ['Total Headcount', latestHeadcount > 0 ? String(latestHeadcount) : '—', '+12%', 'text-blue-500', 'bg-blue-50 dark:bg-blue-500/10'],
-    ['Avg Attendance', '94.2%', '+2.1%', 'text-emerald-500', 'bg-emerald-50 dark:bg-emerald-500/10'], // Still hardcoded % as per original, or could be computed
+    ['Avg Attendance', averageAttendancePercent, attendanceTrend, 'text-emerald-500', 'bg-emerald-50 dark:bg-emerald-500/10'],
     ['Total Payroll', latestPayroll > 0 ? `₹${latestPayroll}L` : '—', '+8.4%', 'text-purple-500', 'bg-purple-50 dark:bg-purple-500/10'],
   ];
 
@@ -201,11 +254,23 @@ export default function ReportsPage() {
             <PayrollAnalytics 
               payrollTrend={payrollTrend} 
               loading={loading} 
-              CustomTooltip={CustomTooltip} 
+              CustomTooltip={CustomTooltip}
+              salaryDistribution={salaryDistribution}
+              deptPayrollCost={deptPayrollCost}
+              compensationBreakdown={compensationBreakdown}
             />
           )}
           {activeTab === 'export' && (
-            <ExportCenter />
+            <ExportCenter
+              employees={employees}
+              attendanceRecords={attendanceRecords}
+              leaveRecords={leaveRecords}
+              payrollTrend={payrollTrend}
+              salaryDistribution={salaryDistribution}
+              deptPayrollCost={deptPayrollCost}
+              compensationBreakdown={compensationBreakdown}
+              isEmployee={isEmployee}
+            />
           )}
         </div>
         

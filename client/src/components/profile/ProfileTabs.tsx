@@ -1,6 +1,7 @@
-import React from 'react';
-import type { ApiEmployee } from '../../services/hrmsApi';
-import { Mail, Phone, Calendar, Briefcase, MapPin, Building, CreditCard, FileText, User, Users, Shield, Clock, Award } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { documentService } from '../../services/hrmsApi';
+import type { ApiEmployee, ApiDocument } from '../../services/hrmsApi';
+import { Mail, Phone, Calendar, Briefcase, MapPin, Building, CreditCard, FileText, User, Users, Shield, Clock, Award, AlertCircle, Download } from 'lucide-react';
 import StatusBadge from '../common/StatusBadge';
 import EmptyState from '../common/EmptyState';
 
@@ -151,14 +152,82 @@ export function PayrollBankTab({ employee }: TabProps) {
 
 // ─── 5. Documents Tab ───────────────────────────────────────────────────────
 
-export function DocumentsTab() {
+export function DocumentsTab({ employee }: { employee: ApiEmployee }) {
+  const [documents, setDocuments] = useState<ApiDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchDocs() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await documentService.getAll(employee._id);
+        setDocuments(res.documents || []);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDocs();
+  }, [employee._id]);
+
+  const backendUrl = import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL.replace('/api', '')
+    : 'http://localhost:5000';
+
   return (
     <InfoCard title="Employee Documents">
-      <EmptyState
-        icon={<FileText className="h-8 w-8 text-slate-400" />}
-        title="No Documents Found"
-        description="Your employment documents, ID proofs, and signed agreements will appear here once uploaded by HR."
-      />
+      {loading ? (
+        <div className="flex h-32 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 rounded-xl bg-red-50 p-4 text-red-600 dark:bg-red-500/10 dark:text-red-400">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+      ) : documents.length === 0 ? (
+        <EmptyState
+          icon={<FileText className="h-8 w-8 text-slate-400" />}
+          title="No Documents Found"
+          description="Your employment documents, ID proofs, and signed agreements will appear here once uploaded by HR."
+        />
+      ) : (
+        <ul className="divide-y divide-slate-100 dark:divide-white/5">
+          {documents.map((doc) => {
+            const downloadUrl = `${backendUrl}${doc.fileUrl}`;
+            return (
+              <li key={doc._id} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{doc.title}</p>
+                  <p className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide dark:border-white/10 dark:bg-white/5">
+                      {doc.type}
+                    </span>
+                    <span>
+                      {doc.createdAt
+                        ? new Date(doc.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : 'Unknown date'}
+                    </span>
+                  </p>
+                </div>
+                <a
+                  href={downloadUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </InfoCard>
   );
 }

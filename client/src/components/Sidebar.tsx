@@ -16,6 +16,7 @@ type IconName =
   | 'briefcase'
   | 'performance'
   | 'companyHub'
+  | 'help'
   | 'checklist';
 
 interface NavItem {
@@ -36,10 +37,10 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Dashboard', path: '/employee-dashboard', icon: 'dashboard', roles: ['EMPLOYEE'] },
       { label: 'Onboarding', path: '/onboarding', icon: 'checklist', roles: ['EMPLOYEE'] },
+      { label: 'Tasks', path: '/tasks', icon: 'checklist', roles: ['EMPLOYEE'] },
       { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['HR_MANAGER'] },
       { label: 'Attendance', path: '/attendance', icon: 'attendance' },
       { label: 'Leave Management', path: '/leave', icon: 'leave' },
-      { label: 'Company Hub', path: '/company-hub', icon: 'companyHub' },
     ]
   },
   {
@@ -47,13 +48,17 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Employees', path: '/employees', icon: 'employees', roles: ['HR_MANAGER'] },
       { label: 'Payroll', path: '/payroll', icon: 'payroll' },
+      { label: 'Analytics', path: '/analytics', icon: 'reports', roles: ['HR_MANAGER'] },
       { label: 'Reports', path: '/reports', icon: 'reports', roles: ['HR_MANAGER'] },
+      { label: 'Company Hub', path: '/company-hub', icon: 'companyHub' },
+      { label: 'Performance', path: '/performance', icon: 'performance' },
     ]
   },
   {
     group: 'Manage',
     items: [
       { label: 'Settings', path: '/settings', icon: 'settings' },
+      { label: 'Help Center', path: '/help', icon: 'help' },
     ]
   }
 ];
@@ -81,6 +86,9 @@ function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: str
     case 'performance': return <svg {...c}><path d="M12 20v-6M6 20V10M18 20V4" /></svg>;
     case 'companyHub': return <svg {...c}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg>;
     case 'checklist': return <svg {...c}><path d="M9.615 20H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8M14 19l2 2 4-4M9 8h4M9 12h2" /></svg>;
+    case 'performance': return <svg {...c}><path d="M3 17l6-6 4 4 8-8M21 7v6h-6" /></svg>;
+    case 'help': return <svg {...c}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01" /></svg>;
+    case 'companyHub': return <svg {...c}><path d="M8 21h8M9 8h1m-1 4h1m-1 4h1m4-8h1m-1 4h1m-1 4h1M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M4 21h16" /></svg>;
     default: return null;
   }
 }

@@ -1,7 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockAttendanceHeatmap } from './mockData';
-import type { ApiAttendance } from '../../services/hrmsApi';
+import { analyticsService, type ApiAttendance } from '../../services/hrmsApi';
 
 interface AttendanceAnalyticsProps {
   attendanceRecords: ApiAttendance[];
@@ -11,6 +10,44 @@ interface AttendanceAnalyticsProps {
 }
 
 export default function AttendanceAnalytics({ attendanceRecords, deptAttn, loading, CustomTooltip }: AttendanceAnalyticsProps) {
+  const [heatmapData, setHeatmapData] = useState<Array<Record<string, string | number>>>([]);
+  const [heatmapLoading, setHeatmapLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadHeatmap = async () => {
+      setHeatmapLoading(true);
+      try {
+        const response = await analyticsService.getAttendanceHeatmap();
+        if (active) {
+          setHeatmapData(Array.isArray(response?.heatmap) ? response.heatmap : []);
+        }
+      } catch (error) {
+        console.error('Failed to load attendance heatmap', error);
+        if (active) {
+          setHeatmapData([]);
+        }
+      } finally {
+        if (active) {
+          setHeatmapLoading(false);
+        }
+      }
+    };
+
+    void loadHeatmap();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const heatmapColumns = useMemo(() => {
+    if (heatmapData.length === 0) {
+      return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    }
+
+    return Object.keys(heatmapData[0]).filter((key) => key !== 'time');
+  }, [heatmapData]);
 
   // Compute Attendance Trend (Last 7 Days)
   const attendanceTrend = useMemo(() => {
@@ -114,42 +151,46 @@ export default function AttendanceAnalytics({ attendanceRecords, deptAttn, loadi
           )}
         </section>
 
-        {/* Monthly Attendance Heatmap (Mock Data) */}
+        {/* Monthly Attendance Heatmap */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-400">Monthly Heatmap</h2>
-            <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-inset ring-white/10">MOCK</span>
+            <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">LIVE</span>
           </div>
-          <div className="overflow-x-auto pb-4">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr>
-                  <th className="pb-3 pr-4 font-bold text-slate-500">Day</th>
-                  {['Engineering', 'Sales', 'Marketing', 'HR', 'Operations'].map((dept) => (
-                    <th key={dept} className="pb-3 px-2 text-center font-bold text-slate-500">{dept.slice(0,3)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {mockAttendanceHeatmap.map((row) => (
-                  <tr key={row.day}>
-                    <td className="py-2 pr-4 font-semibold text-slate-700 dark:text-slate-300">{row.day}</td>
-                    {['Engineering', 'Sales', 'Marketing', 'HR', 'Operations'].map((dept) => (
-                      <td key={dept} className="p-1">
-                        <div 
-                          className="flex h-8 items-center justify-center rounded-md font-bold text-slate-900"
-                          style={{ backgroundColor: getHeatmapColor(row[dept as keyof typeof row] as number) }}
-                          title={`${row[dept as keyof typeof row]}%`}
-                        >
-                          {row[dept as keyof typeof row]}%
-                        </div>
-                      </td>
+          {heatmapLoading ? (
+            <div className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" />
+          ) : (
+            <div className="overflow-x-auto pb-4">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr>
+                    <th className="pb-3 pr-4 font-bold text-slate-500">Time</th>
+                    {heatmapColumns.map((day) => (
+                      <th key={day} className="pb-3 px-2 text-center font-bold text-slate-500">{day}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {heatmapData.map((row, index) => (
+                    <tr key={`${row.time ?? 'row'}-${index}`}>
+                      <td className="py-2 pr-4 font-semibold text-slate-700 dark:text-slate-300">{String(row.time ?? row.day ?? `Slot ${index + 1}`)}</td>
+                      {heatmapColumns.map((day) => (
+                        <td key={day} className="p-1">
+                          <div
+                            className="flex h-8 items-center justify-center rounded-md font-bold text-slate-900"
+                            style={{ backgroundColor: getHeatmapColor(Number(row[day] ?? 0)) }}
+                            title={`${row[day]}%`}
+                          >
+                            {row[day]}%
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
     </div>
