@@ -1,4 +1,4 @@
-// TODO: Replace with API when backend analytics endpoint exists
+// Local analytics mock data used by the reports UI until backend data is wired in.
 
 // 1. Attrition Risk
 export const mockAttritionRisk = [

@@ -3,8 +3,6 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { settingsService, type ApiSettings } from '../services/hrmsApi';
 import { useToast } from '../context/ToastContext';
 import { useAuthContext } from '../context/AuthContext';
-import { useTheme, Theme } from '../context/ThemeContext';
-import { useNotificationPreferences } from '../hooks/useNotificationPreferences';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
 
@@ -42,8 +40,6 @@ function Icon({ name }: { name: string }) {
   if (name === 'shield') return <svg {...common}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>;
   return <svg {...common}><circle cx="12" cy="12" r="10" /></svg>;
 }
-
-const THEME_OPTIONS: Theme[] = ['light', 'dark', 'system'];
 
 export default function SettingsPage() {
   const { user } = useAuthContext();

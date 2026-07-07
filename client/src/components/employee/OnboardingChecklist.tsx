@@ -24,7 +24,6 @@ const ONBOARDING_TASKS: Task[] = [
 
 export default function OnboardingChecklist() {
   const navigate = useNavigate();
-  // TODO: Replace with backend onboarding progress API
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 

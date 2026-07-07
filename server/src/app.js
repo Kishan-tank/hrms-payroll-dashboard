@@ -17,7 +17,6 @@ import companyRoutes from "./routes/companyRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import onboardingRoutes from "./routes/onboardingRoutes.js";
-import onboardingRoutes from "./routes/onboardingRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import helpCenterRoutes from "./routes/helpCenterRoutes.js";
 const app = express();
@@ -52,6 +51,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/tasks", taskRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/attendance", attendanceRoutes);

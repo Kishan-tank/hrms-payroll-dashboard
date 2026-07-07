@@ -17,7 +17,6 @@ const seedUser = async () => {
       designation: "Intern",
     });
 
-    console.log("Dummy user created:", user.email);
     process.exit(0);
   } catch (error) {
     console.error("Seed error:", error.message);

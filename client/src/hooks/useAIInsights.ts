@@ -1,11 +1,9 @@
 /**
  * useAIInsights — streams structured insight cards from Google Gemini Flash.
  *
- * TODO (production): This hook calls the Gemini API directly from the browser.
- * The API key (VITE_GEMINI_API_KEY) is embedded in the client bundle and visible
- * to anyone who inspects the network requests or build output.
- * For a commercial deployment, replace the fetch() here with a call to your own
- * backend endpoint (e.g. POST /api/ai/insights) that holds the key server-side.
+ * The hook calls the Gemini API directly from the browser and expects the API key
+ * to be available through VITE_GEMINI_API_KEY. For a commercial deployment,
+ * it is better to relay this request through a server-side endpoint.
  */
 
 import { useState, useEffect } from 'react';
