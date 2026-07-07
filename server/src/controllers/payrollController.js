@@ -10,6 +10,16 @@ export const runPayroll = async (req, res) => {
       return res.status(400).json({ success: false, message: "Month and year are required" });
     }
 
+    const validMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    if (!validMonths.includes(month)) {
+      return res.status(400).json({ success: false, message: "Invalid month. Must be a full month name (e.g. January)." });
+    }
+
+    const yearNum = parseInt(year, 10);
+    if (isNaN(yearNum) || yearNum < 2020 || yearNum > 2030) {
+      return res.status(400).json({ success: false, message: "Invalid year. Must be between 2020 and 2030." });
+    }
+
     // Check if payroll already run for this period
     const existingPayroll = await Payroll.findOne({ month, year });
     if (existingPayroll) {
@@ -23,22 +33,30 @@ export const runPayroll = async (req, res) => {
       return res.status(400).json({ success: false, message: "No active employees found to run payroll" });
     }
 
-    const payrollRecords = activeEmployees.map(emp => {
-      // Simplified deductions logic (e.g., 10% tax/provident fund)
-      const deductions = Math.round(emp.basicPay * 0.10);
-      const netPay = emp.basicPay - deductions;
+    const payrollRecords = activeEmployees
+      .filter(emp => emp.basicPay && emp.basicPay > 0)
+      .map(emp => {
+        const pf = Math.round(emp.basicPay * 0.12);
+        const tdsRate = emp.basicPay < 50000 ? 0.10 : 0.20;
+        const tds = Math.round(emp.basicPay * tdsRate);
+        const deductions = pf + tds;
+        const netPay = emp.basicPay - deductions;
 
-      return {
-        employeeId: emp._id,
-        month,
-        year,
-        basicPay: emp.basicPay,
-        deductions,
-        netPay,
-        status: "Processing",
-        processedAt: new Date()
-      };
-    });
+        return {
+          employeeId: emp._id,
+          month,
+          year,
+          basicPay: emp.basicPay,
+          deductions,
+          netPay,
+          status: "Processing",
+          processedAt: new Date()
+        };
+      });
+
+    if (payrollRecords.length === 0) {
+      return res.status(400).json({ success: false, message: "No active employees with a valid basic pay found" });
+    }
 
     const result = await Payroll.insertMany(payrollRecords);
 

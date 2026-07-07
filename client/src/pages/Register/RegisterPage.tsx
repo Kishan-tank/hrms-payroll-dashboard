@@ -97,8 +97,8 @@ export default function RegisterPage() {
     
     // Attempt registration
     try {
-      setIsSuccess(true);
       await register({ ...form, role });
+      setIsSuccess(true);
     } catch (err) {
       setIsSuccess(false);
     }

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { User, RegisterRequest } from '../types';
@@ -9,7 +9,6 @@ interface AuthContextValue {
   user: User | null;
   login: (credentials: { email: string; password: string }, selectedRole: 'employee' | 'hr-manager') => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
-  loginAs: (role: 'employee' | 'hr-manager') => void;
   logout: () => void;
   isLoading: boolean;
   error: string | null;
@@ -34,6 +33,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const { setTheme } = useTheme();
 
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const res = await authAPI.me();
+        const { user: u } = res.data as { user: User };
+        u.role = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
+        setUser(u);
+      } catch (err) {
+        console.error('Token validation failed', err);
+        // localStorage is cleared by the interceptor
+        setUser(null);
+        navigate('/login');
+      }
+    };
+    initAuth();
+  }, [navigate]);
+
   /** Redirect based on role after any successful login */
   const redirectByRole = useCallback(
     (u: User) => {
@@ -57,8 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await authAPI.login(credentials);
         const { token, user: u } = res.data as { token: string; user: User };
-        const value = String(u.role || '').toLowerCase().replace(/\s+/g, "-");
-        const actualRole = value.includes("hr") ? "hr-manager" : "employee";
+        const actualRole = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
 
         if (actualRole !== selectedRole) {
           throw new Error(
@@ -100,8 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await authAPI.register(data);
       const { token, user: u } = res.data as { token: string; user: User };
       
-      const value = String(u.role || data.role || '').toLowerCase().replace(/\s+/g, "-");
-      u.role = value.includes("hr") ? "hr-manager" : "employee";
+      const actualRole = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
+      u.role = actualRole;
 
       localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
       localStorage.setItem('token', token); 
@@ -118,37 +135,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [navigate]);
 
-  /**
-   * Demo / mock login — used by the two login buttons so the app works
-   * without a real backend running.
-   */
-  const loginAs = useCallback(
-    (role: 'employee' | 'hr-manager') => {
-      const mockUser: User =
-        role === 'hr-manager'
-          ? {
-              id: 'hr-001',
-              name: 'Anil Kumar',
-              email: 'anil@company.com',
-              role: 'hr-manager',
-              designation: 'HR Manager',
-            }
-          : {
-              id: 'emp-001',
-              name: 'Krishna Reddy',
-              email: 'krishna@company.com',
-              role: 'employee',
-              designation: 'Software Engineer',
-            };
-
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      localStorage.setItem('token', `mock-token-${role}`);
-      setUser(mockUser);
-      redirectByRole(mockUser);
-    },
-    [redirectByRole],
-  );
-
   const logout = useCallback(() => {
     authAPI.logout();
     localStorage.removeItem('user');
@@ -161,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, register, loginAs, logout, isLoading, error, clearError }}
+      value={{ user, login, register, logout, isLoading, error, clearError }}
     >
       {children}
     </AuthContext.Provider>

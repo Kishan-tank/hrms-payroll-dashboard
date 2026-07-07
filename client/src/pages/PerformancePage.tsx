@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Target, CheckSquare, Award, Plus, Trash2, CheckCircle, Clock, AlertCircle, UserCheck } from 'lucide-react';
 import { performanceService, employeeService, ApiGoal, ApiTask, ApiPerformanceReview, ApiEmployee } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
@@ -23,6 +22,8 @@ export default function PerformancePage() {
   const [newGoalDueDate, setNewGoalDueDate] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  
+  const debounceRef = useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
   
   // HR Review form states
   const [selectedEmpId, setSelectedEmpId] = useState('');
@@ -70,13 +71,22 @@ const fetchData = async () => {
     }
   };
 
-  const handleUpdateGoalProgress = async (id: string, progress: number) => {
-    try {
-      const res = await performanceService.updateGoalProgress(id, progress);
-      setGoals(goals.map(g => (g._id === id ? res.goal : g)));
-    } catch (err: any) {
-      setError(err.message || 'Failed to update progress');
+  const handleUpdateGoalProgress = (id: string, progress: number) => {
+    // Optimistic UI update
+    setGoals(goals.map(g => (g._id === id ? { ...g, progress } : g)));
+
+    // Debounce API call
+    if (debounceRef.current[id]) {
+      clearTimeout(debounceRef.current[id]);
     }
+    debounceRef.current[id] = setTimeout(async () => {
+      try {
+        const res = await performanceService.updateGoalProgress(id, progress);
+        setGoals(prev => prev.map(g => (g._id === id ? res.goal : g)));
+      } catch (err: any) {
+        setError(err.message || 'Failed to update progress');
+      }
+    }, 500);
   };
 
   const handleDeleteGoal = async (id: string) => {
@@ -145,7 +155,7 @@ const fetchData = async () => {
       <div className="mb-8 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Performance & Productivity</h1>
-          <p className="text-sm text-slate-50-slate-500 dark:text-slate-400">Track professional goals, active task boards, and review periods.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Track professional goals, active task boards, and review periods.</p>
         </div>
       </div>
 

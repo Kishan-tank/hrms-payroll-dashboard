@@ -426,6 +426,8 @@ export const leaveService = {
     request<{ success: boolean; message: string; leave: ApiLeave }>('POST', '/leave', payload),
   updateStatus: (id: string, status: "Approved" | "Rejected" | "Pending") =>
     request<{ success: boolean; leave: ApiLeave }>('PUT', `/leave/${id}/status`, { status }),
+  cancel: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/leave/${id}/cancel`),
 };
 
 // ─── AI Assistant ────────────────────────────────────────────────────────────

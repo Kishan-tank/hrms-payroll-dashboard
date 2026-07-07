@@ -59,7 +59,7 @@ export default function HelpCenterPage() {
   const toast = useToast();
   const { user } = useAuthContext();
   
-  const isHRManager = user?.role === 'HR Manager' || user?.role === 'admin';
+  const isHRManager = user?.role === 'hr-manager' || user?.role === 'admin' || user?.role === 'hr';
 
   useEffect(() => {
     fetchFAQs();
