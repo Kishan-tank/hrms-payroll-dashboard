@@ -13,15 +13,16 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Please provide a valid email address"],
     },
     password: {
       type: String,
       required: [true, "Password is required"],
-      minlength: 6,
+      minlength: 8,
     },
     role: {
       type: String,
-      enum: ["admin", "employee", "hr"],
+      enum: ["admin", "employee", "hr-manager"],
       default: "employee",
     },
     department: {
