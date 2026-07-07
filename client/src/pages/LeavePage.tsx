@@ -91,12 +91,9 @@ export default function LeavePage() {
       setLeaveRequests(leaves);
       setError('');
     } catch (err: any) {
-      // Mock data fallback if API fails
-      setLeaveRequests([
-        { _id: 'LR-001', employeeId: { name: 'John Doe', department: 'Engineering' }, type: 'Casual Leave', days: 2, fromDate: '2026-06-12', toDate: '2026-06-13', status: 'Pending' },
-        { _id: 'LR-002', employeeId: { name: 'Priya Nair', department: 'Marketing' }, type: 'Sick Leave', days: 1, fromDate: '2026-06-10', toDate: '2026-06-10', status: 'Approved' },
-        { _id: 'LR-003', employeeId: { name: 'Rahul Mehta', department: 'Sales' }, type: 'Earned Leave', days: 3, fromDate: '2026-06-18', toDate: '2026-06-20', status: 'Pending' },
-      ] as any[]);
+      const msg = err?.message || 'Failed to load leave requests';
+      setError(msg);
+      setLeaveRequests([]);
     } finally {
       setLoading(false);
     }
@@ -140,6 +137,16 @@ export default function LeavePage() {
       setError(err.message || 'Failed to apply for leave');
     }
   });
+
+  const cancelLeave = useCallback(async (id: string) => {
+    try {
+      await leaveService.cancel(id);
+      setLeaveRequests(prev => prev.filter(req => req._id !== id));
+      success('Leave request cancelled.');
+    } catch (err: any) {
+      toastError(err?.message || 'Failed to cancel leave request');
+    }
+  }, [success, toastError]);
 
   const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
     setApprovingIds(prev => new Set(prev).add(id));
@@ -277,6 +284,25 @@ export default function LeavePage() {
             </div>
           );
         }
+        // Employee can cancel their own pending leaves
+        if (isEmployee && st === 'Pending') {
+          return (
+            <div className="flex h-full w-full items-center"
+                 onMouseEnter={() => { contextTargetRef.current = row; }}>
+              <button
+                type="button"
+                onClick={() => cancelLeave(row._id as string)}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1
+                           text-xs font-bold text-amber-600 transition
+                           hover:bg-amber-100
+                           dark:border-amber-500/30 dark:bg-amber-500/20
+                           dark:text-amber-400 dark:hover:bg-amber-500/30"
+              >
+                Cancel
+              </button>
+            </div>
+          );
+        }
         return (
           <div className="flex h-full w-full items-center" 
                onMouseEnter={() => { contextTargetRef.current = row; }}>
@@ -285,7 +311,7 @@ export default function LeavePage() {
         );
       },
     },
-  ], [isEmployee, handleUpdateStatus, approvingIds]);
+  ], [isEmployee, handleUpdateStatus, approvingIds, cancelLeave]);
 
   return (
     <DashboardLayout title="Leave Management" userName={user?.name || "Employee"} userRole={user?.role || "Employee"}>
@@ -412,13 +438,13 @@ export default function LeavePage() {
                 />
                 {errors.toDate && <span className="mt-1 text-xs text-red-500">{errors.toDate.message}</span>}
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 sm:col-span-2 md:col-span-1">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Reason</label>
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   placeholder="e.g. Medical appointment"
                   {...register('reason')}
-                  className={`rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:bg-[#111827] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 ${errors.reason ? 'border-red-300' : 'border-slate-200 dark:border-white/10'}`}
+                  className={`rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:bg-[#111827] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 resize-none ${errors.reason ? 'border-red-300' : 'border-slate-200 dark:border-white/10'}`}
                 />
                 {errors.reason && <span className="mt-1 text-xs text-red-500">{errors.reason.message}</span>}
               </div>

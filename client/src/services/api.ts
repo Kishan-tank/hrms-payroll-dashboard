@@ -15,7 +15,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; }
+    if (error.response?.status === 401) {
+      // Only clear storage — let React Router / AuthContext handle the redirect
+      // so the SPA doesn't do a hard full-page reload on 401.
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
     return Promise.reject(error);
   }
 );
@@ -26,8 +31,11 @@ export const authAPI = {
     name: data.fullName,
     email: data.email,
     password: data.password,
-    role: data.role === 'HR Manager' ? 'hr' : 'employee',
+    // Map display label → DB enum value ('hr-manager' matches the User model enum)
+    role: data.role === 'HR Manager' ? 'hr-manager' : 'employee',
   }),
+  /** Validate the stored token and return the current user from the server. */
+  me: () => api.get('/auth/me'),
   logout: () => { localStorage.removeItem('token'); localStorage.removeItem('user'); },
 };
 

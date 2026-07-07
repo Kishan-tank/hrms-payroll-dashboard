@@ -16,6 +16,18 @@ const generateToken = (user) => {
   );
 };
 
+/**
+ * Normalise a raw role string coming from the request body into one
+ * of the three valid enum values: 'admin' | 'hr-manager' | 'employee'.
+ */
+const normaliseRole = (rawRole) => {
+  if (!rawRole) return "employee";
+  const r = String(rawRole).toLowerCase().replace(/\s+/g, "-");
+  if (r === "admin") return "admin";
+  if (r.includes("hr")) return "hr-manager";
+  return "employee";
+};
+
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, role, department, designation } = req.body;
@@ -38,11 +50,14 @@ export const registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Normalise role before storing so it always matches the enum
+    const storedRole = normaliseRole(role);
+
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: role || "employee",
+      role: storedRole,
       department: department || "",
       designation: designation || "",
     });
@@ -53,9 +68,9 @@ export const registerUser = async (req, res) => {
       name,
       email,
       department: department || "General",
-      role: role || "employee",
+      role: storedRole,
       joinDate: new Date(),
-      basicPay: 50000, // Default base pay
+      basicPay: 0, // Start at 0; set properly via payroll management
       userId: user._id
     });
 
@@ -75,10 +90,10 @@ export const registerUser = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("registerUser error:", error);
     res.status(500).json({
       success: false,
       message: "Registration failed",
-      error: error.message,
     });
   }
 };
@@ -135,10 +150,10 @@ export const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("loginUser error:", error);
     res.status(500).json({
       success: false,
       message: "Login failed",
-      error: error.message,
     });
   }
 };
@@ -159,10 +174,10 @@ export const getCurrentUser = async (req, res) => {
       user,
     });
   } catch (error) {
+    console.error("getCurrentUser error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to get current user",
-      error: error.message,
     });
   }
 };

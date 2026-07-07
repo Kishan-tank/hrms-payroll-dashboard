@@ -49,7 +49,24 @@ export const verifyToken = async (req, res, next) => {
 
 export const requireRole = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    // Admins are superusers — they always pass any role check
+    if (req.user.role === "admin") {
+      return next();
+    }
+
+    // Normalise allowed roles so 'hr' and 'hr-manager' are treated as aliases
+    const normalisedAllowed = allowedRoles.flatMap((r) =>
+      r === "hr" ? ["hr", "hr-manager"] : r === "hr-manager" ? ["hr-manager", "hr"] : [r]
+    );
+
+    if (!normalisedAllowed.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: "Access denied",

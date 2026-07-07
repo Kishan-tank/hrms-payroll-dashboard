@@ -38,16 +38,17 @@ export const getHrSummary = async (req, res) => {
       presentToday = todayAttendance.filter(a => ["Present", "Late"].includes(a.status)).length;
       attendanceRate = `${Math.round((presentToday / totalEmployees) * 100)}%`;
     } else {
-      // Realistic fallback for demo review if today's attendance isn't fully generated yet
-      presentToday = Math.floor((totalEmployees || 1248) * 0.95);
-      attendanceRate = "95.3%";
+      // No attendance data yet — return clean zeros rather than fake demo numbers
+      presentToday = 0;
+      attendanceRate = "0%";
     }
 
     // On Leave & Remote Count
-    const onLeave = await Employee.countDocuments({ status: "On Leave" }) || 34;
-    // Assume roughly 2% of active are remote if no specific status
-    const remoteCount = Math.floor((totalEmployees || 1248) * 0.02) || 25;
-    const workforceHealth = 98;
+    const onLeave = await Employee.countDocuments({ status: "On Leave" });
+    // Remote count: employees explicitly tagged Remote; no fake fallback
+    const remoteCount = await Employee.countDocuments({ status: "Remote" });
+    // Workforce health: percentage of active staff NOT on leave (0-100)
+    const workforceHealth = Math.max(0, 100 - Math.round((onLeave / Math.max(1, totalEmployees)) * 100));
 
     // 3. Payroll Status & Payroll Total (for current month)
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
@@ -55,45 +56,34 @@ export const getHrSummary = async (req, res) => {
     
     const payrollRecords = await Payroll.find({ month: currentMonth, year: currentYear });
     let payrollStatus = "Not Started";
-    let payrollTotal = 4.12;
+    let payrollTotal = 0;
     if (payrollRecords.length > 0) {
       const paidRecords = payrollRecords.filter(p => p.status === "Paid").length;
       payrollStatus = `${Math.round((paidRecords / payrollRecords.length) * 100)}%`;
       const sum = payrollRecords.reduce((acc, curr) => acc + (curr.netPay || 0), 0);
-      if (sum > 0) payrollTotal = parseFloat((sum / 1000000).toFixed(2));
-    } else {
-      payrollStatus = "100%";
-      payrollTotal = 4.12;
+      payrollTotal = parseFloat((sum / 1000000).toFixed(2));
     }
+    // If no payroll records exist yet: payrollStatus = 'Not Started', payrollTotal = 0
 
     // 4. Pending Approvals & Approval Queue
-    const pendingApprovalsCount = await Leave.countDocuments({ status: "Pending" });
-    const pendingApprovals = pendingApprovalsCount > 0 ? pendingApprovalsCount : 5;
+    const pendingApprovals = await Leave.countDocuments({ status: "Pending" });
 
     const rawLeaves = await Leave.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(5).populate("employeeId");
-    let approvalQueue = rawLeaves.map((l, idx) => {
+    // Fix: no fake fallback — return real data or empty array
+    const approvalQueue = rawLeaves.map((l, idx) => {
       const colors = ['text-amber-500', 'text-emerald-500', 'text-blue-500', 'text-purple-500'];
       const bgs = ['bg-amber-500/10', 'bg-emerald-500/10', 'bg-blue-500/10', 'bg-purple-500/10'];
       return {
         id: l._id.toString(),
         type: l.type || 'Leave',
-        user: l.employeeId?.name || 'Sarah Jenkins',
-        detail: l.reason || `${l.type || 'Sick Leave'} (${l.days || 2} days)`,
+        user: l.employeeId?.name || 'Unknown Employee',
+        detail: l.reason || `${l.type || 'Leave'} (${l.days || 1} days)`,
         time: timeAgo(l.createdAt),
         color: colors[idx % colors.length],
         bg: bgs[idx % bgs.length]
       };
     });
-
-    if (approvalQueue.length === 0) {
-      approvalQueue = [
-        { id: '1', type: 'Leave', user: 'Sarah Jenkins', detail: 'Sick Leave (2 days)', time: '2h ago', color: 'text-amber-500', bg: 'bg-amber-500/10' },
-        { id: '2', type: 'Payroll', user: 'Marcus Chen', detail: 'Expense Reimbursement', time: '4h ago', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-        { id: '3', type: 'Leave', user: 'Emily Davis', detail: 'Annual Vacation (5 days)', time: '1d ago', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-        { id: '4', type: 'Shift', user: 'Arjun Patel', detail: 'Shift Change Request', time: '1d ago', color: 'text-purple-500', bg: 'bg-purple-500/10' },
-        { id: '5', type: 'Expense', user: 'Priya Sharma', detail: 'Client Dinner Budget', time: '2d ago', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-      ];
-    }
+    // If approvalQueue.length === 0 → returns [] (frontend handles empty state)
 
     // 5. Department Overview
     const deptAgg = await Employee.aggregate([
@@ -106,55 +96,42 @@ export const getHrSummary = async (req, res) => {
       color: deptColors[i % deptColors.length]
     }));
 
-    if (departments.length === 0) {
-      departments = [
-        { name: 'Engineering', count: 485, color: 'bg-blue-500' },
-        { name: 'Sales & Marketing', count: 312, color: 'bg-purple-500' },
-        { name: 'Operations', count: 245, color: 'bg-emerald-500' },
-        { name: 'Human Resources', count: 42, color: 'bg-amber-500' },
-        { name: 'Finance', count: 38, color: 'bg-indigo-500' },
-      ];
-    }
+    // Fix: no fake department fallback — return [] if DB has no employees yet
+    // Frontend should handle the empty departments case gracefully
 
     // 6. Employee Spotlight
     const topReview = await PerformanceReview.findOne().sort({ score: -1 }).populate("employeeId");
     let spotlight = null;
     if (topReview && topReview.employeeId) {
       const emp = topReview.employeeId;
-      const initials = emp.name.split(' ').map(n => n[0]).join('').toUpperCase();
+      // Fix: null-safe name split
+      const initials = (emp.name || 'U N').split(' ').map(n => n[0]).join('').toUpperCase();
       spotlight = {
         name: emp.name,
         title: emp.role || 'Senior Specialist',
         department: emp.department || 'Operations',
         avatar: initials.slice(0, 2),
-        score: topReview.score || 98,
+        score: topReview.score || 0,
         quote: topReview.comments ? `"${topReview.comments}"` : '"Consistently delivers high-quality work and mentors peers with exceptional patience. A true asset to our team!"',
-        manager: topReview.reviewer || 'David Chen, VP of Operations'
+        manager: topReview.reviewer || 'HR Department'
       };
     } else {
+      // Fallback to any active employee if no performance review exists
       const anyEmp = await Employee.findOne({ status: "Active" });
       if (anyEmp) {
-        const initials = anyEmp.name.split(' ').map(n => n[0]).join('').toUpperCase();
+        // Fix: null-safe name split
+        const initials = (anyEmp.name || 'U N').split(' ').map(n => n[0]).join('').toUpperCase();
         spotlight = {
           name: anyEmp.name,
-          title: anyEmp.role || 'Senior Software Engineer',
-          department: anyEmp.department || 'Engineering',
+          title: anyEmp.role || 'Employee',
+          department: anyEmp.department || 'General',
           avatar: initials.slice(0, 2),
-          score: 98,
-          quote: '"Consistently delivers high-quality code and mentors junior engineers with exceptional patience. A true asset to our team!"',
-          manager: 'David Chen, VP of Engineering'
-        };
-      } else {
-        spotlight = {
-          name: 'Aisha Verma',
-          title: 'Senior Software Engineer',
-          department: 'Engineering',
-          avatar: 'AV',
-          score: 98,
-          quote: '"Aisha consistently delivers high-quality code and mentors junior engineers with exceptional patience. A true asset to our team!"',
-          manager: 'David Chen, VP of Engineering'
+          score: 0,
+          quote: '"No performance review recorded yet."',
+          manager: 'HR Department'
         };
       }
+      // Fix: if no employees exist at all, spotlight remains null (no hardcoded 'Aisha Verma')
     }
 
     // 7. AI Insights
@@ -182,8 +159,10 @@ export const getHrSummary = async (req, res) => {
       {
         id: 'payroll',
         category: 'PAYROLL',
-        title: 'Payroll anomaly flagged',
-        body: `3 overtime entries in Sales exceed policy thresholds. ₹42,000 at risk of non-compliance in ₹${payrollTotal}M payroll.`,
+        title: payrollTotal > 0 ? 'Payroll processed' : 'Payroll not yet run',
+        body: payrollTotal > 0
+          ? `Current month payroll totals ₹${payrollTotal}M. Status: ${payrollStatus}. Review for any anomalies.`
+          : `No payroll records found for ${currentMonth} ${currentYear}. Run payroll to generate records.`,
         confidence: 91,
         accent: '#8b5cf6',
         accentDim: 'rgba(139,92,246,0.10)',
@@ -204,7 +183,7 @@ export const getHrSummary = async (req, res) => {
     res.status(200).json({
       success: true,
       summary: {
-        totalEmployees: totalEmployees > 0 ? totalEmployees : 1248,
+        totalEmployees,  // Fix: return actual count, no fake fallback
         attendanceRate,
         payrollStatus,
         payrollTotal,
