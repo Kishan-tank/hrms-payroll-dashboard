@@ -430,8 +430,20 @@ export const leaveService = {
 
 // ─── AI Assistant ────────────────────────────────────────────────────────────
 
+export interface AIInsight {
+  id: string;
+  category: 'ATTENDANCE' | 'LEAVE' | 'PAYROLL' | 'APPROVALS';
+  title: string;
+  body: string;
+  confidence: number;
+  action: string;
+  sentiment: 'positive' | 'warning' | 'critical' | 'neutral';
+}
+
 export const aiService = {
   ask: (prompt: string) => request<{ success: boolean; response: string }>('POST', '/ai/ask', { prompt }),
+  getInsights: (contextPayload: Record<string, unknown>) =>
+    request<{ success: boolean; insights: AIInsight[] }>('POST', '/ai/insights', contextPayload),
 };
 
 // ─── Analytics ───────────────────────────────────────────────────────────────
