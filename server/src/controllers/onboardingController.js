@@ -88,3 +88,61 @@ export const resetOnboardingState = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+import Employee from '../models/employee.js';
+
+export const saveProfile = async (req, res) => {
+  try {
+    const { phone, dob, gender, address } = req.body;
+    await Employee.findOneAndUpdate(
+      { $or: [{ userId: req.user.id }, { email: req.user.email }] },
+      { phone, dob, gender, address },
+      { new: true }
+    );
+    res.status(200).json({ success: true, message: 'Profile saved successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const saveBank = async (req, res) => {
+  try {
+    const { account, ifsc, bankName } = req.body;
+    await Employee.findOneAndUpdate(
+      { $or: [{ userId: req.user.id }, { email: req.user.email }] },
+      { bankAccount: account, ifscCode: ifsc, bankName },
+      { new: true }
+    );
+    res.status(200).json({ success: true, message: 'Bank details saved successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const uploadDocuments = async (req, res) => {
+  try {
+    const files = req.files; // assumes multer
+    const employee = await Employee.findOne({ $or: [{ userId: req.user.id }, { email: req.user.email }] });
+    if (!employee) {
+       return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
+
+    const newDocs = [];
+    if (files.govId) {
+      newDocs.push({ type: 'gov_id', name: files.govId[0].originalname, url: `/uploads/${files.govId[0].filename}` });
+    }
+    if (files.offerLetter) {
+      newDocs.push({ type: 'offer_letter', name: files.offerLetter[0].originalname, url: `/uploads/${files.offerLetter[0].filename}` });
+    }
+    if (files.certificates) {
+      newDocs.push({ type: 'certificate', name: files.certificates[0].originalname, url: `/uploads/${files.certificates[0].filename}` });
+    }
+
+    employee.documents = [...(employee.documents || []), ...newDocs];
+    await employee.save();
+
+    res.status(200).json({ success: true, message: 'Documents uploaded successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
