@@ -1,6 +1,22 @@
 import Attendance from "../models/attendance.js";
 import Employee from "../models/employee.js";
 
+const resolveEmployeeForUser = async (user) => {
+  const userId = user?._id || user?.id;
+  const email = user?.email;
+
+  if (userId) {
+    const employeeByUserId = await Employee.findOne({ userId });
+    if (employeeByUserId) return employeeByUserId;
+  }
+
+  if (email) {
+    return Employee.findOne({ email });
+  }
+
+  return null;
+};
+
 // Fetch all attendance records
 export const getAttendance = async (req, res) => {
   try {
@@ -8,8 +24,7 @@ export const getAttendance = async (req, res) => {
     let query = {};
 
     if (userRole === "employee") {
-      const email = req.user?.email;
-      const employee = await Employee.findOne({ email });
+      const employee = await resolveEmployeeForUser(req.user);
       if (!employee) {
         return res.status(404).json({ success: false, message: "Employee profile not found" });
       }
@@ -27,10 +42,11 @@ export const getAttendance = async (req, res) => {
 
 export const checkIn = async (req, res) => {
   try {
-    const email = req.user?.email;
-    if (!email) return res.status(401).json({ success: false, message: "Unauthorized." });
+    if (!req.user?.id && !req.user?.email) {
+      return res.status(401).json({ success: false, message: "Unauthorized." });
+    }
 
-    const employee = await Employee.findOne({ email });
+    const employee = await resolveEmployeeForUser(req.user);
     if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
     const today = new Date().toISOString().split('T')[0];
@@ -58,10 +74,11 @@ export const checkIn = async (req, res) => {
 
 export const checkOut = async (req, res) => {
   try {
-    const email = req.user?.email;
-    if (!email) return res.status(401).json({ success: false, message: "Unauthorized." });
+    if (!req.user?.id && !req.user?.email) {
+      return res.status(401).json({ success: false, message: "Unauthorized." });
+    }
 
-    const employee = await Employee.findOne({ email });
+    const employee = await resolveEmployeeForUser(req.user);
     if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
     const today = new Date().toISOString().split('T')[0];
@@ -87,10 +104,11 @@ export const checkOut = async (req, res) => {
 export const regularizeAttendance = async (req, res) => {
   try {
     const { date, reason, checkIn, checkOut } = req.body;
-    const email = req.user?.email;
-    if (!email) return res.status(401).json({ success: false, message: "Unauthorized." });
+    if (!req.user?.id && !req.user?.email) {
+      return res.status(401).json({ success: false, message: "Unauthorized." });
+    }
 
-    const employee = await Employee.findOne({ email });
+    const employee = await resolveEmployeeForUser(req.user);
     if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
     let record = await Attendance.findOne({ employeeId: employee._id, date });
@@ -104,6 +122,7 @@ export const regularizeAttendance = async (req, res) => {
 
     if (checkIn) record.checkIn = checkIn;
     if (checkOut) record.checkOut = checkOut;
+    if (reason) record.reason = reason;
     record.status = "Pending"; // Needs HR approval
     // In a real system, we might add a notes field or separate Regularization Request collection
     // For now, updating the record to Pending state.
