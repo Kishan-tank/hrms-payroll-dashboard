@@ -4,7 +4,7 @@
   "description": "��#\u0000 \u0000S\u0000e\u0000r\u0000v\u0000e\u0000r\u0000 \u0000a\u0000p\u0000p\u0000\r\u0000 \u0000",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "seed": "node src/utils/seedDatabase.js"

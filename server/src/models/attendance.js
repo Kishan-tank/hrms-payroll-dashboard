@@ -21,6 +21,13 @@ const attendanceSchema = new mongoose.Schema({
     enum: ["Present", "Late", "Absent", "Leave", "Pending", "Rejected"],
     default: "Present",
   },
+  reason: {
+    type: String,
+    trim: true,
+    default: "",
+  },
 }, { timestamps: true });
+
+attendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });
 
 export default mongoose.model("Attendance", attendanceSchema);

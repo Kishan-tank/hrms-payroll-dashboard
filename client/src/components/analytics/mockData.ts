@@ -1,8 +1,4 @@
-// The three exports below remain in use by ExecutiveOverview, AttendanceAnalytics, and LeaveAnalytics.
-// Their corresponding backend endpoints (getAttritionRisk, getAttendanceHeatmap, getLeaveApprovalTrend)
-// return equally-fake data (hardcoded rows or Math.random() scores) — wiring them frontend-side
-// would not be a genuine improvement over these static values.
-// Flagged for backend fix (real DB aggregation) before frontend wiring is worth doing.
+// Local analytics mock data used by the reports UI until backend data is wired in.
 
 // 1. Attrition Risk
 export const mockAttritionRisk = [
