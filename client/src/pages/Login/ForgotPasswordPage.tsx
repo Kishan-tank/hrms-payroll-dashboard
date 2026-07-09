@@ -1,78 +1,71 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../../services/api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
-    setError('');
+    setMessage(null);
+    setError(null);
 
     try {
-      const res = await authAPI.forgotPassword(email);
-      setMessage(res.data.message || 'Check your email for a reset link');
+      const response = await authAPI.forgotPassword({ email });
+      setMessage(response.data.message || 'If an account exists, a reset link has been sent.');
+      setEmail('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to send reset link');
+      setError(err?.response?.data?.message || err?.message || 'Failed to send reset link');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-[#0B1121] p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl dark:bg-slate-900 border border-slate-100 dark:border-white/10">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Forgot Password</h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Enter your email to receive a password reset link.
-          </p>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-slate-900">Forgot Password</h1>
+          <p className="mt-2 text-sm text-slate-500">Enter your email and we will send a reset link.</p>
         </div>
 
-        {message && (
-          <div className="mb-6 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-            {message}
-          </div>
-        )}
+        {message ? (
+          <div className="mb-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{message}</div>
+        ) : null}
 
-        {error && (
-          <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
-            {error}
-          </div>
-        )}
+        {error ? (
+          <div className="mb-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
+        ) : null}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Email Address
-            </span>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block text-sm font-medium text-slate-700">
+            Email address
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
             />
           </label>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
+            className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
           >
             {loading ? 'Sending...' : 'Send Reset Link'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-6 text-center text-sm text-slate-500">
           Remembered your password?{' '}
-          <Link to="/login" className="font-semibold text-blue-600 hover:underline dark:text-blue-400">
+          <Link to="/login" className="font-semibold text-slate-900 hover:underline">
             Back to login
           </Link>
         </p>

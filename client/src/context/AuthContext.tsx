@@ -9,7 +9,9 @@ interface AuthContextValue {
   user: User | null;
   login: (credentials: { email: string; password: string }, selectedRole: 'employee' | 'hr-manager') => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
+  loginAs?: (role: 'employee' | 'hr-manager') => void;
   logout: () => void;
+  updateUser: (updates: Partial<User>) => void;
   isLoading: boolean;
   error: string | null;
   clearError: () => void;
@@ -135,6 +137,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [navigate]);
 
+  /**
+   * Demo / mock login — used by the two login buttons so the app works
+   * without a real backend running.
+   */
+  const loginAs = useCallback(
+    (role: 'employee' | 'hr-manager') => {
+      const mockUser: User =
+        role === 'hr-manager'
+          ? {
+              id: 'hr-001',
+              name: 'Anil Kumar',
+              email: 'anil@company.com',
+              role: 'hr-manager',
+              designation: 'HR Manager',
+            }
+          : {
+              id: 'emp-001',
+              name: 'Krishna Reddy',
+              email: 'krishna@company.com',
+              role: 'employee',
+              designation: 'Software Engineer',
+            };
+
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      localStorage.setItem('token', `mock-token-${role}`);
+      setUser(mockUser);
+      redirectByRole(mockUser);
+    },
+    [redirectByRole],
+  );
+
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser((prev) => {
+      const next = { ...prev, ...updates } as User;
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     authAPI.logout();
     localStorage.removeItem('user');
@@ -147,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, register, logout, isLoading, error, clearError }}
+      value={{ user, login, register, loginAs, logout, updateUser, isLoading, error, clearError }}
     >
       {children}
     </AuthContext.Provider>

@@ -34,11 +34,10 @@ export const authAPI = {
     // Map display label → DB enum value ('hr-manager' matches the User model enum)
     role: data.role === 'HR Manager' ? 'hr-manager' : 'employee',
   }),
-  /** Validate the stored token and return the current user from the server. */
   me: () => api.get('/auth/me'),
+  forgotPassword: (data: { email: string }) => api.post('/auth/forgot-password', data),
+  resetPassword: (data: { token: string; password: string }) => api.post('/auth/reset-password', data),
   logout: () => { localStorage.removeItem('token'); localStorage.removeItem('user'); },
-  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (password: string, resetToken: string) => api.put(`/auth/reset-password/${resetToken}`, { password }),
 };
 
 export default api;

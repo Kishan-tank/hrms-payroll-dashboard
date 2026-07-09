@@ -1,16 +1,28 @@
+import bcrypt from 'bcrypt';
+import User from '../models/user.js';
 import UserSetting from '../models/UserSetting.js';
 
 export const getSettings = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
+    const user = await User.findById(userId).select('name email department designation phone');
+
     let settings = await UserSetting.findOne({ userId });
-    
     if (!settings) {
-      // Create default settings if none exist
       settings = await UserSetting.create({ userId });
     }
-    
-    res.status(200).json({ success: true, settings });
+
+    res.status(200).json({
+      success: true,
+      settings,
+      profile: {
+        name: user?.name,
+        email: user?.email,
+        department: user?.department,
+        designation: user?.designation,
+        phone: user?.phone,
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch settings', error: error.message });
   }
@@ -19,15 +31,54 @@ export const getSettings = async (req, res) => {
 export const updateSettings = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
-    const { theme, accentColor, notifications } = req.body;
-    
+    const { theme, accentColor, notifications, profile, currentPassword, newPassword } = req.body;
+
     const settings = await UserSetting.findOneAndUpdate(
       { userId },
       { $set: { theme, accentColor, notifications } },
       { new: true, upsert: true, runValidators: true }
     );
-    
-    res.status(200).json({ success: true, settings, message: 'Settings updated successfully' });
+
+    const profileUpdates = {};
+    if (profile) {
+      if (profile.name) profileUpdates.name = profile.name;
+      if (profile.department) profileUpdates.department = profile.department;
+      if (profile.designation) profileUpdates.designation = profile.designation;
+      if (profile.phone) profileUpdates.phone = profile.phone;
+    }
+
+    if (currentPassword || newPassword) {
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Current and new password are required to change your password.' });
+      }
+
+      const user = await User.findById(userId).select('+password');
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+      }
+
+      profileUpdates.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, profileUpdates, { new: true, runValidators: true }).select('-password');
+
+    res.status(200).json({
+      success: true,
+      settings,
+      profile: {
+        name: updatedUser?.name,
+        email: updatedUser?.email,
+        department: updatedUser?.department,
+        designation: updatedUser?.designation,
+        phone: updatedUser?.phone,
+      },
+      message: 'Settings updated successfully',
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to update settings', error: error.message });
   }

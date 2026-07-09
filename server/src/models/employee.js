@@ -47,6 +47,32 @@ const employeeSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    dateOfBirth: {
+      type: Date,
+    },
+    address: {
+      type: String,
+      trim: true,
+    },
+    emergencyContact: {
+      name: { type: String, trim: true },
+      relationship: { type: String, trim: true },
+      phone: { type: String, trim: true },
+    },
+    bankDetails: {
+      accountNumber: { type: String, trim: true },
+      ifscCode: { type: String, trim: true },
+      bankName: { type: String, trim: true },
+    },
+    documents: {
+      governmentId: { type: Boolean, default: false },
+      offerLetter: { type: Boolean, default: false },
+      certificates: { type: Boolean, default: false },
+    },
+    onboardingCompleted: {
+      type: Boolean,
+      default: false,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

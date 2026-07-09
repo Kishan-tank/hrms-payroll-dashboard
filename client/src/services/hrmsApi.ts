@@ -8,7 +8,9 @@ const BASE = import.meta.env.VITE_API_URL ?? '/api';
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('token');
+  if (typeof window === 'undefined') return {};
+
+  const token = window.localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 export interface ApiGoal {
@@ -97,18 +99,28 @@ async function request<T>(
 
   const res = await fetch(`${BASE}${path}`, options);
 
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  if (res.status === 401 && typeof window !== 'undefined') {
+    window.localStorage.removeItem('token');
+    window.localStorage.removeItem('user');
     window.location.href = '/login';
   }
 
-  const data: T = await res.json();
+  let data: unknown = {};
+  const contentType = res.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    data = await res.json();
+  } else if (res.status !== 204) {
+    const text = await res.text();
+    data = text ? JSON.parse(text) : {};
+  }
+
   if (!res.ok) {
     const msg = (data as { message?: string })?.message ?? 'Request failed';
     throw new Error(msg);
   }
-  return data;
+
+  return data as T;
 }
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -261,6 +273,12 @@ export const authService = {
       '/auth/register',
       { name, email, password, role },
     ),
+
+  forgotPassword: (email: string) =>
+    request<{ success: boolean; message: string }>('POST', '/auth/forgot-password', { email }),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ success: boolean; message: string }>('POST', '/auth/reset-password', { token, password }),
 };
 export interface ApiSettings {
   theme: 'light' | 'dark' | 'system';
@@ -275,25 +293,77 @@ export interface ApiSettings {
   };
 }
 
-export const settingsService = {
-  getSettings: () =>
-    request<{ success: boolean; settings: ApiSettings }>('GET', '/settings'),
+export interface ApiSettingsResponse {
+  success: boolean;
+  settings: ApiSettings;
+  profile?: {
+    name?: string;
+    email?: string;
+    department?: string;
+    designation?: string;
+    phone?: string;
+  };
+}
 
-  updateSettings: (settings: ApiSettings) =>
-    request<{ success: boolean; settings: ApiSettings; message: string }>('PUT', '/settings', settings),
-    
-  updateProfile: (name: string) =>
-    request<{ success: boolean; user: any; message: string }>('PUT', '/settings/profile', { name }),
-    
-  changePassword: (currentPassword: string, newPassword: string) =>
-    request<{ success: boolean; message: string }>('PUT', '/settings/password', { currentPassword, newPassword }),
-    
-  uploadPhoto: (formData: FormData) =>
-    request<{ success: boolean; avatar: string; user: any; message: string }>('POST', '/settings/photo', formData, {
-      headers: {
-        'Accept': 'application/json'
+export const settingsService = {
+  getSettings: async () => {
+    try {
+      return await request<ApiSettingsResponse>('GET', '/settings');
+    } catch (error) {
+      if (typeof window === 'undefined') {
+        return {
+          success: true,
+          settings: {
+            theme: 'light' as const,
+            accentColor: '#2563EB',
+            notifications: {
+              newLeaveRequests: true,
+              payrollProcessed: true,
+              attendanceAlerts: false,
+              newEmployeeJoined: true,
+              performanceReviewsDue: false,
+              systemMaintenance: true,
+            },
+          },
+        } as ApiSettingsResponse;
       }
-    }),
+
+      const saved = window.localStorage.getItem('hrms-settings');
+      const settings = saved ? (JSON.parse(saved) as ApiSettings) : null;
+
+      return {
+        success: true,
+        settings: settings ?? {
+          theme: 'light' as const,
+          accentColor: '#2563EB',
+          notifications: {
+            newLeaveRequests: true,
+            payrollProcessed: true,
+            attendanceAlerts: false,
+            newEmployeeJoined: true,
+            performanceReviewsDue: false,
+            systemMaintenance: true,
+          },
+        },
+      } as ApiSettingsResponse;
+    }
+  },
+
+  updateSettings: async (payload: {
+    theme: ApiSettings['theme'];
+    accentColor: string;
+    notifications: ApiSettings['notifications'];
+    profile?: {
+      name?: string;
+      department?: string;
+      designation?: string;
+      phone?: string;
+    };
+    currentPassword?: string;
+    newPassword?: string;
+  }) => {
+    return request<{ success: boolean; settings: ApiSettings; profile?: Record<string, string>; message: string }>('PUT', '/settings', payload);
+  },
 };
 // ─── Employees ───────────────────────────────────────────────────────────────
 
