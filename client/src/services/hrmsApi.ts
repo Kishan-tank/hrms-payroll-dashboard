@@ -70,14 +70,25 @@ async function request<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   body?: unknown,
+  customOptions?: RequestInit
 ): Promise<T> {
+  const isFormData = body instanceof FormData;
+  const headers = new Headers(customOptions?.headers || {});
+  
+  if (!isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const auth = authHeaders();
+  if (auth.Authorization) {
+    headers.set('Authorization', auth.Authorization);
+  }
+
   const options: RequestInit = {
+    ...customOptions,
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers,
+    body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
   };
 
   if (method === 'GET') {
@@ -265,56 +276,24 @@ export interface ApiSettings {
 }
 
 export const settingsService = {
-  getSettings: async () => {
-    if (typeof window === 'undefined') {
-      return {
-        success: true,
-        settings: {
-          theme: 'light' as const,
-          accentColor: '#2563EB',
-          notifications: {
-            newLeaveRequests: true,
-            payrollProcessed: true,
-            attendanceAlerts: false,
-            newEmployeeJoined: true,
-            performanceReviewsDue: false,
-            systemMaintenance: true,
-          },
-        },
-      };
-    }
+  getSettings: () =>
+    request<{ success: boolean; settings: ApiSettings }>('GET', '/settings'),
 
-    const saved = window.localStorage.getItem('hrms-settings');
-    const settings = saved ? (JSON.parse(saved) as ApiSettings) : null;
-
-    return {
-      success: true,
-      settings: settings ?? {
-        theme: 'light' as const,
-        accentColor: '#2563EB',
-        notifications: {
-          newLeaveRequests: true,
-          payrollProcessed: true,
-          attendanceAlerts: false,
-          newEmployeeJoined: true,
-          performanceReviewsDue: false,
-          systemMaintenance: true,
-        },
-      },
-    };
-  },
-
-  updateSettings: async (settings: ApiSettings) => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('hrms-settings', JSON.stringify(settings));
-    }
-
-    return {
-      success: true,
-      settings,
-      message: 'Settings updated successfully',
-    };
-  },
+  updateSettings: (settings: ApiSettings) =>
+    request<{ success: boolean; settings: ApiSettings; message: string }>('PUT', '/settings', settings),
+    
+  updateProfile: (name: string) =>
+    request<{ success: boolean; user: any; message: string }>('PUT', '/settings/profile', { name }),
+    
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ success: boolean; message: string }>('PUT', '/settings/password', { currentPassword, newPassword }),
+    
+  uploadPhoto: (formData: FormData) =>
+    request<{ success: boolean; avatar: string; user: any; message: string }>('POST', '/settings/photo', formData, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    }),
 };
 // ─── Employees ───────────────────────────────────────────────────────────────
 
@@ -426,12 +405,26 @@ export const leaveService = {
     request<{ success: boolean; message: string; leave: ApiLeave }>('POST', '/leave', payload),
   updateStatus: (id: string, status: "Approved" | "Rejected" | "Pending") =>
     request<{ success: boolean; leave: ApiLeave }>('PUT', `/leave/${id}/status`, { status }),
+  cancel: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/leave/${id}/cancel`),
 };
 
 // ─── AI Assistant ────────────────────────────────────────────────────────────
 
+export interface AIInsight {
+  id: string;
+  category: 'ATTENDANCE' | 'LEAVE' | 'PAYROLL' | 'APPROVALS';
+  title: string;
+  body: string;
+  confidence: number;
+  action: string;
+  sentiment: 'positive' | 'warning' | 'critical' | 'neutral';
+}
+
 export const aiService = {
   ask: (prompt: string) => request<{ success: boolean; response: string }>('POST', '/ai/ask', { prompt }),
+  getInsights: (contextPayload: Record<string, unknown>) =>
+    request<{ success: boolean; insights: AIInsight[] }>('POST', '/ai/insights', contextPayload),
 };
 
 // ─── Analytics ───────────────────────────────────────────────────────────────
@@ -641,4 +634,18 @@ export const onboardingService = {
 
   resetState: () =>
     request<{ success: boolean; onboarding: any }>('POST', '/onboarding/reset'),
+    
+  submitProfile: (payload: { phone: string; dob: string; gender: string; address: string }) =>
+    request<{ success: boolean }>('POST', '/onboarding/profile', payload),
+    
+  submitBank: (payload: { account: string; ifsc: string; bankName: string }) =>
+    request<{ success: boolean }>('POST', '/onboarding/bank', payload),
+    
+  uploadDocuments: (formData: FormData) =>
+    request<{ success: boolean }>('POST', '/onboarding/documents', formData, {
+      // Fetch will automatically set the correct Content-Type with boundary when body is FormData
+      headers: {
+        'Accept': 'application/json'
+      }
+    }),
 };

@@ -16,6 +16,18 @@ const generateToken = (user) => {
   );
 };
 
+/**
+ * Normalise a raw role string coming from the request body into one
+ * of the three valid enum values: 'admin' | 'hr-manager' | 'employee'.
+ */
+const normaliseRole = (rawRole) => {
+  if (!rawRole) return "employee";
+  const r = String(rawRole).toLowerCase().replace(/\s+/g, "-");
+  if (r === "admin") return "admin";
+  if (r.includes("hr")) return "hr-manager";
+  return "employee";
+};
+
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, role, department, designation } = req.body;
@@ -38,11 +50,14 @@ export const registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Normalise role before storing so it always matches the enum
+    const storedRole = normaliseRole(role);
+
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: role || "employee",
+      role: storedRole,
       department: department || "",
       designation: designation || "",
     });
@@ -53,9 +68,9 @@ export const registerUser = async (req, res) => {
       name,
       email,
       department: department || "General",
-      role: role || "employee",
+      role: storedRole,
       joinDate: new Date(),
-      basicPay: 50000, // Default base pay
+      basicPay: 0, // Start at 0; set properly via payroll management
       userId: user._id
     });
 
@@ -75,10 +90,10 @@ export const registerUser = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("registerUser error:", error);
     res.status(500).json({
       success: false,
       message: "Registration failed",
-      error: error.message,
     });
   }
 };
@@ -135,10 +150,10 @@ export const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("loginUser error:", error);
     res.status(500).json({
       success: false,
       message: "Login failed",
-      error: error.message,
     });
   }
 };
@@ -159,10 +174,73 @@ export const getCurrentUser = async (req, res) => {
       user,
     });
   } catch (error) {
+    console.error("getCurrentUser error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to get current user",
-      error: error.message,
     });
+  }
+};
+
+import crypto from 'crypto';
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      // Return 200 anyway to prevent email enumeration
+      return res.status(200).json({ success: true, message: "If an account with that email exists, a reset link has been sent." });
+    }
+
+    const resetToken = crypto.randomBytes(20).toString("hex");
+    user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    await user.save();
+
+    // In a real app, send email here. For demo, we just log and return success.
+    console.log(`Password reset link: http://localhost:5173/reset-password/${resetToken}`);
+
+    res.status(200).json({
+      success: true,
+      message: "If an account with that email exists, a reset link has been sent.",
+    });
+  } catch (error) {
+    console.error("forgotPassword error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const resetPasswordToken = crypto.createHash("sha256").update(req.params.resetToken).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid or expired token" });
+    }
+
+    const { password } = req.body;
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Password reset successful" });
+  } catch (error) {
+    console.error("resetPassword error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

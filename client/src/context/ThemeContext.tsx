@@ -12,7 +12,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useLocalStorage<Theme>('theme-preference', 'system', { legacyStringFallback: true });
+  const [theme, setThemeState] = useLocalStorage<Theme>('theme-preference', 'dark', { legacyStringFallback: true });
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);

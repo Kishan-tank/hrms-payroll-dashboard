@@ -14,6 +14,7 @@ function useLiveTime() {
 }
 import ThemeToggle from './common/ThemeToggle';
 import NotificationDropdown from './common/NotificationDropdown';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface NavbarProps {
   title: string;
@@ -56,7 +57,11 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
   const [showProfile, setShowProfile] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const firstMenuItemRef = useRef<HTMLButtonElement>(null);
   const [isMac, setIsMac] = useState(false);
+
+  useFocusTrap(showProfile, () => setShowProfile(false), profileMenuRef, { initialFocusRef: firstMenuItemRef });
 
   useEffect(() => {
     setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
@@ -72,6 +77,22 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
   const now = useLiveTime();
   const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  function handleMenuKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const items = Array.from(
+      e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    );
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    let nextIndex;
+    if (e.key === 'ArrowDown') {
+      nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+    }
+    items[nextIndex]?.focus();
+  }
 
   /* Ctrl+K shortcut */
   useEffect(() => {
@@ -169,7 +190,13 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
             </button>
 
             {showProfile && (
-              <div className="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white py-2 shadow-[0_20px_80px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95 dark:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
+              <div 
+                ref={profileMenuRef}
+                role="menu"
+                tabIndex={-1}
+                onKeyDown={handleMenuKeyDown}
+                className="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white py-2 shadow-[0_20px_80px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95 dark:shadow-[0_20px_80px_rgba(0,0,0,0.35)]"
+              >
                 <div className="border-b border-slate-100 px-4 py-3 dark:border-white/10">
                   <p className="text-sm font-bold text-slate-800 dark:text-white">{displayName}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{displayRole}</p>
@@ -181,12 +208,14 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
                   ['Settings',     '/settings'],
                 ].map(([label, path]) => (
                   <button key={label} type="button" onClick={() => navigate(path)}
+                    ref={label === 'My Profile' ? firstMenuItemRef : undefined}
+                    role="menuitem"
                     className="w-full px-4 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">
                     {label}
                   </button>
                 ))}
                 <div className="mt-1 border-t border-slate-100 pt-1 dark:border-white/10">
-                  <button type="button" onClick={logout} className="w-full px-4 py-2.5 text-left text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300">
+                  <button type="button" onClick={logout} role="menuitem" className="w-full px-4 py-2.5 text-left text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300">
                     Logout
                   </button>
                 </div>

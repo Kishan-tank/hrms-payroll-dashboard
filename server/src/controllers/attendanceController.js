@@ -24,7 +24,10 @@ export const getAttendance = async (req, res) => {
     let query = {};
 
     if (userRole === "employee") {
-      const employee = await resolveEmployeeForUser(req.user);
+      // Fix: use $or to match by userId OR email — handles both linked and unlinked accounts
+      const employee = await Employee.findOne({
+        $or: [{ userId: req.user?.id }, { email: req.user?.email }]
+      });
       if (!employee) {
         return res.status(404).json({ success: false, message: "Employee profile not found" });
       }
@@ -46,12 +49,15 @@ export const checkIn = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized." });
     }
 
-    const employee = await resolveEmployeeForUser(req.user);
+    // Fix: use $or to match by userId OR email
+    const employee = await Employee.findOne({
+      $or: [{ userId: req.user?.id }, { email: req.user?.email }]
+    });
     if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
     const today = new Date().toISOString().split('T')[0];
     const existing = await Attendance.findOne({ employeeId: employee._id, date: today });
-    
+
     if (existing) {
       return res.status(400).json({ success: false, message: "You have already checked in today." });
     }
@@ -59,11 +65,17 @@ export const checkIn = async (req, res) => {
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
+    // Fix: detect Late check-in — if after 09:30 AM, mark as 'Late' instead of 'Present'
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const isLate = hours > 9 || (hours === 9 && minutes > 30);
+    const status = isLate ? 'Late' : 'Present';
+
     const newRecord = await Attendance.create({
       employeeId: employee._id,
       date: today,
       checkIn: timeString,
-      status: "Present"
+      status
     });
 
     res.status(201).json({ success: true, message: "Checked in successfully", record: newRecord });
@@ -78,12 +90,15 @@ export const checkOut = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized." });
     }
 
-    const employee = await resolveEmployeeForUser(req.user);
+    // Fix: use $or to match by userId OR email
+    const employee = await Employee.findOne({
+      $or: [{ userId: req.user?.id }, { email: req.user?.email }]
+    });
     if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
     const today = new Date().toISOString().split('T')[0];
     const record = await Attendance.findOne({ employeeId: employee._id, date: today });
-    
+
     if (!record) {
       return res.status(400).json({ success: false, message: "You haven't checked in yet today." });
     }
@@ -108,7 +123,10 @@ export const regularizeAttendance = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized." });
     }
 
-    const employee = await resolveEmployeeForUser(req.user);
+    // Fix: use $or to match by userId OR email
+    const employee = await Employee.findOne({
+      $or: [{ userId: req.user?.id }, { email: req.user?.email }]
+    });
     if (!employee) return res.status(404).json({ success: false, message: "Employee profile not found." });
 
     let record = await Attendance.findOne({ employeeId: employee._id, date });
@@ -139,10 +157,18 @@ export const updateAttendanceStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    
+
     const userRole = req.user?.role;
     if (!["admin", "hr", "hr-manager"].includes(userRole)) {
       return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    // Fix: validate that status is one of the allowed values
+    if (!VALID_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`
+      });
     }
 
     const record = await Attendance.findById(id);

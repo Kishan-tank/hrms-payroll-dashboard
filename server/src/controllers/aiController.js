@@ -127,3 +127,111 @@ Here is the structure and knowledge of the website you should use to guide users
         res.status(500).json({ success: false, message: "AI Assistant failed to respond", error: error.message });
     }
 };
+
+export const getAIInsights = async (req, res) => {
+    try {
+        const { summary } = req.body;
+        
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ success: false, message: "GEMINI_API_KEY is not configured on the server." });
+        }
+
+        const ctx = summary
+            ? `
+        Total employees: ${summary.totalEmployees ?? summary.total ?? 'unknown'}
+        Present today: ${summary.presentToday ?? summary.present ?? 'unknown'}
+        On leave today: ${summary.onLeave ?? summary.onLeaveToday ?? 'unknown'}
+        Pending leave requests: ${summary.pendingLeaves ?? summary.pending ?? 'unknown'}
+        Pending approvals: ${summary.pendingApprovals ?? 'unknown'}
+        Total monthly payroll: ${summary.totalPayroll ?? summary.payrollTotal ?? 'unknown'}
+        Active employees: ${summary.activeEmployees ?? 'unknown'}
+      `.trim()
+            : 'No summary data available — generate general HRMS insights.';
+
+        const systemInstruction = `You are an expert HR analytics AI embedded in HRMSPro, 
+an enterprise HRMS platform. You analyse workforce data and return structured 
+JSON insights. You are precise, data-driven, and commercially focused. 
+You never fabricate specific employee names or IDs. 
+You always return ONLY valid JSON — no markdown, no preamble, no explanation.`;
+
+        const userPrompt = `Analyse this HR workforce snapshot and return exactly 4 
+insight cards as a JSON array. Each card identifies a workforce signal, risk, or 
+opportunity an HR manager should act on today.
+
+Current workforce data:
+${ctx}
+
+Return this exact JSON structure (array of 4 objects, nothing else):
+[
+  {
+    "id": "unique_string",
+    "category": "ATTENDANCE" | "LEAVE" | "PAYROLL" | "APPROVALS",
+    "title": "concise headline under 8 words",
+    "body": "1-2 sentence insight with specific numbers where available. Be direct.",
+    "confidence": number between 70 and 99,
+    "action": "2-3 word CTA e.g. Review now",
+    "sentiment": "positive" | "warning" | "critical" | "neutral"
+  }
+]
+
+Rules:
+- Use exactly these 4 categories, one card each: ATTENDANCE, LEAVE, PAYROLL, APPROVALS
+- confidence reflects how certain you are given the data quality (higher if data is specific)
+- sentiment: positive=good news, warning=needs attention, critical=urgent, neutral=informational
+- If a data field is unknown, make a reasonable inference but lower confidence accordingly
+- Return ONLY the JSON array. No markdown. No explanation. No backticks.`;
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: userPrompt,
+            config: {
+                systemInstruction,
+                temperature: 0.4,
+                responseMimeType: "application/json"
+            }
+        });
+
+        const dataText = response.text;
+        
+        let parsed;
+        try {
+            let cleanText = dataText.trim();
+            if (cleanText.startsWith('```json')) {
+                cleanText = cleanText.substring(7);
+            } else if (cleanText.startsWith('```')) {
+                cleanText = cleanText.substring(3);
+            }
+            if (cleanText.endsWith('```')) {
+                cleanText = cleanText.slice(0, -3);
+            }
+            parsed = JSON.parse(cleanText.trim());
+        } catch (e) {
+            return res.status(500).json({ success: false, message: "AI response was not valid JSON", error: dataText });
+        }
+
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            return res.status(500).json({ success: false, message: "Invalid insight structure returned by AI" });
+        }
+
+        const VALID_CATEGORIES = ['ATTENDANCE', 'LEAVE', 'PAYROLL', 'APPROVALS'];
+        const VALID_SENTIMENTS = ['positive', 'warning', 'critical', 'neutral'];
+
+        const validated = parsed.map((item, i) => ({
+            id: item.id ?? `insight-${i}`,
+            category: VALID_CATEGORIES.includes(item.category) ? item.category : 'ATTENDANCE',
+            title: item.title ?? 'Workforce insight',
+            body: item.body ?? '',
+            confidence: typeof item.confidence === 'number' ? Math.min(99, Math.max(50, item.confidence)) : 80,
+            action: item.action ?? 'Review now',
+            sentiment: VALID_SENTIMENTS.includes(item.sentiment) ? item.sentiment : 'neutral',
+        }));
+
+        res.status(200).json({ success: true, insights: validated });
+    } catch (error) {
+        console.error("AI Insights Error:", error);
+        import('fs').then(fs => fs.appendFileSync('ai-error.log', new Date().toISOString() + ': ' + error.stack + '\n'));
+        res.status(500).json({ success: false, message: "Failed to generate AI insights", error: error.message });
+    }
+};

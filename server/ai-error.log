@@ -1,0 +1,4 @@
+2026-07-07T11:31:12.476Z: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at async Models.generateContent (file:///D:/Internship/HRMS_PAYROLL/hrms-payroll-dashboard/server/node_modules/@google/genai/dist/node/index.mjs:14779:24)
+    at async getAIInsights (file:///D:/Internship/HRMS_PAYROLL/hrms-payroll-dashboard/server/src/controllers/aiController.js:186:26)
