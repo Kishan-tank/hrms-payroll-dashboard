@@ -300,9 +300,9 @@ export default function LoginPage() {
                   <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 rounded border-white/10 bg-slate-900 text-blue-500 focus:ring-blue-500/30 focus:ring-offset-slate-900" />
                   <span className="text-sm font-medium text-slate-400 select-none">Remember me</span>
                 </label>
-                <button type="button" className="text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors">
+                <Link to="/forgot-password" className="text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors">
                   Forgot password?
-                </button>
+                </Link>
               </div>
 
               <button

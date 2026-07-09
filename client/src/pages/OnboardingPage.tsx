@@ -5,6 +5,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { useAuthContext } from '../context/AuthContext';
 import { useOnboarding, type OnboardingStep } from '../hooks/useOnboarding';
 import { useToast } from '../context/ToastContext';
+import { onboardingService } from '../services/hrmsApi';
 
 export default function OnboardingPage() {
   const { user } = useAuthContext();
@@ -49,29 +50,51 @@ export default function OnboardingPage() {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleProfileSubmit = () => {
+  const handleProfileSubmit = async () => {
     if (!profileForm.phone.trim() || !profileForm.address.trim()) {
       setProfileError(true);
       return;
     }
     setProfileError(false);
-    completeStep('profile');
-    toast.success('Profile details saved successfully');
+    try {
+      await onboardingService.submitProfile(profileForm);
+      completeStep('profile');
+      toast.success('Profile details saved successfully');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save profile');
+    }
   };
 
-  const handleDocumentsSubmit = () => {
-    // For demo purposes, documents are optional, we just proceed
+  const handleDocumentsSubmit = async () => {
+    const formData = new FormData();
+    if (govId) formData.append('govId', govId);
+    if (offerLetter) formData.append('offerLetter', offerLetter);
+    if (certificates) formData.append('certificates', certificates);
+
+    if (govId || offerLetter || certificates) {
+      try {
+        await onboardingService.uploadDocuments(formData);
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to upload documents');
+        return;
+      }
+    }
+    
     completeStep('documents');
     toast.success('Documents marked as uploaded');
   };
 
-  const handleBankSubmit = () => {
+  const handleBankSubmit = async () => {
     if (!bankForm.account.trim() || !bankForm.ifsc.trim()) {
-      // Basic strictness for demo, rely on user not to bypass easily
       return;
     }
-    completeStep('bank');
-    toast.success('Bank details saved');
+    try {
+      await onboardingService.submitBank(bankForm);
+      completeStep('bank');
+      toast.success('Bank details saved');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save bank details');
+    }
   };
 
   const handleHandbookSubmit = () => {
