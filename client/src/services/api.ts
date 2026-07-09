@@ -37,6 +37,8 @@ export const authAPI = {
   /** Validate the stored token and return the current user from the server. */
   me: () => api.get('/auth/me'),
   logout: () => { localStorage.removeItem('token'); localStorage.removeItem('user'); },
+  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (password: string, resetToken: string) => api.put(`/auth/reset-password/${resetToken}`, { password }),
 };
 
 export default api;
