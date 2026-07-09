@@ -4,7 +4,6 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { useAuthContext } from '../context/AuthContext';
 import { useOnboarding, type OnboardingStep, type StepId } from '../hooks/useOnboarding';
 import { useToast } from '../context/ToastContext';
-import WelcomeHero from '../components/onboarding/WelcomeHero';
 import ProgressSidebar from '../components/onboarding/ProgressSidebar';
 import PremiumStepper from '../components/onboarding/PremiumStepper';
 import PersonalInfoForm from '../components/onboarding/forms/PersonalInfoForm';
@@ -12,14 +11,9 @@ import DocumentsForm from '../components/onboarding/forms/DocumentsForm';
 import BankDetailsForm from '../components/onboarding/forms/BankDetailsForm';
 import PoliciesForm from '../components/onboarding/forms/PoliciesForm';
 import CompletionView from '../components/onboarding/CompletionView';
+import EnterpriseSupportPanel from '../components/onboarding/EnterpriseSupportPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const stepShortNames: Record<string, string> = {
-  profile: 'Personal Info',
-  documents: 'Documents',
-  bank: 'Bank Details',
-  handbook: 'Company Policies',
-};
 
 export default function OnboardingPage() {
   const { user } = useAuthContext();
@@ -189,13 +183,22 @@ export default function OnboardingPage() {
   // ─── Step Content Renders ─────────────────────────────────────────────────
 
   const renderAITips = (text: string) => (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex items-start gap-3 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-500/10 dark:to-purple-500/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 shadow-inner max-w-sm mb-6">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md">
-        <i className="ti ti-sparkles text-sm" />
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }} className="hidden lg:flex items-start gap-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/[0.02] p-5 rounded-[2rem] border border-slate-200/60 dark:border-white/10 shadow-xl shadow-slate-200/20 dark:shadow-none max-w-sm mb-6 relative overflow-hidden group">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-100 dark:border-white/5">
+        <i className="ti ti-sparkles text-lg animate-pulse" />
       </div>
       <div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">AI Assistant Tip</p>
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">{text}</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-1 flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+          </span>
+          AI Assistant
+        </p>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.8 }} className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+          {text}
+        </motion.p>
       </div>
     </motion.div>
   );
@@ -261,22 +264,10 @@ export default function OnboardingPage() {
 
   return (
     <DashboardLayout title="Onboarding">
-      <div className="mx-auto max-w-[1200px] pb-32 px-4 sm:px-6 lg:px-8 flex flex-col xl:flex-row gap-10 items-start mt-8 relative">
+      <div className="mx-auto max-w-[1200px] pb-6 px-4 sm:px-6 lg:px-8 flex flex-col xl:flex-row gap-6 items-start mt-4 relative">
 
         {/* Main Content Area */}
-        <div className="flex-1 min-w-0 w-full flex flex-col gap-10">
-          {!isComplete && (
-            <WelcomeHero
-              userName={user?.name || ''}
-              department="Engineering"
-              role="Software Engineer"
-              joinDate={new Date().toISOString()} // Mock join date for now
-              completionPercent={completionPercent}
-              estimatedMinutesRemaining={(filteredSteps.length - currentIndex) * 3}
-              avatarUrl={undefined}
-            />
-          )}
-
+        <div className="flex-1 min-w-0 w-full flex flex-col gap-4">
           {/* Top Horizontal Stepper */}
           {!isComplete && (
             <PremiumStepper
@@ -287,8 +278,19 @@ export default function OnboardingPage() {
           )}
 
           {/* Main Content Card */}
-          <div className={`relative rounded-[2.5rem] border border-slate-200/80 bg-white shadow-2xl shadow-slate-200/40 dark:shadow-none dark:border-white/10 dark:bg-[#0B1121] transition-all duration-500 z-10 ${isComplete ? 'p-12 sm:p-16' : 'p-8 sm:p-12'
-            }`}>
+          <div className={`relative rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/30 dark:shadow-none dark:border-white/10 dark:bg-[#0B1121] transition-all duration-500 z-10 ${isComplete ? 'p-8 sm:p-10' : 'p-5 sm:p-7'}`}>
+
+            {/* Enterprise Help Button - Floating on top right corner */}
+            {!isComplete && (
+              <button
+                onClick={() => setShowHelpPanel(true)}
+                className="absolute -top-4 -right-4 sm:-top-5 sm:-right-5 z-30 hidden sm:flex h-10 w-10 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200 dark:bg-[#0f172a] dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:scale-110 active:scale-95"
+                title="Get Help"
+              >
+                <i className="ti ti-help-circle text-xl" />
+              </button>
+            )}
+
             <AnimatePresence mode="wait">
               {isComplete ? (
                 <motion.div key="complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -296,44 +298,7 @@ export default function OnboardingPage() {
                 </motion.div>
               ) : (
                 <motion.div key={currentStepId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3, ease: 'easeOut' }}>
-                  <div className="mb-12 flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-4 mb-3">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 font-black text-sm dark:bg-blue-500/20 dark:text-blue-400 border border-blue-100 dark:border-blue-500/30 shadow-sm">
-                          {currentIndex + 1}
-                        </span>
-                        <p className="text-xs font-black uppercase tracking-widest text-slate-400">
-                          Step {currentIndex + 1} of {filteredSteps.length}
-                        </p>
-                      </div>
-                      <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-4">
-                        {stepShortNames[currentStepId]}
-                        {saveStatus === 'saving' && <i className="ti ti-loader animate-spin text-slate-300 text-2xl" />}
-                      </h2>
-                    </div>
-
-                    {/* Enterprise Help Button */}
-                    <button onClick={() => setShowHelpPanel(!showHelpPanel)} className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200 dark:bg-white/5 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white relative">
-                      <i className="ti ti-help-circle text-2xl" />
-                      {showHelpPanel && (
-                        <div className="absolute top-16 right-0 w-80 p-5 bg-slate-900 text-white rounded-3xl shadow-2xl z-50 text-left border border-slate-700">
-                          <h4 className="font-black text-lg mb-2">Need help?</h4>
-                          <p className="text-sm text-slate-400 font-semibold mb-4 leading-relaxed">Reach out to your HR representative for assistance with {stepShortNames[currentStepId].toLowerCase()}.</p>
-                          <div className="flex items-center gap-3 bg-white/10 rounded-2xl p-3 border border-white/5">
-                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                              <i className="ti ti-user text-lg" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-black">Sarah Jenkins</p>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">HR Partner</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="min-h-[350px]">
+                  <div className="min-h-[320px] flex flex-col justify-center mt-2">
                     {getStepBody(steps.find(s => s.id === currentStepId)!)}
                   </div>
                 </motion.div>
@@ -343,55 +308,48 @@ export default function OnboardingPage() {
 
           {/* Bottom Navigation */}
           {!isComplete && (
-            <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-6 px-4">
+            <div className="mt-8 flex items-center justify-between w-full">
+              {/* Back Button */}
               <button
                 onClick={handleBack}
                 disabled={currentIndex === 0 || isSubmitting}
-                className={`flex items-center gap-2 rounded-2xl px-6 py-4 text-sm font-black transition-all ${currentIndex === 0
-                    ? 'text-transparent cursor-default pointer-events-none'
-                    : 'text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-white active:scale-95'
+                className={`flex items-center gap-2 rounded-2xl px-6 py-3.5 text-sm font-bold transition-all ${currentIndex === 0
+                  ? 'opacity-0 pointer-events-none'
+                  : 'text-slate-400 bg-slate-100/50 hover:bg-slate-200/50 dark:bg-white/[0.03] dark:hover:bg-white/[0.08] active:scale-95'
                   }`}
               >
-                <i className="ti ti-arrow-left text-lg" /> Back
+                <span className="text-base leading-none">&larr;</span> Back
               </button>
 
-              <div className="flex gap-4">
+              {/* Step Indicators (Circular Dots) */}
+              <div className="flex items-center gap-2.5">
                 {filteredSteps.map((s) => (
                   <div
                     key={s.id}
-                    className={`h-2 rounded-full transition-all duration-500 ${s.status === 'completed' ? 'bg-emerald-500 w-8 shadow-sm shadow-emerald-500/50' :
-                        s.id === currentStepId ? 'bg-blue-600 w-12 shadow-sm shadow-blue-500/50' :
-                          'bg-slate-200 dark:bg-white/10 w-4'
+                    className={`h-2 w-2 rounded-full transition-all duration-300 ${s.id === currentStepId
+                      ? 'bg-blue-500'
+                      : 'bg-slate-300 dark:bg-white/10'
                       }`}
                   />
                 ))}
               </div>
 
+              {/* Continue Button */}
               <button
                 onClick={handleNext}
                 disabled={isContinueDisabled || isSubmitting}
-                className={`group relative flex items-center justify-center gap-3 rounded-2xl px-10 py-4 text-sm font-black text-white transition-all overflow-hidden shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none ${currentIndex === filteredSteps.length - 1
-                    ? 'bg-emerald-500 hover:shadow-emerald-500/40 hover:-translate-y-1'
-                    : 'bg-slate-900 hover:shadow-slate-900/30 hover:-translate-y-1 dark:bg-blue-600 dark:hover:bg-blue-500 dark:hover:shadow-blue-500/30'
+                className={`flex items-center gap-2 rounded-2xl px-8 py-3.5 text-sm font-bold text-white transition-all ${isContinueDisabled || isSubmitting
+                  ? 'opacity-50 cursor-not-allowed bg-slate-400 dark:bg-slate-700'
+                  : 'bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]'
                   }`}
               >
-                <span className="relative z-10 flex items-center gap-2">
-                  {isSubmitting ? (
-                    <><i className="ti ti-loader animate-spin text-lg" /> Processing...</>
-                  ) : currentIndex === filteredSteps.length - 1 ? (
-                    <>Complete Onboarding <i className="ti ti-confetti text-lg" /></>
-                  ) : (
-                    <>Continue <i className="ti ti-arrow-right text-lg group-hover:translate-x-1 transition-transform" /></>
-                  )}
-                </span>
-                {!isContinueDisabled && !isSubmitting && (
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+                {isSubmitting ? (
+                  <><i className="ti ti-loader animate-spin text-lg" /> Processing...</>
+                ) : (
+                  <>Continue <span className="text-base leading-none">&rarr;</span></>
                 )}
               </button>
             </div>
-          )}
-          {!isComplete && (
-            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 md:hidden">Tip: You can use Cmd/Ctrl + Enter to continue</p>
           )}
         </div>
 
@@ -408,6 +366,12 @@ export default function OnboardingPage() {
         )}
 
       </div>
+
+      <EnterpriseSupportPanel
+        isOpen={showHelpPanel}
+        onClose={() => setShowHelpPanel(false)}
+        currentStepId={currentStepId}
+      />
     </DashboardLayout>
   );
 }

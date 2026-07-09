@@ -1,5 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ActivityFeed from './ActivityFeed';
+import HRReviewCard from './HRReviewCard';
 
 interface ProgressSidebarProps {
   completionPercent: number;
@@ -14,125 +16,108 @@ const ProgressSidebar = React.memo(function ProgressSidebar({
   completionPercent,
   remainingSteps,
   estimatedMinutesRemaining,
-  employeeId = 'EMP-NEW',
+  employeeId = 'EMP-0142',
   saveStatus,
   profileStrength = 0
 }: ProgressSidebarProps) {
-  const getStrengthColor = (score: number) => {
-    if (score < 40) return 'from-red-500 to-rose-500 text-red-500';
-    if (score < 70) return 'from-amber-400 to-orange-500 text-amber-500';
-    return 'from-emerald-400 to-teal-500 text-emerald-500';
-  };
-
-  const strengthColor = getStrengthColor(profileStrength);
-  const colorSplit = strengthColor.split(' ');
-  const gradient = `${colorSplit[0]} ${colorSplit[1]}`;
-  const textColor = colorSplit[2];
-
+  
   return (
-    <div className="sticky top-6 hidden xl:flex flex-col gap-6 w-[340px] shrink-0">
+    <div className="sticky top-6 hidden xl:flex flex-col w-[340px] shrink-0 max-h-[calc(100vh-3rem)] overflow-y-auto pb-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
       
-      {/* Main Progress Card */}
-      <div className="rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-xl p-7 shadow-xl shadow-slate-200/40 dark:border-white/10 dark:bg-[#0B1121]/80 dark:shadow-none overflow-hidden relative">
-        {/* Glow Effects */}
-        <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/10 dark:bg-blue-500/20 blur-[50px] rounded-full pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-emerald-500/5 dark:bg-emerald-500/10 blur-[50px] rounded-full pointer-events-none" />
+      {/* THE SINGLE UNIFIED BOX - READABLE SIZE */}
+      <div className="rounded-[1.5rem] border border-slate-200/60 bg-white/80 backdrop-blur-xl shadow-sm dark:border-white/10 dark:bg-[#0B1121]/90 overflow-hidden flex flex-col">
         
-        <div className="flex items-center justify-between mb-8 relative z-10">
-          <div className="flex flex-col">
-            <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Your Progress</h3>
-            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-1">
+        {/* SECTION 1: Progress */}
+        <div className="p-6 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">Your Progress</h3>
+            <span className="text-[11px] font-bold tracking-widest text-slate-500 uppercase flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
               {employeeId}
             </span>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
-             <i className="ti ti-target text-xl" />
-          </div>
-        </div>
 
-        <div className="mb-6 relative z-10 bg-slate-50/50 dark:bg-white/5 rounded-2xl p-4 border border-slate-100 dark:border-white/5 shadow-sm">
-          <div className="flex items-end justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Flow Completion</span>
-            <span className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tighter">
-              {completionPercent}<span className="text-sm text-slate-400">%</span>
-            </span>
-          </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10 shadow-inner">
-            <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 relative"
-              initial={{ width: 0 }}
-              animate={{ width: `${completionPercent}%` }}
-              transition={{ duration: 1, ease: 'easeOut' }}
-            >
-              <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse" />
-            </motion.div>
-          </div>
-        </div>
-
-        <div className="mb-8 relative z-10 bg-slate-50/50 dark:bg-white/5 rounded-2xl p-4 border border-slate-100 dark:border-white/5 shadow-sm">
-          <div className="flex items-end justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Profile Strength</span>
-            <span className={`text-sm font-black leading-none ${textColor}`}>
-              {profileStrength >= 90 ? 'All Star' : profileStrength >= 60 ? 'Intermediate' : 'Beginner'}
-            </span>
-          </div>
-          <div className="flex gap-1 h-2.5 w-full">
-            {[20, 40, 60, 80, 100].map((threshold, i) => (
-              <div key={i} className="flex-1 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
-                <motion.div
-                  className={`h-full w-full bg-gradient-to-r ${gradient}`}
-                  initial={{ x: '-100%' }}
-                  animate={{ x: profileStrength >= threshold ? '0%' : '-100%' }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 relative z-10">
-          <div className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm transition-all hover:border-blue-200 hover:shadow-blue-500/10 dark:border-white/5 dark:bg-white/5 dark:hover:border-blue-500/30">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 dark:group-hover:bg-blue-500/20 dark:group-hover:text-blue-400 transition-colors">
-              <i className="ti ti-list-check" style={{ fontSize: 20 }} />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Completion</span>
+              <span className="text-sm font-black text-slate-900 dark:text-white">{completionPercent}%</span>
             </div>
-            <div className="flex flex-col">
-              <span className="font-black text-slate-900 dark:text-white leading-tight">{remainingSteps} Tasks</span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Remaining</span>
+            <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden shadow-inner">
+              <motion.div
+                className="h-full rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${completionPercent}%` }}
+                transition={{ duration: 1 }}
+              />
             </div>
           </div>
           
-          <div className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm transition-all hover:border-amber-200 hover:shadow-amber-500/10 dark:border-white/5 dark:bg-white/5 dark:hover:border-amber-500/30">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-500 dark:group-hover:bg-amber-500/20 dark:group-hover:text-amber-400 transition-colors">
-              <i className="ti ti-clock-hour-4" style={{ fontSize: 20 }} />
+          {/* Profile Strength */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Profile Strength</span>
+              <span className={`text-sm font-black ${profileStrength >= 80 ? 'text-emerald-500' : profileStrength >= 50 ? 'text-amber-500' : 'text-blue-500'}`}>
+                {profileStrength >= 80 ? 'Excellent' : profileStrength >= 50 ? 'Good' : 'Basic'}
+              </span>
             </div>
-            <div className="flex flex-col">
-              <span className="font-black text-slate-900 dark:text-white leading-tight">{estimatedMinutesRemaining} Mins</span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Estimated Time</span>
+            <div className="flex gap-1 h-2 w-full">
+              {[20, 40, 60, 80, 100].map((threshold, i) => (
+                <div key={i} className="flex-1 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+                  <motion.div
+                    className={`h-full w-full ${profileStrength >= 80 ? 'bg-emerald-500' : profileStrength >= 50 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                    initial={{ x: '-100%' }}
+                    animate={{ x: profileStrength >= threshold ? '0%' : '-100%' }}
+                    transition={{ duration: 0.5, delay: i * 0.1 }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-1">
+            <div className="flex-1 flex flex-col justify-center items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50/50 py-3 px-2 dark:border-white/5 dark:bg-white/5">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <i className="ti ti-list-check text-sm" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Tasks</span>
+              </div>
+              <span className="text-base font-black text-slate-900 dark:text-white leading-none">{remainingSteps} <span className="text-xs font-semibold text-slate-500">Left</span></span>
+            </div>
+            <div className="flex-1 flex flex-col justify-center items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50/50 py-3 px-2 dark:border-white/5 dark:bg-white/5">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <i className="ti ti-clock-hour-4 text-sm" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Time</span>
+              </div>
+              <span className="text-base font-black text-slate-900 dark:text-white leading-none">{estimatedMinutesRemaining} <span className="text-xs font-semibold text-slate-500">Min</span></span>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Auto Save Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-xl p-5 shadow-sm dark:border-white/10 dark:bg-[#0B1121]/80 flex items-center justify-between">
-        <span className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-          <i className="ti ti-server-cog text-[16px]" /> Sync Status
-        </span>
-        <div className="flex items-center">
+        {/* SECTION 2: HR Review */}
+        <HRReviewCard />
+
+        {/* SECTION 3: Activity */}
+        <ActivityFeed />
+
+        {/* SECTION 4: Sync Status Footer */}
+        <div className="px-5 py-4 bg-slate-50/80 dark:bg-white/[0.02] border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+            <i className="ti ti-server-cog text-sm" />
+            <span className="text-xs font-bold uppercase tracking-widest">Sync Status</span>
+          </div>
           <AnimatePresence mode="wait">
             {saveStatus === 'saving' && (
-              <motion.span key="saving" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse" /> Saving...
+              <motion.span key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                <i className="ti ti-loader-2 animate-spin text-sm" /> Saving...
               </motion.span>
             )}
             {saveStatus === 'saved' && (
-              <motion.span key="saved" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-600 border border-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
-                <i className="ti ti-check" /> All Saved
+              <motion.span key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-500">
+                <i className="ti ti-check text-sm" /> Up to date
               </motion.span>
             )}
             {saveStatus === 'idle' && (
-              <motion.span key="idle" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1.5 text-[10px] font-bold text-slate-500 border border-slate-100 dark:border-white/5 dark:bg-white/5 dark:text-slate-400">
-                <i className="ti ti-cloud-check" /> Up to date
+              <motion.span key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                <i className="ti ti-cloud-check text-sm" /> Synced
               </motion.span>
             )}
           </AnimatePresence>
