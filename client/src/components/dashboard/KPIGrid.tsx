@@ -30,14 +30,14 @@ export interface KPIItem {
   valueNumeric: number;
   prefix?: string;
   suffix?: string;
-  trend: string;
-  trendSub: string;
+  trend?: string;
+  trendSub?: string;
   trendPositive: boolean;
   hideArrow?: boolean;
   sub: string;
   accent: string;
   gradient: string;
-  sparkline: number[];
+  sparkline?: number[];
   icon: React.ReactNode;
   route: string;
 }
@@ -136,13 +136,10 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       id: 'employees',
       label: 'Total Employees',
       valueNumeric: summary.totalEmployees,
-      trend: '+44 this month',
-      trendSub: 'vs 1,240 last month',
       trendPositive: true,
       sub: 'Across all departments',
       accent: '#3b82f6',
       gradient: 'from-blue-600 to-indigo-600',
-      sparkline: [940, 980, 1020, 1080, 1180, 1248],
       icon: <UsersIcon color="currentColor" />,
       route: '/employees',
     },
@@ -151,13 +148,10 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       label: 'Attendance Rate',
       valueNumeric: attendanceValue,
       suffix: '%',
-      trend: 'Above 95% target',
-      trendSub: '+2.3% vs last week',
       trendPositive: true,
       sub: 'Weekly workforce avg',
       accent: '#10b981',
       gradient: 'from-emerald-500 to-emerald-700',
-      sparkline: [91, 93, 90, 94, 96, 97.8],
       icon: <ClockCheckIcon color="currentColor" />,
       route: '/attendance',
     },
@@ -174,7 +168,6 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       sub: 'Processed smoothly',
       accent: '#8b5cf6',
       gradient: 'from-violet-500 to-purple-600',
-      sparkline: [3.2, 3.6, 3.8, 3.9, 4.0, summary.payrollTotal ?? 4.12],
       icon: <RupeeIcon color="currentColor" />,
       route: '/payroll',
     },
@@ -182,14 +175,11 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
       id: 'approvals',
       label: 'Pending Approvals',
       valueNumeric: summary.pendingApprovals,
-      trend: '12 leave - 6 expense',
-      trendSub: 'Oldest: 52h pending',
       trendPositive: false,
       hideArrow: true,
       sub: 'Needs immediate review',
       accent: '#f59e0b',
       gradient: 'from-amber-400 to-orange-500',
-      sparkline: [4, 8, 12, 9, 14, 18],
       icon: <BellAlertIcon color="currentColor" />,
       route: '/leave?filter=Pending',
     },
@@ -220,7 +210,7 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
               {card.icon}
             </div>
             <div className="opacity-70 transition-opacity duration-300 group-hover:opacity-100">
-              <Sparkline data={card.sparkline} color={card.accent} />
+              {card.sparkline && card.sparkline.length > 0 && <Sparkline data={card.sparkline} color={card.accent} />}
             </div>
           </div>
 
@@ -231,17 +221,19 @@ export default function KPIGrid({ summary, loading }: { summary: HrSummary | nul
           </div>
 
           <div className="mt-3 flex flex-col items-start gap-1">
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                card.trendPositive
-                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                  : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-              }`}
-            >
-              {!card.hideArrow && (card.trendPositive ? '↑ ' : '↓ ')}
-              {card.trend}
-            </span>
-            <span className="text-[10px] font-semibold text-slate-500">{card.trendSub}</span>
+            {card.trend && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                  card.trendPositive
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                }`}
+              >
+                {!card.hideArrow && (card.trendPositive ? '↑ ' : '↓ ')}
+                {card.trend}
+              </span>
+            )}
+            {card.trendSub && <span className="text-[10px] font-semibold text-slate-500">{card.trendSub}</span>}
           </div>
           
           <div className="mt-auto pt-4">

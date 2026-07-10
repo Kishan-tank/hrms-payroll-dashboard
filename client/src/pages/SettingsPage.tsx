@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { settingsService } from '../services/hrmsApi';
 import { useToast } from '../context/ToastContext';
 import { useAuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
+const THEME_OPTIONS: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
 
 const tabs: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'profile', label: 'Profile Settings', icon: 'user' },
