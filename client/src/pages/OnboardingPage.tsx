@@ -1,10 +1,18 @@
-import { useState, useRef, type RefObject } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useAuthContext } from '../context/AuthContext';
-import { useOnboarding, type OnboardingStep } from '../hooks/useOnboarding';
+import { useOnboarding, type OnboardingStep, type StepId } from '../hooks/useOnboarding';
 import { useToast } from '../context/ToastContext';
+import ProgressSidebar from '../components/onboarding/ProgressSidebar';
+import PremiumStepper from '../components/onboarding/PremiumStepper';
+import PersonalInfoForm from '../components/onboarding/forms/PersonalInfoForm';
+import DocumentsForm from '../components/onboarding/forms/DocumentsForm';
+import BankDetailsForm from '../components/onboarding/forms/BankDetailsForm';
+import PoliciesForm from '../components/onboarding/forms/PoliciesForm';
+import CompletionView from '../components/onboarding/CompletionView';
+import EnterpriseSupportPanel from '../components/onboarding/EnterpriseSupportPanel';
+import { motion, AnimatePresence } from 'framer-motion';
 import { onboardingService } from '../services/hrmsApi';
 
 export default function OnboardingPage() {
@@ -15,10 +23,28 @@ export default function OnboardingPage() {
     steps,
     currentStepId,
     isComplete,
-    completionPercent,
     completeStep,
     setCurrentStep,
   } = useOnboarding(user?.id || user?.email);
+
+  const filteredSteps = steps.filter(s => s.id !== 'complete');
+  const currentIndex = filteredSteps.findIndex(s => s.id === currentStepId);
+  const completionPercent = Math.round((Math.max(0, currentIndex) / filteredSteps.length) * 100);
+
+  // Resume where you left off (Local Storage Mock)
+  useEffect(() => {
+    const savedStep = localStorage.getItem('onboarding_current_step');
+    if (savedStep && steps.find(s => s.id === savedStep) && !isComplete) {
+      setCurrentStep(savedStep as StepId);
+      toast.info('Resumed from where you left off');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentStepId && !isComplete) {
+      localStorage.setItem('onboarding_current_step', currentStepId);
+    }
+  }, [currentStepId, isComplete]);
 
   // Profile Step State
   const [profileForm, setProfileForm] = useState({
@@ -29,10 +55,11 @@ export default function OnboardingPage() {
   });
   const [profileError, setProfileError] = useState(false);
 
-  // Documents Step State (just storing the fact a file was selected)
+  // Documents Step State
   const [govId, setGovId] = useState<File | null>(null);
   const [offerLetter, setOfferLetter] = useState<File | null>(null);
   const [certificates, setCertificates] = useState<File | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
   const govIdRef = useRef<HTMLInputElement>(null);
   const offerLetterRef = useRef<HTMLInputElement>(null);
@@ -48,328 +75,198 @@ export default function OnboardingPage() {
   // Handbook Step State
   const [handbookAgreed, setHandbookAgreed] = useState(false);
 
+  // Auto-Save & Loading State
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Drag State for Dropzones
+  const [draggingMap, setDraggingMap] = useState<Record<string, boolean>>({});
+
+  // Help Panel State
+  const [showHelpPanel, setShowHelpPanel] = useState(false);
+
+  // Profile Strength Calculation
+  const calculateProfileStrength = () => {
+    let score = 0;
+    if (profileForm.phone) score += 10;
+    if (profileForm.dob) score += 10;
+    if (profileForm.gender) score += 10;
+    if (profileForm.address) score += 10;
+    if (govId) score += 15;
+    if (offerLetter) score += 15;
+    if (certificates) score += 10;
+    if (bankForm.account && bankForm.ifsc) score += 10;
+    if (handbookAgreed) score += 10;
+    return score;
+  };
+
+  const profileStrength = calculateProfileStrength();
+
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleProfileSubmit = async () => {
-    if (!profileForm.phone.trim() || !profileForm.address.trim()) {
-      setProfileError(true);
-      return;
-    }
-    setProfileError(false);
-    try {
-      await onboardingService.submitProfile(profileForm);
-      completeStep('profile');
-      toast.success('Profile details saved successfully');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to save profile');
-    }
+  const triggerAutoSave = () => {
+    setHasUnsavedChanges(true);
+    setSaveStatus('saving');
+    setTimeout(() => {
+      setSaveStatus('saved');
+      setHasUnsavedChanges(false);
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }, 800);
   };
 
-  const handleDocumentsSubmit = async () => {
-    const formData = new FormData();
-    if (govId) formData.append('govId', govId);
-    if (offerLetter) formData.append('offerLetter', offerLetter);
-    if (certificates) formData.append('certificates', certificates);
+  const handleNext = async () => {
+    setIsSubmitting(true);
+    try {
+      switch (currentStepId) {
+        case 'profile':
+          if (!profileForm.phone.trim() || !profileForm.address.trim()) {
+            setProfileError(true);
+            setIsSubmitting(false);
+            return;
+          }
+          setProfileError(false);
+          await onboardingService.submitProfile(profileForm);
+          completeStep('profile');
+          toast.success('Profile details saved successfully');
+          break;
+        case 'documents':
+          const formData = new FormData();
+          if (govId) formData.append('govId', govId);
+          if (offerLetter) formData.append('offerLetter', offerLetter);
+          if (certificates) formData.append('certificates', certificates);
 
-    if (govId || offerLetter || certificates) {
-      try {
-        await onboardingService.uploadDocuments(formData);
-      } catch (err: any) {
-        toast.error(err.message || 'Failed to upload documents');
-        return;
+          if (govId || offerLetter || certificates) {
+            await onboardingService.uploadDocuments(formData);
+          }
+          completeStep('documents');
+          toast.success('Documents securely uploaded');
+          break;
+        case 'bank':
+          if (!bankForm.account.trim() || !bankForm.ifsc.trim()) {
+            setIsSubmitting(false);
+            return;
+          }
+          await onboardingService.submitBank(bankForm);
+          completeStep('bank');
+          toast.success('Bank details verified');
+          break;
+        case 'handbook':
+          if (!handbookAgreed) {
+            setIsSubmitting(false);
+            return;
+          }
+          completeStep('handbook');
+          toast.success('Handbook acknowledged');
+          break;
       }
-    }
-    
-    completeStep('documents');
-    toast.success('Documents marked as uploaded');
-  };
-
-  const handleBankSubmit = async () => {
-    if (!bankForm.account.trim() || !bankForm.ifsc.trim()) {
-      return;
-    }
-    try {
-      await onboardingService.submitBank(bankForm);
-      completeStep('bank');
-      toast.success('Bank details saved');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to save bank details');
+      toast.error(err.message || 'Failed to save progress');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleHandbookSubmit = () => {
-    if (!handbookAgreed) return;
-    completeStep('handbook');
-    toast.success('Handbook acknowledged');
+  const handleBack = () => {
+    if (currentIndex > 0) {
+      setCurrentStep(filteredSteps[currentIndex - 1].id as StepId);
+    }
   };
 
-  // ─── Render Helpers ───────────────────────────────────────────────────────
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isContinueDisabled && !isComplete) handleNext();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault();
+        if (currentIndex > 0 && !isComplete) handleBack();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, profileForm, bankForm, handbookAgreed, isComplete]);
 
-  const getPercentageColorClass = () => {
-    if (completionPercent < 25) return 'text-slate-400';
-    if (completionPercent < 75) return 'text-blue-500';
-    return 'text-emerald-500';
-  };
-
-  const getProgressBarColorClass = () => {
-    if (completionPercent < 25) return 'bg-slate-400';
-    if (completionPercent < 75) return 'bg-blue-500';
-    return 'bg-emerald-500';
-  };
+  // Unsaved changes warning
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges || saveStatus === 'saving') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, saveStatus]);
 
   // ─── Step Content Renders ─────────────────────────────────────────────────
 
-  const renderProfileForm = () => (
-    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Phone Number
-          </label>
-          <input
-            type="tel"
-            placeholder="+91 98765 43210"
-            value={profileForm.phone}
-            onChange={e => setProfileForm({ ...profileForm, phone: e.target.value })}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Date of Birth
-          </label>
-          <input
-            type="date"
-            value={profileForm.dob}
-            onChange={e => setProfileForm({ ...profileForm, dob: e.target.value })}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Gender
-          </label>
-          <select
-            value={profileForm.gender}
-            onChange={e => setProfileForm({ ...profileForm, gender: e.target.value })}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          >
-            <option value="">Select gender...</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Non-binary">Non-binary</option>
-            <option value="Prefer not to say">Prefer not to say</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Residential Address
-          </label>
-          <input
-            type="text"
-            placeholder="123 MG Road, Bengaluru"
-            value={profileForm.address}
-            onChange={e => setProfileForm({ ...profileForm, address: e.target.value })}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          />
-        </div>
+  const renderAITips = (text: string) => (
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }} className="hidden lg:flex items-start gap-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/[0.02] p-5 rounded-[2rem] border border-slate-200/60 dark:border-white/10 shadow-xl shadow-slate-200/20 dark:shadow-none max-w-sm mb-6 relative overflow-hidden group">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-100 dark:border-white/5">
+        <i className="ti ti-sparkles text-lg animate-pulse" />
       </div>
-      {profileError && (
-        <p className="mt-3 text-xs text-red-500">Please fill in all required fields (Phone and Address).</p>
-      )}
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={handleProfileSubmit}
-          className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-700"
-        >
-          Save & Continue
-        </button>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-1 flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+          </span>
+          AI Assistant
+        </p>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.8 }} className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+          {text}
+        </motion.p>
       </div>
-    </div>
+    </motion.div>
   );
 
-  const renderDropzone = (
-    label: string,
-    file: File | null,
-    setFile: (f: File | null) => void,
-    inputRef: RefObject<HTMLInputElement | null>
-  ) => (
-    <div
-      onClick={() => inputRef.current?.click()}
-      className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-center transition-colors hover:border-blue-300 dark:border-white/10 dark:hover:border-blue-500/50"
-    >
-      <input
-        type="file"
-        hidden
-        ref={inputRef}
-        onChange={e => {
-          if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
-          }
-        }}
-      />
-      {file ? (
-        <div className="flex flex-col items-center gap-2">
-          <i className="ti ti-circle-check text-emerald-500" style={{ fontSize: 28 }} />
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{file.name}</span>
-        </div>
-      ) : (
-        <>
-          <i className="ti ti-cloud-upload text-slate-300 dark:text-slate-600" style={{ fontSize: 28 }} />
-          <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</p>
-          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">PDF, JPG, PNG up to 10MB</p>
-        </>
-      )}
-    </div>
+  const renderProfileForm = () => (
+    <PersonalInfoForm
+      profileForm={profileForm}
+      setProfileForm={setProfileForm}
+      triggerAutoSave={triggerAutoSave}
+      profileError={profileError}
+      renderAITips={renderAITips}
+    />
   );
 
   const renderDocumentsForm = () => (
-    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
-      <div className="grid gap-4 sm:grid-cols-3">
-        {renderDropzone('Government ID', govId, setGovId, govIdRef)}
-        {renderDropzone('Signed Offer Letter', offerLetter, setOfferLetter, offerLetterRef)}
-        {renderDropzone('Educational Certificates', certificates, setCertificates, certRef)}
-      </div>
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={handleDocumentsSubmit}
-          className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-700"
-        >
-          Mark as Uploaded & Continue
-        </button>
-      </div>
-    </div>
+    <DocumentsForm
+      govId={govId} setGovId={setGovId}
+      offerLetter={offerLetter} setOfferLetter={setOfferLetter}
+      certificates={certificates} setCertificates={setCertificates}
+      govIdRef={govIdRef} offerLetterRef={offerLetterRef} certRef={certRef}
+      previewUrls={previewUrls} setPreviewUrls={setPreviewUrls}
+      draggingMap={draggingMap} setDraggingMap={setDraggingMap}
+      onError={(msg) => toast.error(msg)}
+    />
   );
 
+  const isIfscValid = bankForm.ifsc.length > 5;
+
   const renderBankForm = () => (
-    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
-      <div className="flex flex-col gap-4 max-w-lg mx-auto">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Account Number
-          </label>
-          <input
-            type="text"
-            placeholder="XXXX XXXX XXXX XXXX"
-            value={bankForm.account}
-            onChange={e => setBankForm({ ...bankForm, account: e.target.value })}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            IFSC Code
-          </label>
-          <input
-            type="text"
-            placeholder="SBIN0001234"
-            maxLength={11}
-            value={bankForm.ifsc}
-            onChange={e => setBankForm({ ...bankForm, ifsc: e.target.value.toUpperCase() })}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Bank Name
-          </label>
-          <input
-            type="text"
-            placeholder="State Bank of India"
-            value={bankForm.bankName}
-            onChange={e => setBankForm({ ...bankForm, bankName: e.target.value })}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-white/10 dark:bg-[#111827] dark:text-white"
-          />
-        </div>
-      </div>
-      <div className="mt-6 flex justify-end max-w-lg mx-auto">
-        <button
-          onClick={handleBankSubmit}
-          disabled={!bankForm.account.trim() || !bankForm.ifsc.trim()}
-          className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Save Bank Details & Continue
-        </button>
-      </div>
-    </div>
+    <BankDetailsForm
+      bankForm={bankForm}
+      setBankForm={setBankForm}
+      triggerAutoSave={triggerAutoSave}
+      isIfscValid={isIfscValid}
+      renderAITips={renderAITips}
+    />
   );
 
   const renderHandbookForm = () => (
-    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
-      <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-inner dark:border-white/10 dark:bg-[#0B1121] space-y-4">
-        <div>
-          <h4 className="font-bold text-sm text-slate-900 dark:text-white">Leave Policy</h4>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-            Employees are entitled to 18 days of paid leave annually. Additional sick leave of 6 days is available with medical documentation.
-          </p>
-        </div>
-        <div>
-          <h4 className="font-bold text-sm text-slate-900 dark:text-white">Code of Conduct</h4>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-            All employees are expected to maintain professional conduct and treat colleagues with respect. Violations may result in disciplinary action.
-          </p>
-        </div>
-        <div>
-          <h4 className="font-bold text-sm text-slate-900 dark:text-white">Working Hours</h4>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-            Standard working hours are 9 AM to 6 PM IST, Monday to Friday. Flexible arrangements require manager approval.
-          </p>
-        </div>
-        <div>
-          <h4 className="font-bold text-sm text-slate-900 dark:text-white">Data Privacy</h4>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-            Employee data is handled in accordance with applicable privacy laws. Confidential information must not be shared externally.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center gap-3">
-        <input
-          type="checkbox"
-          id="handbook-agree"
-          checked={handbookAgreed}
-          onChange={e => setHandbookAgreed(e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-        />
-        <label htmlFor="handbook-agree" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
-          I have read and understood the Employee Handbook
-        </label>
-      </div>
-
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={handleHandbookSubmit}
-          disabled={!handbookAgreed}
-          className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          I Agree & Continue
-        </button>
-      </div>
-    </div>
+    <PoliciesForm
+      handbookAgreed={handbookAgreed}
+      setHandbookAgreed={setHandbookAgreed}
+    />
   );
 
   const renderCompleteState = () => (
-    <div className="mt-6 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
-      <div className="text-[48px] leading-none mb-4">🎉</div>
-      <h3 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">Onboarding complete!</h3>
-      <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
-        You&apos;re all set. Your profile has been submitted for HR review. You&apos;ll receive a confirmation email within 24 hours.
-      </p>
-      <div className="flex gap-4">
-        <button
-          onClick={() => navigate('/employee-dashboard')}
-          className="rounded-xl bg-emerald-500 hover:bg-emerald-600 transition-colors text-white px-5 py-2.5 text-sm font-bold"
-        >
-          Go to Dashboard
-        </button>
-        <button
-          onClick={() => navigate('/profile')}
-          className="rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300 px-5 py-2.5 text-sm font-bold"
-        >
-          View your profile
-        </button>
-      </div>
-    </div>
+    <CompletionView onDashboardClick={() => navigate('/employee-dashboard')} />
   );
 
   const getStepBody = (step: OnboardingStep) => {
@@ -378,173 +275,124 @@ export default function OnboardingPage() {
       case 'documents': return renderDocumentsForm();
       case 'bank': return renderBankForm();
       case 'handbook': return renderHandbookForm();
-      case 'complete': return renderCompleteState();
       default: return null;
     }
   };
 
-  const getTimeRelative = (isoString?: string) => {
-    if (!isoString) return '';
-    const diff = Date.now() - new Date(isoString).getTime();
-    if (diff < 60000) return 'just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    return `${Math.floor(diff / 3600000)}h ago`;
-  };
+  const isContinueDisabled =
+    (currentStepId === 'bank' && (!bankForm.account.trim() || !bankForm.ifsc.trim())) ||
+    (currentStepId === 'handbook' && !handbookAgreed);
 
   return (
     <DashboardLayout title="Onboarding">
-      <div className="mx-auto max-w-3xl space-y-6 pb-24 px-4 sm:px-0">
+      <div className="mx-auto max-w-[1200px] pb-6 px-4 sm:px-6 lg:px-8 flex flex-col xl:flex-row gap-6 items-start mt-4 relative">
 
-        {/* SECTION A — Progress Header Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-white">
-                Welcome aboard, {user?.name?.split(' ')[0] || 'User'}! 
-                <Sparkles className="h-6 w-6 text-amber-500 animate-[pulse_2s_ease-in-out_infinite]" strokeWidth={2.5} />
-              </h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Complete these steps to finish your onboarding.
-              </p>
-            </div>
-            <div className="flex items-center gap-4 shrink-0">
-              <span className={`text-3xl font-extrabold transition-colors duration-700 ${getPercentageColorClass()}`}>
-                {completionPercent}%
-              </span>
-            </div>
-          </div>
-          <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
-            <div
-              className={`h-full rounded-full transition-all duration-700 ease-out ${getProgressBarColorClass()}`}
-              style={{ width: `${completionPercent}%` }}
+        {/* Main Content Area */}
+        <div className="flex-1 min-w-0 w-full flex flex-col gap-4">
+          {/* Top Horizontal Stepper */}
+          {!isComplete && (
+            <PremiumStepper
+              steps={steps}
+              currentStepId={currentStepId}
+              onStepClick={(id: string) => setCurrentStep(id as StepId)}
             />
+          )}
+
+          {/* Main Content Card */}
+          <div className={`relative rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/30 dark:shadow-none dark:border-white/10 dark:bg-[#0B1121] transition-all duration-500 z-10 ${isComplete ? 'p-8 sm:p-10' : 'p-5 sm:p-7'}`}>
+
+            {/* Enterprise Help Button - Floating on top right corner */}
+            {!isComplete && (
+              <button
+                onClick={() => setShowHelpPanel(true)}
+                className="absolute -top-4 -right-4 sm:-top-5 sm:-right-5 z-30 hidden sm:flex h-10 w-10 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200 dark:bg-[#0f172a] dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:scale-110 active:scale-95"
+                title="Get Help"
+              >
+                <i className="ti ti-help-circle text-xl" />
+              </button>
+            )}
+
+            <AnimatePresence mode="wait">
+              {isComplete ? (
+                <motion.div key="complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  {renderCompleteState()}
+                </motion.div>
+              ) : (
+                <motion.div key={currentStepId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3, ease: 'easeOut' }}>
+                  <div className="min-h-[320px] flex flex-col justify-center mt-2">
+                    {getStepBody(steps.find(s => s.id === currentStepId)!)}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+
+          {/* Bottom Navigation */}
+          {!isComplete && (
+            <div className="mt-8 flex items-center justify-between w-full">
+              {/* Back Button */}
+              <button
+                onClick={handleBack}
+                disabled={currentIndex === 0 || isSubmitting}
+                className={`flex items-center gap-2 rounded-2xl px-6 py-3.5 text-sm font-bold transition-all ${currentIndex === 0
+                  ? 'opacity-0 pointer-events-none'
+                  : 'text-slate-400 bg-slate-100/50 hover:bg-slate-200/50 dark:bg-white/[0.03] dark:hover:bg-white/[0.08] active:scale-95'
+                  }`}
+              >
+                <span className="text-base leading-none">&larr;</span> Back
+              </button>
+
+              {/* Step Indicators (Circular Dots) */}
+              <div className="flex items-center gap-2.5">
+                {filteredSteps.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`h-2 w-2 rounded-full transition-all duration-300 ${s.id === currentStepId
+                      ? 'bg-blue-500'
+                      : 'bg-slate-300 dark:bg-white/10'
+                      }`}
+                  />
+                ))}
+              </div>
+
+              {/* Continue Button */}
+              <button
+                onClick={handleNext}
+                disabled={isContinueDisabled || isSubmitting}
+                className={`flex items-center gap-2 rounded-2xl px-8 py-3.5 text-sm font-bold text-white transition-all ${isContinueDisabled || isSubmitting
+                  ? 'opacity-50 cursor-not-allowed bg-slate-400 dark:bg-slate-700'
+                  : 'bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]'
+                  }`}
+              >
+                {isSubmitting ? (
+                  <><i className="ti ti-loader animate-spin text-lg" /> Processing...</>
+                ) : (
+                  <>Continue <span className="text-base leading-none">&rarr;</span></>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* SECTION C — Completion State Banner */}
-        {isComplete && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-white shadow-lg animate-in fade-in slide-in-from-bottom-4">
-            <div>
-              <h2 className="text-lg font-bold">🎉 Onboarding Complete!</h2>
-              <p className="text-sm opacity-90 mt-1">
-                Welcome to HRMSPro. Your HR team has been notified.
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/employee-dashboard')}
-              className="rounded-xl bg-white px-4 py-2 font-bold text-emerald-600 transition-colors hover:bg-emerald-50 shrink-0 shadow-sm"
-            >
-              Go to Dashboard
-            </button>
-          </div>
+        {/* Progress Sidebar */}
+        {!isComplete && (
+          <ProgressSidebar
+            completionPercent={completionPercent}
+            remainingSteps={filteredSteps.length - currentIndex}
+            estimatedMinutesRemaining={(filteredSteps.length - currentIndex) * 3}
+            saveStatus={saveStatus}
+            employeeId="EMP-0142"
+            profileStrength={profileStrength}
+          />
         )}
 
-        {/* SECTION B — Step List */}
-        <div className="flex flex-col gap-3">
-          {steps.map((step, index) => {
-            const isCompleted = step.status === 'completed';
-            const isInProgress = step.status === 'in_progress';
-            const isPending = step.status === 'pending';
-            const isCurrent = step.id === currentStepId;
-            const isCompleteStep = step.id === 'complete';
-
-            // Determine border and bg colors based on status
-            let cardClasses = 'border-slate-200 bg-white dark:border-white/10 dark:bg-[#0B1121]';
-            if (isCompleted) {
-              if (isCompleteStep) {
-                cardClasses = 'border-emerald-300 bg-gradient-to-r from-emerald-50 to-teal-50 dark:border-emerald-500/50 dark:from-emerald-500/10 dark:to-teal-500/10';
-              } else {
-                cardClasses = 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-500/30 dark:bg-emerald-500/5';
-              }
-            } else if (isInProgress) {
-              cardClasses = 'border-blue-200 bg-blue-50/50 dark:border-blue-500/30 dark:bg-blue-500/5';
-            }
-
-            return (
-              <div
-                key={step.id}
-                onClick={() => {
-                  if (!isCompleted && !isPending && !isCurrent) {
-                    setCurrentStep(step.id);
-                  }
-                }}
-                className={`rounded-2xl border p-5 transition-all duration-300 ${cardClasses} ${(!isCompleted && !isPending && !isCurrent) ? 'cursor-pointer hover:border-blue-300' : ''}`}
-              >
-                {/* Header Row */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    {/* Status Circle */}
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-                      {isCompleted ? (
-                        <i className="ti ti-circle-check-filled text-emerald-500" style={{ fontSize: 24 }} />
-                      ) : isInProgress ? (
-                        <i className="ti ti-circle-dot text-blue-500 animate-pulse" style={{ fontSize: 24 }} />
-                      ) : (
-                        <i className="ti ti-circle text-slate-300 dark:text-slate-600" style={{ fontSize: 24 }} />
-                      )}
-                    </div>
-                    {/* Title & Badge */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10">
-                        <i className={`ti ti-${step.icon} text-slate-600 dark:text-slate-300`} style={{ fontSize: 16 }} />
-                      </div>
-                      <div>
-                        <h3 className={`font-bold ${isCompleted ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200'}`}>
-                          {step.title}
-                        </h3>
-                        {!isCompleteStep && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-[200px] sm:max-w-none truncate sm:whitespace-normal">
-                            {step.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right side Badge */}
-                  <div className="shrink-0">
-                    {isCompleted ? (
-                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5">
-                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                          Completed
-                        </span>
-                        {step.completedAt && (
-                          <span className="text-[10px] text-slate-400 hidden sm:inline-block">
-                            {getTimeRelative(step.completedAt)}
-                          </span>
-                        )}
-                      </div>
-                    ) : isInProgress ? (
-                      <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                        In progress
-                      </span>
-                    ) : (
-                      !isCompleteStep && (
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                          Step {index + 1}
-                        </span>
-                      )
-                    )}
-                  </div>
-                </div>
-
-                {/* Expandable Body */}
-                {(isCurrent && !isCompleted && (!isCompleteStep || isComplete)) && (
-                  <div className="overflow-hidden">
-                    {getStepBody(step)}
-                  </div>
-                )}
-                {/* Always show Complete celebration state if it is complete step and completed */}
-                {isCompleteStep && isCompleted && (
-                  <div className="overflow-hidden">
-                    {getStepBody(step)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </div>
+
+      <EnterpriseSupportPanel
+        isOpen={showHelpPanel}
+        onClose={() => setShowHelpPanel(false)}
+        currentStepId={currentStepId}
+      />
     </DashboardLayout>
   );
 }
