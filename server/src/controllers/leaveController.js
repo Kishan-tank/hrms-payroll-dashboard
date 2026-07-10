@@ -4,7 +4,8 @@ import Employee from "../models/employee.js";
 // Get all leave requests
 export const getLeaves = async (req, res) => {
   try {
-    const userRole = req.user?.role;
+    let userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "hr") userRole = "hr-manager";
     let query = {};
 
     if (userRole === "employee") {

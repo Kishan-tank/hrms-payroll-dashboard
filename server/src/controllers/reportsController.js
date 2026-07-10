@@ -28,10 +28,7 @@ export const getHeadcountTrend = async (req, res) => {
       return [monthNames[t._id.month - 1], cumulative];
     });
 
-    // If no real data, return dummy shape so frontend doesn't break
-    const finalData = formattedTrend.length > 0 ? formattedTrend : [
-      ['Jan', 220], ['Feb', 228], ['Mar', 235], ['Apr', 242], ['May', 251], ['Jun', 256]
-    ];
+    const finalData = formattedTrend;
 
     res.status(200).json({ success: true, trend: finalData });
   } catch (error) {
@@ -54,9 +51,7 @@ export const getPayrollTrend = async (req, res) => {
 
     const formattedTrend = trend.map(t => [t._id.month.substring(0, 3), Math.round(t.total / 100000)]); // Format to Lakhs
 
-    const finalData = formattedTrend.length > 0 ? formattedTrend : [
-      ['Jan', 42], ['Feb', 43], ['Mar', 45], ['Apr', 46], ['May', 48], ['Jun', 49]
-    ];
+    const finalData = formattedTrend;
 
     res.status(200).json({ success: true, trend: finalData });
   } catch (error) {
@@ -88,14 +83,7 @@ export const getLeaveBreakdown = async (req, res) => {
       return [shortType, l.count, colors[l._id] || "#94A3B8"];
     });
 
-    if (breakdown.length === 0) {
-      breakdown = [
-        ['Casual', 38, '#2563EB'],
-        ['Sick', 24, '#22C55E'],
-        ['Earned', 20, '#F59E0B'],
-        ['WFH', 18, '#8B5CF6']
-      ];
-    }
+    // Removed fake data fallback
 
     res.status(200).json({ success: true, breakdown });
   } catch (error) {

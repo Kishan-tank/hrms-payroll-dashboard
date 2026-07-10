@@ -31,7 +31,7 @@ export const getDocuments = async (req, res) => {
     
     // If an employee is logged in, show their docs + global policies. 
     // If HR/Admin is logged in, they can see all or filter by employee.
-    if (req.user.role === 'employee') {
+    if ((req.user.role || '').toLowerCase() === 'employee') {
       query = { $or: [{ employeeId: req.user.id }, { type: 'Policy' }] };
     } else if (employeeId) {
       query.employeeId = employeeId;

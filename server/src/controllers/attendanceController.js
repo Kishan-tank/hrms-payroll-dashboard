@@ -7,7 +7,8 @@ const VALID_STATUSES = ['Present', 'Late', 'Absent', 'On Leave', 'Pending'];
 // Fetch all attendance records
 export const getAttendance = async (req, res) => {
   try {
-    const userRole = req.user?.role;
+    let userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "hr") userRole = "hr-manager";
     let query = {};
 
     if (userRole === "employee") {
@@ -144,7 +145,8 @@ export const updateAttendanceStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const userRole = req.user?.role;
+    let userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "hr") userRole = "hr-manager";
     if (!["admin", "hr", "hr-manager"].includes(userRole)) {
       return res.status(403).json({ success: false, message: "Forbidden" });
     }

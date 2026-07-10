@@ -1,64 +1,86 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Cake, GraduationCap, PartyPopper, CheckCircle2, DollarSign, Star, AlertCircle, Sparkles } from 'lucide-react';
+import { Calendar, Cake, GraduationCap, PartyPopper, CheckCircle2, DollarSign, Star, Sparkles } from 'lucide-react';
 
-const activities = [
-  {
-    id: 1,
-    title: 'Leave Request Approved',
-    desc: 'Annual leave for Jul 14–16 approved by Priya Menon',
-    time: '2 hours ago',
-    type: 'approval',
-    icon: <CheckCircle2 size={14} className="text-emerald-400" />,
-    color: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-    avatar: 'PM',
-    filter: 'Today',
-  },
-  {
-    id: 2,
-    title: 'Payroll Processed',
-    desc: 'Salary for May 2026 has been credited',
-    time: 'Yesterday',
-    type: 'payroll',
-    icon: <DollarSign size={14} className="text-blue-400" />,
-    color: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
-    avatar: 'FN',
-    filter: 'Week',
-  },
-  {
-    id: 3,
-    title: 'Training Module Completed',
-    desc: 'Advanced React Patterns · Score: 98%',
-    time: '3 days ago',
-    type: 'learning',
-    icon: <Star size={14} className="text-purple-400" />,
-    color: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
-    avatar: 'TR',
-    filter: 'Week',
-  },
-  {
-    id: 4,
-    title: 'Attendance Regularized',
-    desc: 'Missed punch on May 28 has been approved',
-    time: '1 week ago',
-    type: 'attendance',
-    icon: <AlertCircle size={14} className="text-orange-400" />,
-    color: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
-    avatar: 'PM',
-    filter: 'Month',
-  },
-  {
+import type { EmployeeSummary } from '../../services/hrmsApi';
+
+function generateActivities(summary?: EmployeeSummary | null) {
+  const dynamicActivities = [];
+  
+  if (summary) {
+    if (summary.payrollLeave.latestNetPay > 0) {
+      dynamicActivities.push({
+        id: 1,
+        title: 'Payroll Processed',
+        desc: `Salary of ₹${summary.payrollLeave.latestNetPay.toLocaleString()} has been credited`,
+        time: 'Recently',
+        type: 'payroll',
+        icon: <DollarSign size={14} className="text-blue-400" />,
+        color: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+        avatar: summary.employee.name.charAt(0).toUpperCase(),
+        filter: 'Week',
+      });
+    }
+
+    if (summary.payrollLeave.leavesTaken > 0) {
+      dynamicActivities.push({
+        id: 2,
+        title: 'Leave Update',
+        desc: `You have taken ${summary.payrollLeave.leavesTaken} day(s) of leave so far`,
+        time: 'Recently',
+        type: 'approval',
+        icon: <CheckCircle2 size={14} className="text-emerald-400" />,
+        color: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+        avatar: summary.employee.name.charAt(0).toUpperCase(),
+        filter: 'Month',
+      });
+    }
+
+    const completedGoals = summary.productivity?.goals?.filter(g => g.progress === 100).length || 0;
+    if (completedGoals > 0) {
+      dynamicActivities.push({
+        id: 3,
+        title: 'Goal Achievement',
+        desc: `Great job! You have completed ${completedGoals} goal(s)`,
+        time: 'Recently',
+        type: 'learning',
+        icon: <Star size={14} className="text-purple-400" />,
+        color: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+        avatar: summary.employee.name.charAt(0).toUpperCase(),
+        filter: 'Month',
+      });
+    }
+  }
+
+  // Fallbacks if data is missing or to fill up the feed
+  if (dynamicActivities.length === 0) {
+    dynamicActivities.push({
+      id: 4,
+      title: 'Profile Active',
+      desc: 'Your employee profile is fully set up and active',
+      time: 'Recently',
+      type: 'approval',
+      icon: <CheckCircle2 size={14} className="text-emerald-400" />,
+      color: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      avatar: 'HR',
+      filter: 'Month',
+    });
+  }
+
+  dynamicActivities.push({
     id: 5,
-    title: 'Q1 Performance Review',
-    desc: 'Review finalized by Reporting Manager',
-    time: '3 weeks ago',
-    type: 'approval',
+    title: 'Company Policy Update',
+    desc: 'New guidelines for WFH added to Handbook',
+    time: '2 days ago',
+    type: 'learning',
     icon: <Sparkles size={14} className="text-yellow-400" />,
     color: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
-    avatar: 'RK',
+    avatar: 'HR',
     filter: 'Month',
-  },
-];
+  });
+
+  return dynamicActivities;
+}
 
 const events = [
   { id: 1, title: 'Independence Day', date: '15 Aug 2026', type: 'Holiday', daysLeft: 61, icon: <PartyPopper size={18} className="text-orange-500 dark:text-orange-400" />, bg: 'bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-500/20 dark:to-orange-500/5', border: 'border-orange-200 dark:border-orange-500/20' },
@@ -67,8 +89,10 @@ const events = [
   { id: 4, title: 'Security Training', date: '05 Sep 2026', type: 'Training', daysLeft: 82, icon: <GraduationCap size={18} className="text-purple-500 dark:text-purple-400" />, bg: 'bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-500/20 dark:to-purple-500/5', border: 'border-purple-200 dark:border-purple-500/20' },
 ];
 
-export default function ActivityAndEvents() {
+export default function ActivityAndEvents({ summary }: { summary?: EmployeeSummary | null }) {
   const [filter, setFilter] = useState<'Today' | 'Week' | 'Month'>('Month');
+  
+  const activities = generateActivities(summary);
 
   const filteredActivities = activities.filter(a => {
     if (filter === 'Today') return a.filter === 'Today';

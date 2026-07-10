@@ -49,7 +49,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Employees', path: '/employees', icon: 'employees', roles: ['HR_MANAGER'] },
       { label: 'Payroll', path: '/payroll', icon: 'payroll' },
       { label: 'Analytics', path: '/analytics', icon: 'reports', roles: ['HR_MANAGER'] },
-      { label: 'Reports', path: '/reports', icon: 'reports', roles: ['HR_MANAGER'] },
       { label: 'Company Hub', path: '/company-hub', icon: 'companyHub' },
       { label: 'Performance', path: '/performance', icon: 'performance' },
     ]

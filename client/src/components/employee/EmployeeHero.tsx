@@ -60,30 +60,6 @@ function getGreeting(h: number) {
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-const statusCards = [
-  { label: "Today's Focus",    value: 'Sprint Review', icon: <Target size={14} />, color: 'text-blue-500 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-500/10'   },
-  { label: 'Attendance Streak',value: '27 Days',       icon: <Flame size={14} />, color: 'text-orange-500 dark:text-orange-400',  bg: 'bg-orange-50 dark:bg-orange-500/10' },
-  { label: 'Next Salary',      value: '1 July',        icon: <Wallet size={14} />, color: 'text-emerald-500 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10'},
-  { label: 'Leave Remaining',  value: '18 Days',       icon: <Palmtree size={14} />, color: 'text-emerald-500 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10'},
-  { label: 'Office Location',  value: 'Ahmedabad',     icon: <Building size={14} />, color: 'text-purple-500 dark:text-purple-400',  bg: 'bg-purple-50 dark:bg-purple-500/10' },
-  { label: 'Employment',       value: 'Full-Time',     icon: <Briefcase size={14} />, color: 'text-slate-400 dark:text-slate-300',   bg: 'bg-slate-100 dark:bg-white/5'       },
-];
-
-const sprintPills = [
-  { icon: Zap,         label: 'Sprint',        value: 'Sprint 42', color: 'text-blue-500 dark:text-blue-400',    border: 'border-blue-200 dark:border-blue-500/20',    bg: 'bg-blue-50 dark:bg-blue-500/10'    },
-  { icon: BarChart3,   label: 'Quarter Goal',  value: '63%',       color: 'text-purple-500 dark:text-purple-400',  border: 'border-purple-200 dark:border-purple-500/20',  bg: 'bg-purple-50 dark:bg-purple-500/10'  },
-  { icon: CheckCircle2,label: "Today's Tasks", value: '4 Tasks',   color: 'text-emerald-500 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-500/20', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-];
-
-const profileDetails = [
-  { icon: Briefcase,    label: 'Experience',         value: '2 Years',          color: 'text-slate-800 dark:text-slate-200'   },
-  { icon: Target,       label: 'Current Project',    value: 'HRMSPro Frontend', color: 'text-slate-800 dark:text-slate-200'   },
-  { icon: UserCircle,   label: 'Manager',            value: 'Priya Sharma',     color: 'text-slate-800 dark:text-slate-200'   },
-  { icon: FileText,     label: 'Docs Verified',      value: '100%',             color: 'text-emerald-500 dark:text-emerald-400' },
-  { icon: Award,        label: 'Last Review',        value: 'Excellent',        color: 'text-blue-500 dark:text-blue-400'    },
-  { icon: CheckCircle2, label: 'Profile Completion', value: '98%',              color: 'text-purple-500 dark:text-purple-400'  },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile?: () => void; summary?: EmployeeSummary | null }) {
   const { user } = useAuthContext();
@@ -91,12 +67,34 @@ export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile
   const firstName = (user?.name ?? 'Employee').split(' ')[0];
   const initial = firstName.charAt(0).toUpperCase();
 
-  const currentStatusCards = statusCards.map(card => {
-    if (card.label === 'Leave Remaining' && summary) {
-      return { ...card, value: `${summary.payrollLeave.leaveBalance} Days` };
-    }
-    return card;
-  });
+  const completedGoals = summary?.productivity?.goals?.filter((g: any) => g.status === 'Completed').length || 0;
+  const totalGoals = summary?.productivity?.goals?.length || 1;
+  const goalProgress = summary?.productivity?.goals?.length ? Math.round((completedGoals / totalGoals) * 100) : 0;
+
+  const currentStatusCards = [
+    { label: "Today's Focus",    value: summary?.productivity?.goals?.[0]?.title || 'Daily Standup', icon: <Target size={14} />, color: 'text-blue-500 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-500/10'   },
+    { label: 'Attendance Rate',  value: `${summary?.workspace?.attendanceRate || 0}%`,       icon: <Flame size={14} />, color: 'text-orange-500 dark:text-orange-400',  bg: 'bg-orange-50 dark:bg-orange-500/10' },
+    { label: 'Payroll Status',   value: summary?.payrollLeave?.payrollStatus || 'Pending',        icon: <Wallet size={14} />, color: 'text-emerald-500 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10'},
+    { label: 'Leave Remaining',  value: `${summary?.payrollLeave?.leaveBalance || 0} Days`,       icon: <Palmtree size={14} />, color: 'text-emerald-500 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10'},
+    { label: 'Department',       value: summary?.employee?.department || 'General',     icon: <Building size={14} />, color: 'text-purple-500 dark:text-purple-400',  bg: 'bg-purple-50 dark:bg-purple-500/10' },
+    { label: 'Role',             value: summary?.employee?.role || 'Employee',     icon: <Briefcase size={14} />, color: 'text-slate-400 dark:text-slate-300',   bg: 'bg-slate-100 dark:bg-white/5'       },
+  ];
+
+  const currentSprintPills = [
+    { icon: Zap,         label: 'Active Goals',  value: `${summary?.productivity?.goals?.length || 0} Goals`, color: 'text-blue-500 dark:text-blue-400',    border: 'border-blue-200 dark:border-blue-500/20',    bg: 'bg-blue-50 dark:bg-blue-500/10'    },
+    { icon: BarChart3,   label: 'Goal Progress',  value: `${goalProgress}%`,       color: 'text-purple-500 dark:text-purple-400',  border: 'border-purple-200 dark:border-purple-500/20',  bg: 'bg-purple-50 dark:bg-purple-500/10'  },
+    { icon: CheckCircle2,label: "Pending Tasks", value: `${summary?.productivity?.pendingTasksCount || 0} Tasks`,   color: 'text-emerald-500 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-500/20', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+  ];
+
+  const currentProfileDetails = [
+    { icon: Briefcase,    label: 'Experience',         value: '2 Years',          color: 'text-slate-800 dark:text-slate-200'   },
+    { icon: Target,       label: 'Department',         value: summary?.employee?.department || 'General', color: 'text-slate-800 dark:text-slate-200'   },
+    { icon: UserCircle,   label: 'Role',               value: summary?.employee?.role || 'Employee',     color: 'text-slate-800 dark:text-slate-200'   },
+    { icon: FileText,     label: 'Docs Verified',      value: '100%',             color: 'text-emerald-500 dark:text-emerald-400' },
+    { icon: Award,        label: 'Performance',        value: `${summary?.performance?.score || 0}/5`,        color: 'text-blue-500 dark:text-blue-400'    },
+    { icon: CheckCircle2, label: 'Profile Completion', value: '100%',              color: 'text-purple-500 dark:text-purple-400'  },
+  ];
+
 
   return (
     <div
@@ -187,7 +185,7 @@ export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile
             initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.35, ease: 'easeOut' }}
           >
-            {sprintPills.map((pill, i) => (
+            {currentSprintPills.map((pill, i) => (
               <div key={i}
                 className={`flex items-center gap-1.5 rounded-lg border ${pill.border} ${pill.bg} px-2.5 py-1
                             transition-all duration-300 hover:-translate-y-0.5 cursor-default`}
@@ -216,7 +214,9 @@ export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile
               <LogIn size={10} className="text-emerald-500 shrink-0 dark:text-emerald-400" />
               <div className="flex flex-col">
                 <span className="text-[8px] font-semibold uppercase tracking-widest text-slate-500 leading-none dark:text-slate-600">Checked In</span>
-                <span className="text-[10.5px] font-bold text-emerald-500 leading-tight dark:text-emerald-400">09:12 AM</span>
+                <span className="text-[10.5px] font-bold text-emerald-500 leading-tight dark:text-emerald-400">
+                  {summary?.workspace?.checkInTime ? new Date(summary.workspace.checkInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
+                </span>
               </div>
             </div>
             {/* Today */}
@@ -259,20 +259,22 @@ export default function EmployeeHero({ onViewProfile, summary }: { onViewProfile
 
           {/* Score Rings */}
           <div className="relative z-10 flex items-center justify-around rounded-xl border border-slate-200 bg-white py-2 px-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
-            <CircularProgress value={summary?.performance?.score || 0} color="#3b82f6" label="Performance" sublabel="Score" />
-            <div className="h-10 w-px bg-slate-200 dark:bg-transparent" style={{ background: 'linear-gradient(180deg, transparent, currentColor, transparent)' }} />
-            <CircularProgress value={94} color="#8b5cf6" label="Attendance" sublabel="Score" />
+            <div className="flex justify-between items-center px-2">
+              <CircularProgress value={summary?.performance?.score ? summary.performance.score * 20 : 0} color="#3b82f6" label="Performance" sublabel="SCORE" />
+              <div className="h-10 w-px bg-slate-200 dark:bg-white/10" />
+              <CircularProgress value={summary?.workspace?.attendanceRate || 0} color="#a855f7" label="Attendance" sublabel="SCORE" />
+            </div>
           </div>
 
           {/* Detail List */}
           <div className="relative z-10 flex flex-col gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
-            {profileDetails.map((d, i) => (
+            {currentProfileDetails.map((detail, i) => (
               <div key={i} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-slate-500 min-w-0">
-                  <d.icon size={11} className="shrink-0" />
-                  <span className="text-[10.5px] truncate">{d.label}</span>
+                  <detail.icon size={11} className="shrink-0" />
+                  <span className="text-[10.5px] truncate">{detail.label}</span>
                 </div>
-                <span className={`text-[10.5px] font-semibold shrink-0 ${d.color}`}>{d.value}</span>
+                <span className={`text-[10.5px] font-semibold shrink-0 ${detail.color}`}>{detail.value}</span>
               </div>
             ))}
           </div>

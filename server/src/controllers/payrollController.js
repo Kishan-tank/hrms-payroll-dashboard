@@ -80,7 +80,8 @@ export const getPayrollRecords = async (req, res) => {
     if (year) query.year = parseInt(year);
     if (status) query.status = status;
 
-    const userRole = req.user?.role;
+    let userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "hr") userRole = "hr-manager";
 
     if (userRole === "employee") {
       const userId = req.user?._id || req.user?.id;

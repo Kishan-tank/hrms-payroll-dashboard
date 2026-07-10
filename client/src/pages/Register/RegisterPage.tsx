@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthContext } from '../../context/AuthContext';
 import { hasErrors, validateRegisterForm } from '../../utils/validation';
@@ -29,6 +29,7 @@ function Icon({ name, className = 'h-4 w-4' }: { name: 'building' | 'mail' | 'lo
 }
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const { register, isLoading, error: apiError, clearError } = useAuthContext();
   const [step, setStep] = useState<Step>(1);
   const [role, setRole] = useState('HR Manager');
@@ -50,6 +51,9 @@ export default function RegisterPage() {
         setProgress(prev => {
           if (prev >= 100) {
             clearInterval(interval);
+            setTimeout(() => {
+              navigate(role === 'HR Manager' ? '/hr-dashboard' : '/employee-dashboard');
+            }, 500); // slight delay at 100% before navigating
             return 100;
           }
           return prev + 5;
@@ -57,7 +61,7 @@ export default function RegisterPage() {
       }, 100);
       return () => clearInterval(interval);
     }
-  }, [isSuccess]);
+  }, [isSuccess, navigate, role]);
 
   // Frontend password strength logic
   const strength = useMemo(() => {

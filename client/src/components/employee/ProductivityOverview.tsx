@@ -90,7 +90,11 @@ function ProgressBar({ label, value, color, status, tooltip }: { label: string; 
   );
 }
 
-export default function ProductivityOverview() {
+export default function ProductivityOverview({ summary }: { summary?: any }) {
+  const prodScore = summary?.performance?.score ? summary.performance.score * 20 : 0;
+  const attendanceScore = summary?.workspace?.attendanceRate || 0;
+  const tasksScore = summary?.productivity?.pendingTasksCount === 0 ? 100 : Math.max(10, 100 - (summary?.productivity?.pendingTasksCount || 0) * 5);
+  
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       {/* LEFT: Productivity Score */}
@@ -110,10 +114,10 @@ export default function ProductivityOverview() {
 
         <div className="relative z-10 flex flex-1 items-center gap-8">
           <div className="relative shrink-0">
-            <CircularProgress value={92} color="#3b82f6" />
+            <CircularProgress value={prodScore} color="#3b82f6" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="flex items-baseline text-[36px] font-extrabold tracking-tight text-slate-900 drop-shadow-md dark:text-white">
-                92<span className="ml-0.5 text-[18px] font-bold text-blue-600 dark:text-blue-400">%</span>
+                {prodScore}<span className="ml-0.5 text-[18px] font-bold text-blue-600 dark:text-blue-400">%</span>
               </span>
               <span className="mt-[-4px] text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Score</span>
             </div>
@@ -149,7 +153,7 @@ export default function ProductivityOverview() {
               <div className="relative z-10 flex flex-col items-end pointer-events-none">
                 <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider dark:text-blue-400">Current</span>
                 <span className="text-[15px] font-bold text-slate-900 flex items-center gap-1 dark:text-white">
-                  92% <TrendingUp size={14} className="text-emerald-500" />
+                  {prodScore}% <TrendingUp size={14} className="text-emerald-500" />
                 </span>
               </div>
 
@@ -189,16 +193,16 @@ export default function ProductivityOverview() {
         <div className="relative z-10 flex flex-1 flex-col justify-between gap-2">
           <ProgressBar 
             label="Attendance Consistency" 
-            value={98} 
+            value={attendanceScore} 
             color="#10b981" 
-            status="Excellent"
-            tooltip="Based on on-time check-ins over the last 90 days"
+            status={attendanceScore > 90 ? "Excellent" : "Good"}
+            tooltip="Based on on-time check-ins over the last month"
           />
           <ProgressBar 
-            label="Completed Tasks" 
-            value={85} 
+            label="Tasks Progress" 
+            value={tasksScore} 
             color="#3b82f6" 
-            status="Good"
+            status={tasksScore > 80 ? "Good" : "Action Needed"}
             tooltip="Ratio of tasks completed on time"
           />
           <ProgressBar 
@@ -210,10 +214,10 @@ export default function ProductivityOverview() {
           />
           <ProgressBar 
             label="Project Contribution" 
-            value={88} 
+            value={prodScore} 
             color="#f59e0b" 
-            status="High"
-            tooltip="Peer reviews and code commits impact"
+            status={prodScore > 80 ? "High" : "Average"}
+            tooltip="Overall contribution impact"
           />
         </div>
       </div>

@@ -84,16 +84,7 @@ function ChartCard({
 // ─── Workforce Growth ─────────────────────────────────────────────────────────
 
 export function WorkforceGrowthChart({ data, loading }: { data: Array<[string, number]>; loading: boolean }) {
-  const chartData = data.length > 0
-    ? data.map(([label, value]) => ({ label, value }))
-    : [
-        { label: 'Jan', value: 940  },
-        { label: 'Feb', value: 980  },
-        { label: 'Mar', value: 1020 },
-        { label: 'Apr', value: 1080 },
-        { label: 'May', value: 1180 },
-        { label: 'Jun', value: 1248 },
-      ];
+  const chartData = data.map(([label, value]) => ({ label, value }));
 
   return (
     <ChartCard
@@ -126,14 +117,7 @@ export function WorkforceGrowthChart({ data, loading }: { data: Array<[string, n
 // ─── Attendance Trend ─────────────────────────────────────────────────────────
 
 export function AttendanceTrendChart({ data, loading }: { data: Array<[string, number]>; loading: boolean }) {
-  const chartData = data.length > 0
-    ? data.map(([label, value]) => ({ label, value }))
-    : [
-        { label: 'W1', value: 93 }, { label: 'W2', value: 91 },
-        { label: 'W3', value: 95 }, { label: 'W4', value: 90 },
-        { label: 'W5', value: 96 }, { label: 'W6', value: 94 },
-        { label: 'W7', value: 97 }, { label: 'W8', value: 97.8 },
-      ];
+  const chartData = data.map(([label, value]) => ({ label, value }));
 
   return (
     <ChartCard
@@ -166,14 +150,7 @@ export function AttendanceTrendChart({ data, loading }: { data: Array<[string, n
 // ─── Leave Distribution ───────────────────────────────────────────────────────
 
 export function LeaveDistributionChart({ data, loading }: { data: Array<[string, number, string]>; loading: boolean }) {
-  const chartData = data.length > 0
-    ? data.map(([name, value, color]) => ({ name, value, color }))
-    : [
-        { name: 'Sick Leave',     value: 45, color: '#ef4444' },
-        { name: 'Casual',         value: 30, color: '#3b82f6' },
-        { name: 'Earned',         value: 15, color: '#10b981' },
-        { name: 'Maternity',      value: 10, color: '#8b5cf6' },
-      ];
+  const chartData = data.map(([label, value, color]) => ({ name: label as string, value: value as number, color: color as string }));
 
   return (
     <ChartCard

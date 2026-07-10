@@ -40,7 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await authAPI.me();
         const { user: u } = res.data as { user: User };
-        u.role = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
+        const normalized = u.role?.toLowerCase() || '';
+        u.role = (normalized === 'hr-manager' || normalized.includes('hr') || normalized === 'admin') ? 'hr-manager' : 'employee';
         setUser(u);
       } catch (err) {
         console.error('Token validation failed', err);
@@ -75,7 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await authAPI.login(credentials);
         const { token, user: u } = res.data as { token: string; user: User };
-        const actualRole = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
+        const normalized = u.role?.toLowerCase() || '';
+        const actualRole = (normalized === 'hr-manager' || normalized.includes('hr') || normalized === 'admin') ? 'hr-manager' : 'employee';
 
         if (actualRole !== selectedRole) {
           throw new Error(
@@ -117,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await authAPI.register(data);
       const { token, user: u } = res.data as { token: string; user: User };
       
-      const actualRole = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
+      const actualRole = (u.role === 'hr-manager' || u.role === 'admin' || u.role?.toLowerCase() === 'hr') ? 'hr-manager' : 'employee';
       u.role = actualRole;
 
       localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
@@ -125,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user', JSON.stringify(u));
       
       setUser(u); 
-      navigate(u.role === 'employee' ? '/employee-dashboard' : '/hr-dashboard');
+      // Navigation is now handled by the RegisterPage after the success animation
     } catch (err: unknown) {
       const message = ((err as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Registration failed';
       setError(message);

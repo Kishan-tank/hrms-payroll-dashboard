@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { settingsService } from '../services/hrmsApi';
 import { useToast } from '../context/ToastContext';
@@ -334,18 +334,32 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Role Permissions</h2>
                 <div className="space-y-4">
-                  {rolePermissions.map(({ role, permissions }) => (
-                    <div key={role} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/50">
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className="text-blue-600 dark:text-blue-400"><Icon name="shield" /></span>
-                        <span className="text-sm font-semibold text-slate-950 dark:text-white">{role}</span>
-                        <span className="ml-auto rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">{permissions.length} permissions</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {permissions.map((permission) => <span key={permission} className="rounded-full bg-green-50 px-2.5 py-1 text-xs text-green-500 dark:bg-green-500/10 dark:text-green-400">{permission}</span>)}
-                      </div>
-                    </div>
-                  ))}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {rolePermissions.map(({ role, permissions }) => {
+                      const normalizedUserRole = user?.role?.toLowerCase() || '';
+                      const isHrUser = ['hr', 'hr-manager', 'hr manager'].includes(normalizedUserRole);
+                      const isMatch = (role === 'HR Manager' && isHrUser) || 
+                                      (role.toLowerCase() === normalizedUserRole);
+
+                      return (
+                        <div key={role} className={`rounded-2xl border ${isMatch ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/50'} p-4`}>
+                          <div className="mb-3 flex items-center gap-2">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isMatch ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
+                              <Icon name="shield" />
+                            </div>
+                            <span className={`font-medium ${isMatch ? 'text-blue-900 dark:text-blue-100' : 'text-slate-700 dark:text-slate-300'}`}>{role}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {permissions.map((permission) => (
+                              <span key={permission} className={`rounded-full px-2.5 py-1 text-xs ${isMatch ? 'bg-blue-100 text-blue-700 dark:bg-blue-800/40 dark:text-blue-300' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                {permission}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

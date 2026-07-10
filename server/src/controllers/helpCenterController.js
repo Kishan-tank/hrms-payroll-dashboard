@@ -12,7 +12,9 @@ export const getFAQs = async (req, res) => {
 export const seedFAQs = async (req, res) => {
   try {
     // Restrict seeding to HR Managers or Admin
-    if (req.user?.role !== 'hr-manager' && req.user?.role !== 'admin') {
+    let userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "hr") userRole = "hr-manager";
+    if (userRole !== 'hr-manager' && userRole !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
     

@@ -5,7 +5,8 @@ import Employee from "../models/employee.js";
 // Get tasks (filtered by employee for 'employee' role, or all for HR/Admin)
 export const getTasks = async (req, res) => {
   try {
-    const userRole = req.user?.role;
+    let userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "hr") userRole = "hr-manager";
     let query = {};
 
     if (userRole === "employee") {
@@ -29,7 +30,8 @@ export const createTask = async (req, res) => {
   try {
     let { employeeId, title, priority, status } = req.body;
 
-    if (req.user?.role === "employee") {
+    const userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "employee") {
       const userId = req.user?._id || req.user?.id;
       const employee = await Employee.findOne({ userId });
       if (!employee) {
@@ -73,7 +75,8 @@ export const updateTask = async (req, res) => {
     }
 
     // Verify employee ownership if role is employee
-    if (req.user?.role === "employee") {
+    const userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "employee") {
       const userId = req.user?._id || req.user?.id;
       const employee = await Employee.findOne({ userId });
       if (!employee || task.employeeId.toString() !== employee._id.toString()) {
@@ -107,7 +110,8 @@ export const deleteTask = async (req, res) => {
       return res.status(404).json({ success: false, message: "Task not found." });
     }
 
-    if (req.user?.role === "employee") {
+    const userRole = (req.user?.role || "").toLowerCase();
+    if (userRole === "employee") {
       const userId = req.user?._id || req.user?.id;
       const employee = await Employee.findOne({ userId });
       if (!employee || task.employeeId.toString() !== employee._id.toString()) {

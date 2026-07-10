@@ -57,20 +57,20 @@ export default function AppRouter() {
                   <Route path="/design-system" element={<DesignSystemPage />} />
                 )}
 
-            {/* ── Any logged-in user ── */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/documents" element={<DocumentsPage />} />
-              <Route path="/help" element={<HelpCenterPage />} />
-              <Route path="/attendance" element={<AttendancePage />} />
-              <Route path="/leave" element={<LeavePage />} />
-              <Route path="/payroll" element={<PayrollPage />} />
-              
-              <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
-              <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
-            </Route>
+                {/* ── Any logged-in user ── */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/documents" element={<DocumentsPage />} />
+                  <Route path="/help" element={<HelpCenterPage />} />
+                  <Route path="/attendance" element={<AttendancePage />} />
+                  <Route path="/leave" element={<LeavePage />} />
+                  <Route path="/payroll" element={<PayrollPage />} />
+
+                  <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
+                  <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
+                </Route>
 
                 {/* ── Employee-only routes ── */}
                 <Route element={<ProtectedRoute allowedRoles={['employee']} />}>

@@ -57,7 +57,7 @@ export const requireRole = (...allowedRoles) => {
     }
 
     // Admins are superusers — they always pass any role check
-    if (req.user.role === "admin") {
+    if ((req.user.role || "").toLowerCase() === "admin") {
       return next();
     }
 
@@ -66,7 +66,9 @@ export const requireRole = (...allowedRoles) => {
       r === "hr" ? ["hr", "hr-manager"] : r === "hr-manager" ? ["hr-manager", "hr"] : [r]
     );
 
-    if (!normalisedAllowed.includes(req.user.role)) {
+    const userRoleLower = (req.user.role || "").toLowerCase();
+
+    if (!normalisedAllowed.includes(userRoleLower)) {
       return res.status(403).json({
         success: false,
         message: "Access denied",

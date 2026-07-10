@@ -38,7 +38,8 @@ export const getAllEmployees = async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const isHR = req.user && ["admin", "hr", "hr-manager"].includes(req.user.role);
+    const userRoleLower = req.user ? (req.user.role || "").toLowerCase() : "";
+    const isHR = req.user && ["admin", "hr", "hr-manager"].includes(userRoleLower);
     const selectFields = isHR ? "" : "-basicPay -phone -joinDate -status";
 
     const employees = await Employee.find(query)

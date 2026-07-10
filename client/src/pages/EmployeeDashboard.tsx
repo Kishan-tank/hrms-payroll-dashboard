@@ -169,7 +169,7 @@ export default function EmployeeDashboard() {
 
         {/* ROW 2.5: Productivity Overview */}
         <motion.div custom={0.08} variants={fade} initial="hidden" animate="visible">
-          <ProductivityOverview />
+          <ProductivityOverview summary={summary} />
         </motion.div>
 
         {/* ROW 3: Payroll & Leave Analytics */}
@@ -189,7 +189,7 @@ export default function EmployeeDashboard() {
 
         {/* ROW 6: Recent Activity & Upcoming Events */}
         <motion.div custom={0.25} variants={fade} initial="hidden" animate="visible">
-          <ActivityAndEvents />
+          <ActivityAndEvents summary={summary} />
         </motion.div>
 
         {/* ROW 7: My Goals & Sprint Tasks */}
