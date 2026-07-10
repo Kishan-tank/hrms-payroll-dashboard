@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, Cell,
+  ResponsiveContainer, BarChart, Bar, Cell,
   PieChart, Pie,
 } from 'recharts';
 
@@ -123,41 +123,36 @@ export function WorkforceGrowthChart({ data, loading }: { data: Array<[string, n
   );
 }
 
-// ─── Attendance Trend ─────────────────────────────────────────────────────────
+// ─── Department Attendance ────────────────────────────────────────────────────────
 
-export function AttendanceTrendChart({ data, loading }: { data: Array<[string, number]>; loading: boolean }) {
+export function DepartmentAttendanceChart({ data, loading }: { data: Array<[string, number]>; loading: boolean }) {
   const chartData = data.length > 0
     ? data.map(([label, value]) => ({ label, value }))
     : [
-        { label: 'W1', value: 93 }, { label: 'W2', value: 91 },
-        { label: 'W3', value: 95 }, { label: 'W4', value: 90 },
-        { label: 'W5', value: 96 }, { label: 'W6', value: 94 },
-        { label: 'W7', value: 97 }, { label: 'W8', value: 97.8 },
+        { label: 'Engineering', value: 96 }, { label: 'Sales', value: 89 },
+        { label: 'Marketing', value: 92 }, { label: 'HR', value: 94 },
+        { label: 'General', value: 91 }
       ];
 
   return (
     <ChartCard
-      title="Attendance Trends" subtitle="Weekly attendance rate average"
+      title="Department Attendance" subtitle="Attendance rate by department"
       loading={loading} delay={0.15}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+        <BarChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
           <defs>
-            <linearGradient id="att-grad" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id="att-grad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%"   stopColor="#8b5cf6" />
               <stop offset="100%" stopColor="#d946ef" />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/5" />
           <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-          <YAxis domain={[88, 100]} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-          <Tooltip content={<ThemedTooltip unit="" />} cursor={{ stroke: 'rgba(139,92,246,0.2)', strokeWidth: 1 }} />
-          <Line type="monotone" dataKey="value" name="Attendance %"
-            stroke="url(#att-grad)" strokeWidth={3}
-            dot={false}
-            activeDot={{ r: 6, fill: '#8b5cf6', stroke: '#ffffff', strokeWidth: 3 }}
-          />
-        </LineChart>
+          <YAxis domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
+          <Tooltip content={<ThemedTooltip unit="" />} cursor={{ fill: 'rgba(139,92,246,0.1)' }} />
+          <Bar dataKey="value" name="Attendance %" fill="url(#att-grad)" radius={[4, 4, 0, 0]} />
+        </BarChart>
       </ResponsiveContainer>
     </ChartCard>
   );

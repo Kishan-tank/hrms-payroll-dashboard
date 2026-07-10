@@ -10,7 +10,7 @@ import DashboardHero from '../components/dashboard/DashboardHero';
 import KPIGrid from '../components/dashboard/KPIGrid';
 import {
   WorkforceGrowthChart,
-  AttendanceTrendChart,
+  DepartmentAttendanceChart,
 } from '../components/dashboard/DashboardCharts';
 import AIInsightsPanel from '../components/dashboard/AIInsightsPanel';
 import QuickActionsPanel from '../components/dashboard/QuickActionsPanel';
@@ -106,7 +106,7 @@ export default function HRDashboard() {
                 <WorkforceGrowthChart data={headcountTrend} loading={loading} />
               </motion.div>
               <motion.div className="flex flex-col" custom={0.20} variants={fade} initial="hidden" animate="visible">
-                <AttendanceTrendChart data={deptAttendance} loading={loading} />
+                <DepartmentAttendanceChart data={deptAttendance} loading={loading} />
               </motion.div>
             </div>
           </div>
