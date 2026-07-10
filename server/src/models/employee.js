@@ -52,6 +52,17 @@ const employeeSchema = new mongoose.Schema(
       ref: "User",
       description: "Optional reference to a user account if they can log in",
     },
+    dob: { type: Date },
+    gender: { type: String, enum: ["Male", "Female", "Other"] },
+    address: { type: String },
+    bankAccount: { type: String },
+    ifscCode: { type: String },
+    bankName: { type: String },
+    documents: [{
+      type: { type: String }, // e.g. 'gov_id', 'offer_letter', 'certificate'
+      url: { type: String },
+      name: { type: String }
+    }]
   },
   {
     timestamps: true,

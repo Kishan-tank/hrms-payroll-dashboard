@@ -1,5 +1,9 @@
 /**
- * useAIInsights — fetches structured insight cards from the backend AI service.
+ * useAIInsights — streams structured insight cards from Google Gemini Flash.
+ *
+ * The hook calls the Gemini API directly from the browser and expects the API key
+ * to be available through VITE_GEMINI_API_KEY. For a commercial deployment,
+ * it is better to relay this request through a server-side endpoint.
  */
 
 import React, { useState, useEffect } from 'react';

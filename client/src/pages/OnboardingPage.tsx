@@ -13,7 +13,7 @@ import PoliciesForm from '../components/onboarding/forms/PoliciesForm';
 import CompletionView from '../components/onboarding/CompletionView';
 import EnterpriseSupportPanel from '../components/onboarding/EnterpriseSupportPanel';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import { onboardingService } from '../services/hrmsApi';
 
 export default function OnboardingPage() {
   const { user } = useAuthContext();
@@ -115,6 +115,64 @@ export default function OnboardingPage() {
     }, 800);
   };
 
+  const handleNext = async () => {
+    setIsSubmitting(true);
+    try {
+      switch (currentStepId) {
+        case 'profile':
+          if (!profileForm.phone.trim() || !profileForm.address.trim()) {
+            setProfileError(true);
+            setIsSubmitting(false);
+            return;
+          }
+          setProfileError(false);
+          await onboardingService.submitProfile(profileForm);
+          completeStep('profile');
+          toast.success('Profile details saved successfully');
+          break;
+        case 'documents':
+          const formData = new FormData();
+          if (govId) formData.append('govId', govId);
+          if (offerLetter) formData.append('offerLetter', offerLetter);
+          if (certificates) formData.append('certificates', certificates);
+
+          if (govId || offerLetter || certificates) {
+            await onboardingService.uploadDocuments(formData);
+          }
+          completeStep('documents');
+          toast.success('Documents securely uploaded');
+          break;
+        case 'bank':
+          if (!bankForm.account.trim() || !bankForm.ifsc.trim()) {
+            setIsSubmitting(false);
+            return;
+          }
+          await onboardingService.submitBank(bankForm);
+          completeStep('bank');
+          toast.success('Bank details verified');
+          break;
+        case 'handbook':
+          if (!handbookAgreed) {
+            setIsSubmitting(false);
+            return;
+          }
+          completeStep('handbook');
+          toast.success('Handbook acknowledged');
+          break;
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save progress');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentIndex > 0) {
+      setCurrentStep(filteredSteps[currentIndex - 1].id as StepId);
+    }
+  };
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -142,43 +200,6 @@ export default function OnboardingPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges, saveStatus]);
-
-  const handleNext = () => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      switch (currentStepId) {
-        case 'profile':
-          if (!profileForm.phone.trim() || !profileForm.address.trim()) {
-            setProfileError(true);
-            return;
-          }
-          setProfileError(false);
-          completeStep('profile');
-          toast.success('Profile saved successfully');
-          break;
-        case 'documents':
-          completeStep('documents');
-          toast.success('Documents securely uploaded');
-          break;
-        case 'bank':
-          if (!bankForm.account.trim() || !bankForm.ifsc.trim()) return;
-          completeStep('bank');
-          toast.success('Bank details verified');
-          break;
-        case 'handbook':
-          if (!handbookAgreed) return;
-          completeStep('handbook');
-          break;
-      }
-    }, 600); // Simulate network request for premium loading state
-  };
-
-  const handleBack = () => {
-    if (currentIndex > 0) {
-      setCurrentStep(filteredSteps[currentIndex - 1].id as StepId);
-    }
-  };
 
   // ─── Step Content Renders ─────────────────────────────────────────────────
 

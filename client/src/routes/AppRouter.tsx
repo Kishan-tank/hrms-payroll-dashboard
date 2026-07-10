@@ -9,6 +9,8 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 // Eagerly loaded (critical path)
 import LoginPage from '../pages/Login/LoginPage';
 import RegisterPage from '../pages/Register/RegisterPage';
+import ForgotPasswordPage from '../pages/Login/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/Login/ResetPasswordPage';
 import Home from '../pages/Home';
 import NotFoundPage from '../pages/NotFoundPage';
 
@@ -48,6 +50,8 @@ export default function AppRouter() {
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                 {/* /design-system is a dev-only tool — unreachable in production builds */}
                 {import.meta.env.DEV && (
                   <Route path="/design-system" element={<DesignSystemPage />} />

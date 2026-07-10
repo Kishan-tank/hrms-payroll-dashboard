@@ -1,8 +1,21 @@
 import Attendance from "../models/attendance.js";
 import Employee from "../models/employee.js";
 
-// Allowed statuses for attendance
-const VALID_STATUSES = ['Present', 'Late', 'Absent', 'On Leave', 'Pending'];
+const resolveEmployeeForUser = async (user) => {
+  const userId = user?._id || user?.id;
+  const email = user?.email;
+
+  if (userId) {
+    const employeeByUserId = await Employee.findOne({ userId });
+    if (employeeByUserId) return employeeByUserId;
+  }
+
+  if (email) {
+    return Employee.findOne({ email });
+  }
+
+  return null;
+};
 
 // Fetch all attendance records
 export const getAttendance = async (req, res) => {
@@ -127,6 +140,7 @@ export const regularizeAttendance = async (req, res) => {
 
     if (checkIn) record.checkIn = checkIn;
     if (checkOut) record.checkOut = checkOut;
+    if (reason) record.reason = reason;
     record.status = "Pending"; // Needs HR approval
     // In a real system, we might add a notes field or separate Regularization Request collection
     // For now, updating the record to Pending state.

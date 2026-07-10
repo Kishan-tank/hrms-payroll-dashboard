@@ -3,7 +3,6 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { settingsService } from '../services/hrmsApi';
 import { useToast } from '../context/ToastContext';
 import { useAuthContext } from '../context/AuthContext';
-import { useTheme, Theme } from '../context/ThemeContext';
 
 type TabId = 'profile' | 'security' | 'notifications' | 'theme' | 'permissions';
 
@@ -42,8 +41,6 @@ function Icon({ name }: { name: string }) {
   return <svg {...common}><circle cx="12" cy="12" r="10" /></svg>;
 }
 
-const THEME_OPTIONS: Theme[] = ['light', 'dark', 'system'];
-
 export default function SettingsPage() {
   const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
@@ -54,7 +51,18 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const toast = useToast();
+
+  // Keep profileName in sync if user loads later
+  useEffect(() => {
+    if (user?.name) setProfileName(user.name);
+  }, [user]);
 
   useEffect(() => {
     fetchSettings();
@@ -101,6 +109,61 @@ export default function SettingsPage() {
       ...prev,
       [key]: !prev[key]
     }));
+  };
+
+  const handleUpdateProfileName = async () => {
+    if (!profileName.trim()) return;
+    try {
+      const res = await settingsService.updateProfile(profileName);
+      if (res.success) {
+        toast.success('Profile updated. Reloading...');
+        window.location.reload();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update profile');
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Please fill in all password fields');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    try {
+      const res = await settingsService.changePassword(currentPassword, newPassword);
+      if (res.success) {
+        toast.success('Password changed successfully');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to change password');
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('photo', file);
+    try {
+      const res = await settingsService.uploadPhoto(formData);
+      if (res.success) {
+        toast.success('Photo uploaded. Reloading...');
+        window.location.reload();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload photo');
+    }
   };
 
   if (loading) {
@@ -154,19 +217,24 @@ export default function SettingsPage() {
               <div>
                 <h2 className="mb-6 text-lg font-semibold text-slate-950 dark:text-white">Profile Settings</h2>
                 <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6 dark:border-white/10">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">
-                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  <div className="flex h-16 w-16 overflow-hidden items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                      user?.name ? user.name.charAt(0).toUpperCase() : 'U'
+                    )}
                   </div>
                   <div>
                     <div className="font-semibold text-slate-950 dark:text-white">{user?.name || 'Employee Name'}</div>
                     <div className="text-sm capitalize text-slate-400">{user?.role || 'Employee'}</div>
-                    <button type="button" className="mt-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">Change Photo</button>
+                    <button onClick={() => fileInputRef.current?.click()} type="button" className="mt-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">Change Photo</button>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
                   </div>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Full Name</span>
-                    <input disabled value={user?.name || ''} className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-400" />
+                    <input value={profileName} onChange={(e) => setProfileName(e.target.value)} onBlur={handleUpdateProfileName} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
                   </label>
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Email Address</span>
@@ -182,13 +250,19 @@ export default function SettingsPage() {
                 <div className="space-y-5">
                   <div>
                     <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Change Password</h3>
-                    {['Current Password', 'New Password', 'Confirm New Password'].map((label) => (
-                      <label key={label} className="mb-4 block">
-                        <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
-                        <input type="password" placeholder="********" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
-                      </label>
-                    ))}
-                    <button type="button" className="mt-4 rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">Update Password</button>
+                    <label className="mb-4 block">
+                      <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Current Password</span>
+                      <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="********" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
+                    </label>
+                    <label className="mb-4 block">
+                      <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">New Password</span>
+                      <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="********" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
+                    </label>
+                    <label className="mb-4 block">
+                      <span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Confirm New Password</span>
+                      <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="********" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 dark:border-white/10 dark:bg-slate-900/50 dark:text-white dark:focus:border-blue-500" />
+                    </label>
+                    <button type="button" onClick={handlePasswordChange} className="mt-4 rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">Update Password</button>
                   </div>
                 </div>
               </div>
