@@ -183,6 +183,7 @@ export const getCurrentUser = async (req, res) => {
 };
 
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 export const forgotPassword = async (req, res) => {
   try {
@@ -200,8 +201,34 @@ export const forgotPassword = async (req, res) => {
 
     await user.save();
 
-    // In a real app, send email here. For demo, we just log and return success.
-    console.log(`Password reset link: http://localhost:5173/reset-password/${resetToken}`);
+    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+
+    // Send email if credentials exist in .env
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+      
+      await transporter.sendMail({
+        from: `"HRMS Team" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: 'Password Reset Request - HRMS',
+        html: `
+          <h3>Password Reset</h3>
+          <p>You requested a password reset. Please click the link below to set a new password:</p>
+          <p><a href="${resetUrl}" clicktracking="off">${resetUrl}</a></p>
+          <p>This link is valid for 15 minutes.</p>
+        `
+      });
+      console.log(`Password reset email sent to ${user.email}`);
+    } else {
+      console.log("Email credentials not configured. Please add EMAIL_USER and EMAIL_PASS to .env");
+      console.log(`Fallback - Password reset link: ${resetUrl}`);
+    }
 
     res.status(200).json({
       success: true,
