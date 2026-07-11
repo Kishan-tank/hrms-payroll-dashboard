@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 async function check() {
-  await mongoose.connect('mongodb+srv://tankkishan902_db_user:c0Sf5boBDsuZpP7W@cluster0.dia8ndg.mongodb.net/');
+  await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/hrms-pro');
   const db = mongoose.connection.db;
   const employees = await db.collection('employees').find({}).toArray();
   const users = await db.collection('users').find({}).toArray();

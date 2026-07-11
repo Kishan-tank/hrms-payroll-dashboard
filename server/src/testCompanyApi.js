@@ -5,7 +5,7 @@ import Goal from './models/Goal.js';
 import Task from './models/Task.js';
 import PerformanceReview from './models/PerformanceReview.js';
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://dhameliyakishan96:dhameliyakishan@hrms-cluster.dia8ndg.mongodb.net/hrms-pro?retryWrites=true&w=majority&appName=hrms-cluster';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/hrms-pro';
 
 async function checkCollections() {
   try {
