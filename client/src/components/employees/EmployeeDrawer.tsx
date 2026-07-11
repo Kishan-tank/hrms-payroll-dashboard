@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import type { ApiEmployee, ApiAttendance, ApiLeave, PayrollRecord, ApiDocument } from '../../services/hrmsApi';
 import { attendanceService, leaveService, payrollService, documentService } from '../../services/hrmsApi';
@@ -23,8 +23,22 @@ function CloseIcon() {
 export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDrawerProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const drawerRef = useRef<HTMLDivElement>(null);
-  
-  useFocusTrap(open, onClose, drawerRef);
+  const shouldReduceMotion = useReducedMotion();
+  const [isFullyVisible, setIsFullyVisible] = useState(false);
+  const [cachedEmployee, setCachedEmployee] = useState<ApiEmployee | null>(null);
+
+  useEffect(() => {
+    if (employee) setCachedEmployee(employee);
+  }, [open, employee]);
+
+  useEffect(() => {
+    if (!open) setIsFullyVisible(false);
+    else if (shouldReduceMotion) setIsFullyVisible(true);
+  }, [open, shouldReduceMotion]);
+
+  const activeEmployee = employee || cachedEmployee;
+
+  useFocusTrap(isFullyVisible && !!activeEmployee, onClose, drawerRef);
 
   const [attendance, setAttendance] = useState<ApiAttendance[]>([]);
   const [leaves, setLeaves] = useState<ApiLeave[]>([]);
@@ -65,7 +79,7 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
     void load();
   }, [open, employee]);
 
-  if (!employee) return null;
+  if (!activeEmployee) return null;
 
   return (
     <AnimatePresence>
@@ -76,7 +90,7 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
             onClick={onClose}
             className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm"
           />
@@ -91,7 +105,8 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 200 }}
+            onAnimationComplete={() => { if (open) setIsFullyVisible(true); }}
             className="fixed inset-y-0 right-0 z-[110] flex w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-950 sm:w-[500px] lg:w-[600px] border-l border-slate-200 dark:border-white/10 outline-none"
           >
             {/* Header / Cover */}
@@ -105,23 +120,23 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
 
               <div className="flex items-center gap-4">
                 <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl font-bold shadow-inner ring-2 ring-white/30 backdrop-blur-md">
-                  {employee.name.charAt(0)}
+                  {activeEmployee.name.charAt(0)}
                 </div>
                 <div>
-                  <h2 id="employee-drawer-title" className="text-2xl font-extrabold">{employee.name}</h2>
-                  <p className="font-medium text-blue-100">{employee.role} · {employee.department}</p>
+                  <h2 id="employee-drawer-title" className="text-2xl font-extrabold">{activeEmployee.name}</h2>
+                  <p className="font-medium text-blue-100">{activeEmployee.role} · {activeEmployee.department}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
-                      {employee.status}
+                      {activeEmployee.status}
                     </span>
-                    <span className="text-xs text-blue-200">ID: {employee.employeeId}</span>
+                    <span className="text-xs text-blue-200">ID: {activeEmployee.employeeId}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex shrink-0 gap-6 overflow-x-auto border-b border-slate-200 bg-white px-6 pt-4 dark:border-white/10 dark:bg-slate-900 scrollbar-hide">
+            <div className="flex shrink-0 gap-6 overflow-x-auto border-b border-slate-200 px-6 dark:border-white/10 relative z-10 bg-white dark:bg-slate-950 scrollbar-hide">
               {(['overview', 'attendance', 'leave', 'payroll', 'documents', 'activity'] as TabType[]).map((tab) => (
                 <button
                   key={tab}
@@ -151,12 +166,12 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
                     <h3 className="mb-4 text-xs font-extrabold uppercase tracking-widest text-slate-400">Contact Information</h3>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Email Address</p>
-                        <p className="font-semibold text-slate-900 dark:text-white">{employee.email}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Employee ID</p>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-white">{activeEmployee.employeeId}</div>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Phone Number</p>
-                        <p className="font-semibold text-slate-900 dark:text-white">{employee.phone || 'N/A'}</p>
+                        <p className="font-semibold text-slate-900 dark:text-white">{activeEmployee.phone || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
@@ -166,11 +181,11 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Join Date</p>
-                        <p className="font-semibold text-slate-900 dark:text-white">{new Date(employee.joinDate).toLocaleDateString()}</p>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-white">{new Date(activeEmployee.joinDate).toLocaleDateString()}</div>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Basic Pay</p>
-                        <p className="font-semibold text-slate-900 dark:text-white">₹{employee.basicPay.toLocaleString()}</p>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-white">₹{activeEmployee.basicPay.toLocaleString()}</div>
                       </div>
                     </div>
                   </div>
@@ -295,7 +310,7 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
                   <div className="flex h-full flex-col items-center justify-center text-center py-12">
                     <div className="mb-4 text-5xl opacity-20">⚡</div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Activity</h3>
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Employee profile created and active in {employee.department}.</p>
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Employee profile created and active in {activeEmployee.department}.</p>
                   </div>
                 </div>
               )}

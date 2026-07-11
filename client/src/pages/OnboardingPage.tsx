@@ -12,7 +12,7 @@ import BankDetailsForm from '../components/onboarding/forms/BankDetailsForm';
 import PoliciesForm from '../components/onboarding/forms/PoliciesForm';
 import CompletionView from '../components/onboarding/CompletionView';
 import EnterpriseSupportPanel from '../components/onboarding/EnterpriseSupportPanel';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import { onboardingService } from '../services/hrmsApi';
 
 export default function OnboardingPage() {
@@ -204,24 +204,19 @@ export default function OnboardingPage() {
   // ─── Step Content Renders ─────────────────────────────────────────────────
 
   const renderAITips = (text: string) => (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }} className="hidden lg:flex items-start gap-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/[0.02] p-5 rounded-[2rem] border border-slate-200/60 dark:border-white/10 shadow-xl shadow-slate-200/20 dark:shadow-none max-w-sm mb-6 relative overflow-hidden group">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50" />
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-100 dark:border-white/5">
-        <i className="ti ti-sparkles text-lg animate-pulse" />
+    <div className="hidden lg:flex items-start gap-4 bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-200 dark:border-white/10 max-w-sm mb-6">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400">
+        <i className="ti ti-info-circle text-lg" />
       </div>
       <div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-1 flex items-center gap-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-          </span>
-          AI Assistant
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
+          Tip
         </p>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.8 }} className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+        <p className="text-sm text-slate-700 dark:text-slate-300">
           {text}
-        </motion.p>
+        </p>
       </div>
-    </motion.div>
+    </div>
   );
 
   const renderProfileForm = () => (
@@ -312,19 +307,19 @@ export default function OnboardingPage() {
               </button>
             )}
 
-            <AnimatePresence mode="wait">
+            <div>
               {isComplete ? (
-                <motion.div key="complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div>
                   {renderCompleteState()}
-                </motion.div>
+                </div>
               ) : (
-                <motion.div key={currentStepId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3, ease: 'easeOut' }}>
+                <div>
                   <div className="min-h-[320px] flex flex-col justify-center mt-2">
                     {getStepBody(steps.find(s => s.id === currentStepId)!)}
                   </div>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
           </div>
 
           {/* Bottom Navigation */}

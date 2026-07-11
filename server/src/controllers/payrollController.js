@@ -26,8 +26,8 @@ export const runPayroll = async (req, res) => {
       return res.status(400).json({ success: false, message: `Payroll for ${month} ${year} already exists` });
     }
 
-    // Fetch all active employees
-    const activeEmployees = await Employee.find({ status: "Active" });
+    // Fetch only active, non-soft-deleted employees for payroll
+    const activeEmployees = await Employee.find({ status: "Active", isActive: { $ne: false } });
 
     if (activeEmployees.length === 0) {
       return res.status(400).json({ success: false, message: "No active employees found to run payroll" });
@@ -75,7 +75,8 @@ export const getPayrollRecords = async (req, res) => {
   try {
     const { month, year, status, employeeId } = req.query;
 
-    const query = {};
+    // Only return active (non-voided) payroll records
+    const query = { isActive: { $ne: false } };
     if (month) query.month = month;
     if (year) query.year = parseInt(year);
     if (status) query.status = status;
@@ -119,7 +120,8 @@ export const getPayrollSummary = async (req, res) => {
   try {
     const { month, year } = req.query;
     
-    const query = {};
+    // Only include non-voided records in summary aggregation
+    const query = { isActive: { $ne: false } };
     if (month) query.month = month;
     if (year) query.year = parseInt(year);
 
@@ -148,5 +150,39 @@ export const getPayrollSummary = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch payroll summary", error: error.message });
+  }
+};
+// Void (soft-delete) a payroll record — HR/Admin only
+export const voidPayrollRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user?.role;
+
+    if (!["admin", "hr", "hr-manager"].includes(userRole)) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    const record = await Payroll.findById(id);
+    if (!record) {
+      return res.status(404).json({ success: false, message: "Payroll record not found" });
+    }
+    if (!record.isActive) {
+      return res.status(400).json({ success: false, message: "Payroll record is already voided" });
+    }
+    // Prevent voiding a record that has already been paid out
+    if (record.status === "Paid") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot void a Paid payroll record. Contact a system administrator."
+      });
+    }
+
+    record.isActive = false;
+    record.deletedAt = new Date();
+    await record.save();
+
+    res.status(200).json({ success: true, message: "Payroll record voided successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to void payroll record", error: error.message });
   }
 };

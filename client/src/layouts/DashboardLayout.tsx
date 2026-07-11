@@ -31,12 +31,16 @@ export default function DashboardLayout({
     : (userRole ?? 'Employee');
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-[#020817] dark:text-slate-50">
+    <div className="flex h-screen w-screen bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-[#0B1121] dark:text-slate-50 relative overflow-hidden">
+      {/* Ambient background blobs to give the glass something to refract */}
+      <div className="pointer-events-none absolute left-1/4 top-0 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/20 blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-0 right-1/4 h-96 w-96 translate-x-1/2 translate-y-1/2 rounded-full bg-purple-500/20 blur-[120px]" />
+
       <Sidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 pb-24 lg:pb-0">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col pb-24 lg:pb-0 h-screen">
         <Navbar title={title} userName={displayName} userRole={displayRole} />
-        <main className="flex-1 px-4 py-5 sm:px-5">
+        <main className="glass m-4 flex flex-1 flex-col overflow-y-auto custom-scrollbar rounded-3xl p-5 sm:m-5">
           {children}
         </main>
         

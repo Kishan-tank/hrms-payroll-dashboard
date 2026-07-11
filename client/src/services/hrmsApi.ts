@@ -230,7 +230,8 @@ export interface ApiLeave {
   fromDate: string;
   toDate: string;
   days: number;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  // 'Cancelled' added to match backend Leave model (Phase 1 soft-delete change)
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
   reason?: string;
 }
 
@@ -351,6 +352,10 @@ export const payrollService = {
     request<{ success: boolean; message: string; recordsGenerated: number }>(
       'POST', '/payroll/run', { month, year },
     ),
+
+  // HR/Admin only: void (soft-delete) a Processing/Pending payroll record
+  void: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/payroll/${id}`),
 };
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -395,6 +400,9 @@ export const attendanceService = {
     request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/regularize', payload),
   updateStatus: (id: string, status: string) =>
     request<{ success: boolean; message: string; record: ApiAttendance }>('PUT', `/attendance/${id}/status`, { status }),
+  // HR/Admin only: soft-delete (deactivate) an attendance record
+  deactivate: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/attendance/${id}`),
 };
 
 // ─── Leave ───────────────────────────────────────────────────────────────────

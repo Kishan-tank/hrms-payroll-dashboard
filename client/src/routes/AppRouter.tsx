@@ -23,7 +23,6 @@ const EmployeeManagement = lazy(() => import('../pages/EmployeeManagement'));
 const AttendancePage = lazy(() => import('../pages/AttendancePage'));
 const PayrollPage = lazy(() => import('../pages/PayrollPage'));
 const LeavePage = lazy(() => import('../pages/LeavePage'));
-const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 const AnalyticsPage = lazy(() => import('../pages/AnalyticsPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
@@ -37,13 +36,17 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       {/*
+        ErrorBoundary is outside AuthProvider intentionally.
+        This ensures its fallback UI never renders components that
+        call useAuthContext(), which would cause a secondary crash.
+
         AuthProvider lives INSIDE BrowserRouter so useNavigate() works.
         EmployeeDrawerProvider wraps all authenticated routes so any page
         can call useEmployeeDrawer() to open the global employee drawer.
       */}
-      <AuthProvider>
-        <EmployeeDrawerProvider>
-          <ErrorBoundary>
+      <ErrorBoundary>
+        <AuthProvider>
+          <EmployeeDrawerProvider>
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* ── Public routes – no login required ── */}
@@ -86,17 +89,16 @@ export default function AppRouter() {
                   <Route path="/hr-dashboard" element={<HRDashboard />} />
                   <Route path="/dashboard/hr" element={<HRDashboard />} />
                   <Route path="/employees" element={<EmployeeManagement />} />
-                  <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
                 </Route>
 
                 {/* ── Catch-all: proper 404 instead of silent redirect ── */}
                 <Route path="*" element={<NotFoundPage />} />
-              </Routes>
+            </Routes>
             </Suspense>
-          </ErrorBoundary>
-        </EmployeeDrawerProvider>
-      </AuthProvider>
+          </EmployeeDrawerProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

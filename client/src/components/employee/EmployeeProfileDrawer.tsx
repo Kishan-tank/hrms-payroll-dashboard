@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, User, Clock, CalendarDays, DollarSign, FileText, ChevronRight, MapPin, Mail, Phone, Briefcase } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -21,8 +21,15 @@ export default function EmployeeProfileDrawer({ isOpen, onClose }: EmployeeProfi
   const [activeTab, setActiveTab] = useState('personal');
   const { user } = useAuthContext();
   const drawerRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
+  const [isFullyVisible, setIsFullyVisible] = useState(false);
 
-  useFocusTrap(isOpen, onClose, drawerRef);
+  useEffect(() => {
+    if (!isOpen) setIsFullyVisible(false);
+    else if (shouldReduceMotion) setIsFullyVisible(true);
+  }, [isOpen, shouldReduceMotion]);
+
+  useFocusTrap(isFullyVisible, onClose, drawerRef);
 
   const rawDisplayName = user?.name ?? 'Employee';
   const displayName = rawDisplayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -46,6 +53,7 @@ export default function EmployeeProfileDrawer({ isOpen, onClose }: EmployeeProfi
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
             onClick={onClose}
             className="fixed inset-0 z-50 bg-[#0B1121]/60 backdrop-blur-sm"
           />
@@ -60,7 +68,8 @@ export default function EmployeeProfileDrawer({ isOpen, onClose }: EmployeeProfi
             initial={{ x: '100%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 200 }}
+            onAnimationComplete={() => { if (isOpen) setIsFullyVisible(true); }}
             className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[480px] flex-col border-l border-white/10 bg-[#0B1121] shadow-[0_0_80px_rgba(0,0,0,0.8)] outline-none"
           >
             {/* Header */}

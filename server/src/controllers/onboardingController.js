@@ -119,6 +119,8 @@ export const saveBank = async (req, res) => {
   }
 };
 
+import Document from '../models/Document.js';
+
 export const uploadDocuments = async (req, res) => {
   try {
     const files = req.files; // assumes multer
@@ -128,18 +130,50 @@ export const uploadDocuments = async (req, res) => {
     }
 
     const newDocs = [];
+    const documentRecords = [];
+
     if (files.govId) {
-      newDocs.push({ type: 'gov_id', name: files.govId[0].originalname, url: `/uploads/${files.govId[0].filename}` });
+      const url = `/uploads/${files.govId[0].filename}`;
+      newDocs.push({ type: 'gov_id', name: files.govId[0].originalname, url });
+      documentRecords.push({
+        employeeId: req.user.id,
+        title: files.govId[0].originalname,
+        type: 'ID Proof',
+        fileUrl: url,
+        uploadedBy: req.user.id
+      });
     }
     if (files.offerLetter) {
-      newDocs.push({ type: 'offer_letter', name: files.offerLetter[0].originalname, url: `/uploads/${files.offerLetter[0].filename}` });
+      const url = `/uploads/${files.offerLetter[0].filename}`;
+      newDocs.push({ type: 'offer_letter', name: files.offerLetter[0].originalname, url });
+      documentRecords.push({
+        employeeId: req.user.id,
+        title: files.offerLetter[0].originalname,
+        type: 'Offer Letter',
+        fileUrl: url,
+        uploadedBy: req.user.id
+      });
     }
     if (files.certificates) {
-      newDocs.push({ type: 'certificate', name: files.certificates[0].originalname, url: `/uploads/${files.certificates[0].filename}` });
+      const url = `/uploads/${files.certificates[0].filename}`;
+      newDocs.push({ type: 'certificate', name: files.certificates[0].originalname, url });
+      documentRecords.push({
+        employeeId: req.user.id,
+        title: files.certificates[0].originalname,
+        type: 'Other',
+        fileUrl: url,
+        uploadedBy: req.user.id
+      });
     }
 
+    // Save to employee profile
     employee.documents = [...(employee.documents || []), ...newDocs];
     await employee.save();
+
+    // Save to central Document collection so they appear on the Documents page
+    if (documentRecords.length > 0) {
+      await Document.insertMany(documentRecords);
+    }
 
     res.status(200).json({ success: true, message: 'Documents uploaded successfully' });
   } catch (error) {

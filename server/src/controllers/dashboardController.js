@@ -26,8 +26,8 @@ function timeAgo(date) {
 
 export const getHrSummary = async (req, res) => {
   try {
-    // 1. Total Employees
-    const totalEmployees = await Employee.countDocuments({ status: "Active" });
+    // 1. Total Employees — exclude soft-deleted
+    const totalEmployees = await Employee.countDocuments({ status: "Active", isActive: { $ne: false } });
 
     // 2. Attendance Rate & Present Today
     const today = new Date().toISOString().split('T')[0];
@@ -43,10 +43,9 @@ export const getHrSummary = async (req, res) => {
       attendanceRate = "0%";
     }
 
-    // On Leave & Remote Count
-    const onLeave = await Employee.countDocuments({ status: "On Leave" });
-    // Remote count: employees explicitly tagged Remote; no fake fallback
-    const remoteCount = await Employee.countDocuments({ status: "Remote" });
+    // On Leave & Remote Count — exclude soft-deleted
+    const onLeave = await Employee.countDocuments({ status: "On Leave", isActive: { $ne: false } });
+    const remoteCount = await Employee.countDocuments({ status: "Remote", isActive: { $ne: false } });
     // Workforce health: percentage of active staff NOT on leave (0-100)
     const workforceHealth = Math.max(0, 100 - Math.round((onLeave / Math.max(1, totalEmployees)) * 100));
 
@@ -85,8 +84,9 @@ export const getHrSummary = async (req, res) => {
     });
     // If approvalQueue.length === 0 → returns [] (frontend handles empty state)
 
-    // 5. Department Overview
+    // 5. Department Overview — exclude soft-deleted employees from counts
     const deptAgg = await Employee.aggregate([
+      { $match: { isActive: { $ne: false } } },
       { $group: { _id: "$department", count: { $sum: 1 } } }
     ]);
     const deptColors = ['bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-indigo-500'];
@@ -116,8 +116,8 @@ export const getHrSummary = async (req, res) => {
         manager: topReview.reviewer || 'HR Department'
       };
     } else {
-      // Fallback to any active employee if no performance review exists
-      const anyEmp = await Employee.findOne({ status: "Active" });
+      // Fallback to any active, non-soft-deleted employee if no performance review exists
+      const anyEmp = await Employee.findOne({ status: "Active", isActive: { $ne: false } });
       if (anyEmp) {
         // Fix: null-safe name split
         const initials = (anyEmp.name || 'U N').split(' ').map(n => n[0]).join('').toUpperCase();
@@ -220,8 +220,8 @@ export const getRecentActivity = async (req, res) => {
       }
     }
 
-    // Employees
-    const recentEmployees = await Employee.find().sort({ createdAt: -1 }).limit(5);
+    // Employees — exclude soft-deleted from recent activity feed
+    const recentEmployees = await Employee.find({ isActive: { $ne: false } }).sort({ createdAt: -1 }).limit(5);
     for (const emp of recentEmployees) {
       activities.push({
         action: 'Employee Added',
@@ -262,8 +262,8 @@ export const getEmployeeSummary = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    // Try to find a linked Employee document first
-    let employee = await Employee.findOne({ userId });
+    // Try to find a linked Employee document — exclude soft-deleted
+    let employee = await Employee.findOne({ userId, isActive: { $ne: false } });
 
     // If no Employee record is linked to this user account,
     // fall back to the User record so the dashboard always loads.

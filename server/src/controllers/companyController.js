@@ -123,8 +123,17 @@ export const endorseSkill = async (req, res) => {
 
 export const deleteSkill = async (req, res) => {
     try {
-        const skill = await Skill.findByIdAndDelete(req.params.id);
+        const skill = await Skill.findById(req.params.id);
         if (!skill) return res.status(404).json({ success: false, message: "Skill not found" });
+
+        if (req.user.role !== "hr-manager") {
+            const employeeId = await getEmployeeId(req.user);
+            if (skill.employeeId.toString() !== employeeId.toString()) {
+                return res.status(403).json({ success: false, message: "Not authorized to delete this skill." });
+            }
+        }
+
+        await skill.deleteOne();
         res.status(200).json({ success: true, message: "Skill deleted successfully" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

@@ -74,7 +74,7 @@ export default function DocumentsPage() {
     );
   }
 
-  const CATEGORIES = ['All', ...Array.from(new Set(documents.map((d) => d.type)))];
+  const CATEGORIES = ['All', 'Offer Letter', 'Payslip', 'Policy', 'ID Proof', 'Other'];
 
   const filtered = documents.filter((doc) => {
     const matchCat  = activeCategory === 'All' || doc.type === activeCategory;
@@ -187,7 +187,8 @@ export default function DocumentsPage() {
                   {docs.map((doc, index) => {
                     const ext = (doc.fileUrl?.split('.').pop() || 'PDF').toUpperCase() as DocType;
                     const backendUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000';
-                    const downloadUrl = `${backendUrl}${doc.fileUrl}`;
+                    const token = localStorage.getItem('token') || '';
+                    const downloadUrl = `${backendUrl}${doc.fileUrl}?token=${token}`;
                     
                     return (
                     <li

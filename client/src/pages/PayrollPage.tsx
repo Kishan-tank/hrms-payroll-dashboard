@@ -18,8 +18,8 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const CURRENT_MONTH = MONTHS[new Date().getMonth()];
 const CURRENT_YEAR = new Date().getFullYear();
 
-function fmt(n: number | undefined) {
-  if (n === undefined) return '—';
+function fmt(n: number | undefined | null) {
+  if (typeof n !== 'number' || isNaN(n)) return '—';
   return `₹${n.toLocaleString('en-IN')}`;
 }
 
@@ -41,15 +41,25 @@ export default function PayrollPage() {
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
+  const [voidingId, setVoidingId] = useState<string | null>(null);
 
   const { menuProps, handleContextMenu } = useContextMenu();
   const contextTargetRef = useRef<PayrollRecord | null>(null);
 
   function buildPayrollMenuItems(row: PayrollRecord) {
-    return [
+    const items: any[] = [
       { label: 'View payslip', icon: 'eye', onClick: () => setSelectedRecord(row) },
       { label: 'Download payslip', icon: 'download', onClick: () => handleDownloadPayslip(row) },
     ];
+    if (!isEmployee && row.status !== 'Paid') {
+      items.push({ 
+        label: 'Void Record', 
+        icon: 'trash-2', 
+        variant: 'danger', 
+        onClick: () => handleVoidRecord(row._id as string) 
+      });
+    }
+    return items;
   }
 
   const [filterMonth, setFilterMonth] = useState(CURRENT_MONTH);
@@ -95,6 +105,20 @@ export default function PayrollPage() {
       setRunMsg(`❌ ${(err as Error).message}`);
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function handleVoidRecord(id: string) {
+    if (voidingId) return;
+    setVoidingId(id);
+    try {
+      await payrollService.void(id);
+      toast.success('Payroll record voided successfully.');
+      void fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to void payroll record');
+    } finally {
+      setVoidingId(null);
     }
   }
 
@@ -299,7 +323,39 @@ export default function PayrollPage() {
       sortValue: (row) => row.status ?? '',
       render: (row) => <div className="h-full w-full flex items-center" onMouseEnter={() => { contextTargetRef.current = row; }}><StatusBadge status={row.status ?? 'Pending'} /></div>,
     },
-  ], []);
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row) => (
+        <div className="flex h-full w-full items-center gap-2" onMouseEnter={() => { contextTargetRef.current = row; }}>
+          <button 
+            type="button" 
+            onClick={() => setSelectedRecord(row)}
+            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+          >
+            View
+          </button>
+          <button 
+            type="button" 
+            onClick={() => handleDownloadPayslip(row)}
+            className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+          >
+            Download
+          </button>
+          {row.status !== 'Paid' && (
+            <button 
+              type="button"
+              disabled={voidingId === row._id}
+              onClick={() => handleVoidRecord(row._id as string)}
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+            >
+              {voidingId === row._id ? '…' : 'Void'}
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ], [voidingId]);
 
   const employeeColumns = useMemo<DataTableColumn<PayrollRecord>[]>(() => [
     {
@@ -646,6 +702,25 @@ export default function PayrollPage() {
                       <p className="text-slate-400">Net Pay</p>
                       <p className="font-bold text-slate-900 dark:text-white text-base">{fmt(record.netPay)}</p>
                     </div>
+                  </div>
+                  <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRecord(record)}
+                      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121] dark:text-slate-300 dark:hover:bg-white/5"
+                    >
+                      View Payslip
+                    </button>
+                    {record.status !== 'Paid' && (
+                      <button
+                        type="button"
+                        disabled={voidingId === record._id}
+                        onClick={() => handleVoidRecord(record._id as string)}
+                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+                      >
+                        {voidingId === record._id ? '…' : 'Void'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

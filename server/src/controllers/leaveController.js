@@ -5,7 +5,7 @@ import Employee from "../models/employee.js";
 export const getLeaves = async (req, res) => {
   try {
     const userRole = req.user?.role;
-    let query = {};
+    let query = { isActive: { $ne: false } };
 
     if (userRole === "employee") {
       const userId = req.user?._id || req.user?.id;
@@ -141,7 +141,11 @@ export const cancelLeave = async (req, res) => {
       });
     }
 
-    await leave.deleteOne();
+    // Soft-cancel: status = Cancelled, isActive stays true so the record
+    // remains visible in leave history and reports. isActive: false is
+    // reserved for actual record deletion, not cancellation.
+    leave.status = "Cancelled";
+    await leave.save();
     res.status(200).json({ success: true, message: "Leave request cancelled successfully." });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to cancel leave.", error: error.message });

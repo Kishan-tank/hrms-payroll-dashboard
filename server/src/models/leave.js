@@ -17,8 +17,16 @@ const leaveSchema = new mongoose.Schema({
   days: { type: Number, required: true },
   status: {
     type: String,
-    enum: ["Pending", "Approved", "Rejected"],
+    enum: ["Pending", "Approved", "Rejected", "Cancelled"],
     default: "Pending",
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+  deletedAt: {
+    type: Date,
+    default: null,
   }
 }, { timestamps: true });
 

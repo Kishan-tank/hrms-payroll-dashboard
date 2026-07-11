@@ -42,6 +42,12 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
+
+  /* Premium Glass & Shadow Tokens */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+  --glass-blur: blur(16px);
 }
 
 html {
@@ -58,6 +64,11 @@ html {
   --accent-foreground: #f8fafc;
   --border: rgba(255, 255, 255, 0.08);
   --input-background: rgba(255, 255, 255, 0.03);
+
+  /* Premium Glass & Shadow Tokens (Dark) */
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
 }
 
 body {
@@ -69,6 +80,30 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* ── Global Glass Utility Classes ── */
+@layer components {
+  .glass {
+    background-color: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12);
+  }
+
+  .dark .glass-hover:hover {
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+  }
 }
 
 /* ── Landing Page Animations ── */

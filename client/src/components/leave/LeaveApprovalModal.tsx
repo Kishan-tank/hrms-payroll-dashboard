@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { ApiLeave } from '../../services/hrmsApi';
 
@@ -19,47 +20,71 @@ export default function LeaveApprovalModal({
   onCancel,
   loading,
 }: LeaveApprovalModalProps) {
-  const [mounted, setMounted] = useState(false);
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
+  const [isFullyVisible, setIsFullyVisible] = useState(false);
+  
+  const [cachedLeave, setCachedLeave] = useState<ApiLeave | null>(null);
+  const [cachedAction, setCachedAction] = useState<'Approved' | 'Rejected' | null>(null);
 
   useEffect(() => {
-    setMounted(open);
-  }, [open]);
+    if (leave) {
+      setCachedLeave(leave);
+      setCachedAction(action);
+    }
+  }, [open, leave, action]);
 
-  useFocusTrap(open, loading ? () => {} : onCancel, modalRef, { initialFocusRef: cancelBtnRef });
+  useEffect(() => {
+    if (!open) setIsFullyVisible(false);
+    else if (shouldReduceMotion) setIsFullyVisible(true);
+  }, [open, shouldReduceMotion]);
 
-  if (!open || !leave) return null;
+  const activeLeave = leave || cachedLeave;
+  const activeAction = action || cachedAction;
 
-  const isApproved = action === 'Approved';
+  useFocusTrap(isFullyVisible && !!activeLeave, loading ? () => {} : onCancel, modalRef, { initialFocusRef: cancelBtnRef });
+
+  if (!activeLeave) return null;
+
+  const isApproved = activeAction === 'Approved';
   const iconBg = isApproved ? 'bg-emerald-100 dark:bg-emerald-500/20' : 'bg-red-100 dark:bg-red-500/20';
   const iconColor = isApproved ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
   const iconClass = isApproved ? 'ti-circle-check' : 'ti-circle-x';
   const title = isApproved ? 'Confirm Approval' : 'Confirm Rejection';
   
-  const daysString = `${leave.days} day${leave.days === 1 ? '' : 's'}`;
-  const fromStr = leave.fromDate?.split('T')[0] || (leave as any).from;
-  const toStr = leave.toDate?.split('T')[0] || (leave as any).to;
-  const employeeName = leave.employeeId?.name || (leave as any).name || 'Unknown';
+  const daysString = `${activeLeave.days} day${activeLeave.days === 1 ? '' : 's'}`;
+  const fromStr = activeLeave.fromDate?.split('T')[0] || (activeLeave as any).from;
+  const toStr = activeLeave.toDate?.split('T')[0] || (activeLeave as any).to;
+  const employeeName = activeLeave.employeeId?.name || (activeLeave as any).name || 'Unknown';
 
   return (
-    <>
-      <div 
-        className="fixed inset-0 z-[60] bg-black/50" 
-        onClick={() => {
-          if (!loading) onCancel();
-        }}
-      />
-      
-      <div className="fixed inset-0 z-[61] flex items-center justify-center p-4 pointer-events-none">
-        <div 
-          ref={modalRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="leave-approval-modal-title"
-          tabIndex={-1}
-          className={`pointer-events-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl transition-all duration-150 dark:border-white/10 dark:bg-slate-900 ${mounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
-        >
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+            className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm" 
+            onClick={() => {
+              if (!loading) onCancel();
+            }}
+          />
+          
+          <div className="fixed inset-0 z-[61] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div 
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="leave-approval-modal-title"
+              tabIndex={-1}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }}
+              onAnimationComplete={() => { if (open) setIsFullyVisible(true); }}
+              className="pointer-events-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-slate-900"
+            >
           <div className="mb-6 flex flex-col items-center text-center">
             <div className={`mb-4 flex h-[56px] w-[56px] items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
               <i className={`ti ${iconClass} text-3xl`} />
@@ -77,7 +102,7 @@ export default function LeaveApprovalModal({
             </div>
             <div className="grid grid-cols-[1fr_2fr] gap-2">
               <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Leave type</span>
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{leave.type}</span>
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{activeLeave.type}</span>
             </div>
             <div className="grid grid-cols-[1fr_2fr] gap-2">
               <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Duration</span>
@@ -89,7 +114,7 @@ export default function LeaveApprovalModal({
             </div>
             <div className="grid grid-cols-[1fr_2fr] gap-2">
               <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Reason</span>
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{leave.reason ?? '—'}</span>
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{activeLeave.reason ?? '—'}</span>
             </div>
           </div>
 
@@ -113,8 +138,10 @@ export default function LeaveApprovalModal({
               {isApproved ? 'Approve' : 'Reject'}
             </button>
           </div>
-        </div>
-      </div>
-    </>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

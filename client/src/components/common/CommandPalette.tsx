@@ -67,12 +67,12 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     { id: 'nav-att', label: 'Attendance', cat: 'Navigation', type: 'nav', path: '/attendance' },
     { id: 'nav-leave', label: 'Leave Management', cat: 'Navigation', type: 'nav', path: '/leave' },
     { id: 'nav-pay', label: 'Payroll', cat: 'Navigation', type: 'nav', path: '/payroll' },
-    { id: 'nav-rep', label: 'Reports', cat: 'Navigation', type: 'nav', path: '/reports' },
+    { id: 'nav-rep', label: 'Reports', cat: 'Navigation', type: 'nav', path: '/analytics' },
     { id: 'nav-set', label: 'Settings', cat: 'Navigation', type: 'nav', path: '/settings' },
     
     { id: 'act-rev-leave', label: 'Review Pending Leaves', cat: 'Actions', type: 'action', path: '/leave', keywords: ['approve', 'time off'] },
     { id: 'act-open-pay', label: 'Open Payroll Center', cat: 'Actions', type: 'action', path: '/payroll', keywords: ['run', 'salary'] },
-    { id: 'act-view-rep', label: 'View Reports', cat: 'Actions', type: 'action', path: '/reports', keywords: ['analytics', 'metrics'] },
+    { id: 'act-view-rep', label: 'View Reports', cat: 'Actions', type: 'action', path: '/analytics', keywords: ['analytics', 'metrics'] },
     { id: 'act-man-emp', label: 'Manage Employees', cat: 'Actions', type: 'action', path: '/employees', keywords: ['add', 'directory'] },
   ];
 

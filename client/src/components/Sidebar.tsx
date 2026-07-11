@@ -17,6 +17,7 @@ type IconName =
   | 'performance'
   | 'companyHub'
   | 'help'
+  | 'tasks'
   | 'checklist';
 
 interface NavItem {
@@ -37,7 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Dashboard', path: '/employee-dashboard', icon: 'dashboard', roles: ['EMPLOYEE'] },
       { label: 'Onboarding', path: '/onboarding', icon: 'checklist', roles: ['EMPLOYEE'] },
-      { label: 'Tasks', path: '/tasks', icon: 'checklist', roles: ['EMPLOYEE'] },
+      { label: 'Tasks', path: '/tasks', icon: 'tasks', roles: ['EMPLOYEE'] },
       { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['HR_MANAGER'] },
       { label: 'Attendance', path: '/attendance', icon: 'attendance' },
       { label: 'Leave Management', path: '/leave', icon: 'leave' },
@@ -49,7 +50,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Employees', path: '/employees', icon: 'employees', roles: ['HR_MANAGER'] },
       { label: 'Payroll', path: '/payroll', icon: 'payroll' },
       { label: 'Analytics', path: '/analytics', icon: 'reports', roles: ['HR_MANAGER'] },
-      { label: 'Reports', path: '/reports', icon: 'reports', roles: ['HR_MANAGER'] },
       { label: 'Company Hub', path: '/company-hub', icon: 'companyHub' },
       { label: 'Performance', path: '/performance', icon: 'performance' },
     ]
@@ -89,6 +89,7 @@ function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: str
     case 'performance': return <svg {...c}><path d="M3 17l6-6 4 4 8-8M21 7v6h-6" /></svg>;
     case 'help': return <svg {...c}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01" /></svg>;
     case 'companyHub': return <svg {...c}><path d="M8 21h8M9 8h1m-1 4h1m-1 4h1m4-8h1m-1 4h1m-1 4h1M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M4 21h16" /></svg>;
+    case 'tasks': return <svg {...c}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>;
     default: return null;
   }
 }
@@ -109,7 +110,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`fixed inset-x-0 bottom-0 z-40 lg:relative lg:shrink-0 transition-all duration-300 ease-in-out bg-white border-r border-slate-200 dark:bg-[#0B1121] dark:border-white/5 shadow-sm overflow-visible ${collapsed ? 'lg:w-20' : 'lg:w-[280px]'}`}
+      className={`glass max-lg:border-b-0 max-lg:border-x-0 lg:border-y-0 lg:border-l-0 fixed inset-x-0 bottom-0 z-40 lg:relative lg:shrink-0 transition-all duration-300 ease-in-out overflow-visible ${collapsed ? 'lg:w-20' : 'lg:w-[280px]'}`}
     >
       {/* ── Desktop ── */}
       <div className="hidden h-screen sticky top-0 flex-col lg:flex">
@@ -148,7 +149,7 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide py-6 px-4 space-y-8">
+        <div className="flex-1 overflow-y-auto custom-scrollbar py-6 px-4 space-y-8">
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter(item => {
               if (!item.roles) return true;
@@ -234,7 +235,7 @@ export default function Sidebar() {
       </div>
 
       {/* ── Mobile ── */}
-      <div className="flex h-[60px] items-center justify-around border-t border-slate-200 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/80 lg:hidden">
+      <div className="flex h-[60px] items-center justify-around lg:hidden">
         {NAV_GROUPS.flatMap(g => g.items)
           .filter(i => (!i.roles || (user && i.roles.includes(userRole))))
           .slice(0, 4)

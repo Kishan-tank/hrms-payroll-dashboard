@@ -1,6 +1,9 @@
 import Attendance from "../models/attendance.js";
 import Employee from "../models/employee.js";
 
+// Allowed attendance statuses — used for HR status updates
+const VALID_STATUSES = ["Present", "Late", "Absent", "Leave", "Pending", "Rejected"];
+
 const resolveEmployeeForUser = async (user) => {
   const userId = user?._id || user?.id;
   const email = user?.email;
@@ -21,7 +24,7 @@ const resolveEmployeeForUser = async (user) => {
 export const getAttendance = async (req, res) => {
   try {
     const userRole = req.user?.role;
-    let query = {};
+    let query = { isActive: { $ne: false } };
 
     if (userRole === "employee") {
       // Fix: use $or to match by userId OR email — handles both linked and unlinked accounts
@@ -182,5 +185,35 @@ export const updateAttendanceStatus = async (req, res) => {
     res.status(200).json({ success: true, message: "Status updated successfully", record });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update status", error: error.message });
+  }
+};
+
+// Soft-delete an attendance record — HR/Admin only
+// Sets isActive: false and deletedAt. The record is preserved in the DB for audit purposes
+// but will no longer appear in any getAttendance query (which filters isActive: { $ne: false }).
+export const deactivateAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user?.role;
+
+    if (!["admin", "hr", "hr-manager"].includes(userRole)) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    const record = await Attendance.findById(id);
+    if (!record) {
+      return res.status(404).json({ success: false, message: "Attendance record not found" });
+    }
+    if (!record.isActive) {
+      return res.status(400).json({ success: false, message: "Attendance record is already deactivated" });
+    }
+
+    record.isActive = false;
+    record.deletedAt = new Date();
+    await record.save();
+
+    res.status(200).json({ success: true, message: "Attendance record deactivated successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to deactivate attendance record", error: error.message });
   }
 };
