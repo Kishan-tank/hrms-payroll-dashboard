@@ -47,6 +47,14 @@ const employeeSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

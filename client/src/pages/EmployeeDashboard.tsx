@@ -40,7 +40,8 @@ export default function EmployeeDashboard() {
         if (res.success && res.summary) {
           setSummary(res.summary);
         } else {
-          throw new Error('Server returned an unexpected response.');
+          // success:true but no profile linked yet — new employee, not an error
+          setSummary(null);
         }
       } catch (err) {
         console.error('EmployeeDashboard fetch failed:', err);
@@ -116,8 +117,8 @@ export default function EmployeeDashboard() {
     );
   }
 
-  // ── Error state ────────────────────────────────────────────────────────────
-  if (error || !summary) {
+  // ── Error state (actual network / server failure) ──────────────────────────
+  if (error) {
     return (
       <DashboardLayout title="Employee Workspace">
         <div className="flex h-[50vh] items-center justify-center">
@@ -128,12 +129,37 @@ export default function EmployeeDashboard() {
               </svg>
             </div>
             <h3 className="text-lg font-bold text-white">Failed to load workspace</h3>
-            <p className="text-sm text-slate-400">{error || 'No data available. Please try again.'}</p>
+            <p className="text-sm text-slate-400">{error}</p>
             <button
               onClick={() => { setError(null); setRetryKey((k) => k + 1); }}
               className="mt-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-500 active:scale-95 transition-all"
             >
               Retry
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── No profile yet state (new employee, profile not yet set up) ─────────────
+  if (!summary) {
+    return (
+      <DashboardLayout title="Employee Workspace">
+        <div className="flex h-[50vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-3 text-center max-w-sm">
+            <div className="h-14 w-14 rounded-2xl border border-white/10 bg-blue-500/10 text-blue-400 flex items-center justify-center">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-white">No profile data yet</h3>
+            <p className="text-sm text-slate-400">Your employee profile hasn't been set up yet. Contact your HR Manager to get started.</p>
+            <button
+              onClick={() => setRetryKey((k) => k + 1)}
+              className="mt-2 px-5 py-2.5 bg-blue-600/20 border border-blue-500/30 text-blue-300 rounded-xl text-sm font-semibold hover:bg-blue-600/30 active:scale-95 transition-all"
+            >
+              Refresh
             </button>
           </div>
         </div>

@@ -36,7 +36,7 @@ const ACTIONS: QuickActionItem[] = [
   { id: 'add', label: 'Add Employee', sub: 'Onboard new hire', path: '/employees', accent: '#3b82f6', accentDim: 'rgba(59,130,246,0.12)', gradient: 'from-blue-600 to-blue-500', icon: <UserPlusIcon c="currentColor" /> },
   { id: 'payroll', label: 'Run Payroll', sub: 'Process this cycle', path: '/payroll', accent: '#22c55e', accentDim: 'rgba(34,197,94,0.12)', gradient: 'from-emerald-600 to-green-500', icon: <PlayIcon c="currentColor" /> },
   { id: 'leave', label: 'Approve Leave', sub: '18 pending', path: '/leave', accent: '#8b5cf6', accentDim: 'rgba(139,92,246,0.12)', gradient: 'from-violet-600 to-purple-500', icon: <CheckCircleIcon c="currentColor" /> },
-  { id: 'reports', label: 'Export Reports', sub: 'Download analytics', path: '/reports', accent: '#f59e0b', accentDim: 'rgba(245,158,11,0.12)', gradient: 'from-amber-500 to-orange-400', icon: <DownloadIcon c="currentColor" /> },
+  { id: 'reports', label: 'Export Reports', sub: 'Download analytics', path: '/analytics', accent: '#f59e0b', accentDim: 'rgba(245,158,11,0.12)', gradient: 'from-amber-500 to-orange-400', icon: <DownloadIcon c="currentColor" /> },
   { id: 'announce', label: 'Broadcast', sub: 'Notify all staff', path: '/settings', accent: '#ec4899', accentDim: 'rgba(236,72,153,0.12)', gradient: 'from-pink-500 to-rose-400', icon: <MegaphoneIcon c="currentColor" /> },
 ];
 

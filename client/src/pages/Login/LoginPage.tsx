@@ -51,7 +51,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen bg-[#020817] font-sans selection:bg-blue-500/30 selection:text-blue-200">
-      
+
       {/* ── BACKGROUND ── */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div
@@ -66,7 +66,7 @@ export default function LoginPage() {
       </div>
 
       {/* ── LEFT PANEL (ENTERPRISE BRANDING) ── */}
-      <motion.aside 
+      <motion.aside
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
@@ -89,7 +89,7 @@ export default function LoginPage() {
           </div>
 
           <h1 className="mb-6 text-[2.75rem] font-extrabold leading-[1.1] text-white tracking-tight">
-            Manage your workforce <br/>
+            Manage your workforce <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
               smarter
             </span>
@@ -104,7 +104,7 @@ export default function LoginPage() {
               { icon: 'check', text: 'Automated payroll with zero errors' },
               { icon: 'chart', text: 'Real-time attendance & leave tracking' }
             ].map((item, idx) => (
-              <motion.div 
+              <motion.div
                 key={idx}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -120,67 +120,13 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Floating Dashboard Widgets */}
-        <div className="absolute right-[-20%] top-[20%] flex flex-col gap-4 opacity-40 xl:right-[-5%] xl:opacity-100 transition-opacity duration-500 pointer-events-none">
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="w-64 translate-x-12 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_0_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] pointer-events-auto">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400"><Icon name="users" /></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-slate-400">Today's Attendance</div>
-                  <div className="text-[10px] font-bold text-emerald-400">Live today</div>
-                </div>
-                <div className="mt-0.5 text-xl font-bold text-white">94.2%</div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full w-[94.2%] rounded-full bg-gradient-to-r from-emerald-500 to-blue-500"></div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.6 }} className="w-64 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_0_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(59,130,246,0.15)] pointer-events-auto">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-blue-400"><Icon name="rupee" /></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-slate-400">Payroll Processed</div>
-                  <div className="text-[10px] font-bold text-blue-400">This month</div>
-                </div>
-                <div className="mt-0.5 flex items-center gap-2">
-                  <div className="text-xl font-bold text-white">₹2.84 Cr</div>
-                  <div className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">↑ 12%</div>
-                </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full w-[75%] rounded-full bg-gradient-to-r from-blue-600 to-indigo-500"></div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.7 }} className="w-64 translate-x-8 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_0_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(245,158,11,0.15)] pointer-events-auto">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400"><Icon name="calendar" /></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-slate-400">Pending Leaves</div>
-                  <div className="text-[10px] font-bold text-amber-400">Needs review</div>
-                </div>
-                <div className="mt-0.5 text-xl font-bold text-white">18</div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full w-[40%] rounded-full bg-gradient-to-r from-amber-500 to-orange-500"></div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
 
       </motion.aside>
 
       {/* ── RIGHT PANEL (LOGIN CARD) ── */}
       <section className="relative z-10 flex flex-1 items-center justify-center p-4 sm:p-8">
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
@@ -192,8 +138,8 @@ export default function LoginPage() {
           {/* Top Bar above card */}
           <div className="mb-4 flex items-center justify-between">
             {/* Premium Back to Home Button */}
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="group flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-sm font-semibold text-slate-300 shadow-[0_0_15px_rgba(0,0,0,0.1)] backdrop-blur-md transition-all duration-300 hover:bg-white/[0.08] hover:text-white"
             >
               <Icon name="arrowLeft" className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
@@ -212,7 +158,7 @@ export default function LoginPage() {
 
           {/* Dark Glass Login Card */}
           <div className="rounded-[32px] border border-white/10 bg-slate-900/75 p-6 shadow-[0_0_60px_rgba(37,99,235,0.18)] backdrop-blur-xl sm:p-8">
-            
+
             <div className="mb-6 text-center sm:text-left">
               <h2 className="text-2xl font-bold text-white tracking-tight">Welcome back</h2>
               <p className="mt-1.5 text-sm text-slate-400 font-medium">Sign in to your HRMSPro account</p>
@@ -225,9 +171,8 @@ export default function LoginPage() {
                   key={r}
                   type="button"
                   onClick={() => setRole(r as 'hr-manager' | 'employee')}
-                  className={`relative z-10 flex-1 rounded-xl py-2 text-sm font-bold transition-colors duration-300 ${
-                    role === r ? 'text-white' : 'text-slate-500 hover:text-slate-300'
-                  }`}
+                  className={`relative z-10 flex-1 rounded-xl py-2 text-sm font-bold transition-colors duration-300 ${role === r ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                    }`}
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {r === 'hr-manager' ? '🛡 HR Manager' : '👤 Employee'}
@@ -268,11 +213,11 @@ export default function LoginPage() {
                 <span className="mb-1.5 block text-sm font-semibold text-slate-300">Email Address</span>
                 <div className="relative group">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-blue-400"><Icon name="mail" /></span>
-                  <input 
+                  <input
                     {...register('email')}
-                    type="email" 
-                    placeholder="you@company.com" 
-                    className={`w-full rounded-2xl border bg-slate-950 py-3 pl-11 pr-4 text-sm font-medium text-white transition-all outline-none placeholder:text-slate-600 focus:bg-slate-900 focus:ring-4 hover:border-white/20 ${errors.email ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20'}`} 
+                    type="email"
+                    placeholder="you@company.com"
+                    className={`w-full rounded-2xl border bg-slate-950 py-3 pl-11 pr-4 text-sm font-medium text-white transition-all outline-none placeholder:text-slate-600 focus:bg-slate-900 focus:ring-4 hover:border-white/20 ${errors.email ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20'}`}
                   />
                 </div>
                 {errors.email && <span className="mt-1.5 block text-xs font-semibold text-red-500">{errors.email.message}</span>}
@@ -282,11 +227,11 @@ export default function LoginPage() {
                 <span className="mb-1.5 block text-sm font-semibold text-slate-300">Password</span>
                 <div className="relative group">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-blue-400"><Icon name="lock" /></span>
-                  <input 
+                  <input
                     {...register('password')}
-                    type={showPassword ? 'text' : 'password'} 
-                    placeholder="Enter your password" 
-                    className={`w-full rounded-2xl border bg-slate-950 py-3 pl-11 pr-11 text-sm font-medium text-white transition-all outline-none placeholder:text-slate-600 focus:bg-slate-900 focus:ring-4 hover:border-white/20 ${errors.password ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20'}`} 
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    className={`w-full rounded-2xl border bg-slate-950 py-3 pl-11 pr-11 text-sm font-medium text-white transition-all outline-none placeholder:text-slate-600 focus:bg-slate-900 focus:ring-4 hover:border-white/20 ${errors.password ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20'}`}
                   />
                   <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
                     <Icon name={showPassword ? 'eyeOff' : 'eye'} />

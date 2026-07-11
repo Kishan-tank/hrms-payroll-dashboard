@@ -117,7 +117,7 @@ export default function Navbar({ title, userName, userRole }: NavbarProps) {
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
 
       <header
-        className="sticky top-0 z-40 flex h-[72px] items-center gap-3 border-b border-slate-200 bg-white/80 px-4 pl-6 lg:pl-8 backdrop-blur-xl transition-colors duration-300 sm:px-5 shadow-[0_4px_30px_rgba(0,0,0,0.05)] dark:border-white/5 dark:bg-slate-950/70 dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
+        className="glass border-l-0 border-r-0 border-t-0 sticky top-0 z-40 flex h-[72px] items-center gap-3 px-4 pl-6 lg:pl-8 transition-colors duration-300 sm:px-5"
       >
         {/* SR-only page title */}
         <div className="sr-only"><h1>{title}</h1></div>

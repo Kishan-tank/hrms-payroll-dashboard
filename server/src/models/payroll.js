@@ -39,6 +39,16 @@ const payrollSchema = new mongoose.Schema(
     paidAt: {
       type: Date,
     },
+    // Soft delete — isActive:false = voided record (removed from all active queries).
+    // paidAt is preserved for audit even after voiding.
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

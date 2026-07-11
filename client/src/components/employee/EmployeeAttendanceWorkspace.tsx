@@ -54,6 +54,7 @@ const MY_COLUMNS: DataTableColumn<ApiAttendance>[] = [
     render: (row) => {
       if (!row.date) return '-';
       const d = new Date(row.date);
+      if (isNaN(d.getTime())) return '-';
       return <span className="font-medium text-slate-700 dark:text-slate-300">{d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>;
     }
   },
@@ -464,7 +465,9 @@ export default function EmployeeAttendanceWorkspace({
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      {record.date ? new Date(record.date).toLocaleDateString() : '—'}
+                      {record.date && !isNaN(new Date(record.date).getTime()) 
+                        ? new Date(record.date).toLocaleDateString() 
+                        : '—'}
                     </h3>
                   </div>
                   <StatusBadge status={record.status ?? 'Present'} />

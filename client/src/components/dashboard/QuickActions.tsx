@@ -80,7 +80,7 @@ const ACTIONS: QuickAction[] = [
     sublabel: 'Download analytics',
     accent: '#f59e0b',
     dimBg: 'rgba(245,158,11,0.12)',
-    path: '/reports',
+    path: '/analytics',
     icon: <DownloadIcon color="#f59e0b" />,
   },
   {

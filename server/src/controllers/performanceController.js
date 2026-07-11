@@ -131,6 +131,13 @@ export const deleteTask = async (req, res) => {
 
 export const getPerformanceReviews = async (req, res) => {
     try {
+        if (req.user.role === "hr-manager" && !req.query.employeeId) {
+            const reviews = await PerformanceReview.find()
+                .populate("employeeId", "name department role")
+                .sort({ createdAt: -1 });
+            return res.status(200).json({ success: true, reviews });
+        }
+
         const employeeId = await getEmployeeId(req.user, req.query.employeeId);
         const reviews = await PerformanceReview.find({ employeeId })
             .populate("employeeId", "name department role")
@@ -156,6 +163,7 @@ export const createPerformanceReview = async (req, res) => {
         });
 
         await review.save();
+        await review.populate("employeeId", "name department role");
         res.status(201).json({ success: true, review, message: "Performance review submitted successfully" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

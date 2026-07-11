@@ -94,7 +94,7 @@ export default function RegisterPage() {
     const validationErrors = validateRegisterForm(form);
     setErrors(validationErrors);
     if (hasErrors(validationErrors)) return;
-    
+
     // Attempt registration
     try {
       await register({ ...form, role });
@@ -113,13 +113,13 @@ export default function RegisterPage() {
   // Animation variants for form items
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1, 
-      transition: { staggerChildren: 0.1 } 
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
     },
     exit: { opacity: 0, x: -10 }
   };
-  
+
   const itemVariants = {
     hidden: { opacity: 0, y: 15 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } }
@@ -127,7 +127,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen bg-[#020817] font-sans selection:bg-blue-500/30 selection:text-blue-200">
-      
+
       {/* ── BACKGROUND ── */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div
@@ -142,7 +142,7 @@ export default function RegisterPage() {
       </div>
 
       {/* ── LEFT PANEL ── */}
-      <motion.aside 
+      <motion.aside
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
@@ -165,7 +165,7 @@ export default function RegisterPage() {
           </div>
 
           <h1 className="mb-6 text-[2.75rem] font-extrabold leading-[1.1] text-white tracking-tight">
-            Enterprise Workforce <br/>
+            Enterprise Workforce <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
               Management Reimagined
             </span>
@@ -181,7 +181,7 @@ export default function RegisterPage() {
               { icon: 'shield', text: 'AES-256 Encryption' },
               { icon: 'badge', text: 'RBAC Enabled' }
             ].map((item, idx) => (
-              <motion.div 
+              <motion.div
                 key={idx}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -195,100 +195,12 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* Floating Dashboard Widgets */}
-        <div className="absolute right-[-20%] top-[20%] flex flex-col gap-4 opacity-40 xl:right-[10%] xl:opacity-100 pointer-events-none">
-          <motion.div 
-            initial={{ x: 50, opacity: 0 }} 
-            animate={{ x: 0, opacity: 1, y: [-4, 4, -4] }} 
-            transition={{ x: { delay: 0.5 }, opacity: { delay: 0.5 }, y: { repeat: Infinity, duration: 6, ease: "easeInOut", delay: 0.5 } }} 
-            className="w-64 translate-x-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_0_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] pointer-events-auto"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400"><Icon name="users" /></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-slate-400">Today's Attendance</div>
-                  <div className="text-[10px] font-bold text-emerald-400">Live today</div>
-                </div>
-                <div className="mt-0.5 text-xl font-bold text-white">94.2%</div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full w-[94.2%] rounded-full bg-gradient-to-r from-emerald-500 to-blue-500"></div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            initial={{ x: 50, opacity: 0 }} 
-            animate={{ x: 0, opacity: 1, y: [-4, 4, -4] }} 
-            transition={{ x: { delay: 0.6 }, opacity: { delay: 0.6 }, y: { repeat: Infinity, duration: 8, ease: "easeInOut", delay: 0.6 } }} 
-            className="w-64 -translate-x-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_0_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_0_25px_rgba(59,130,246,0.15)] pointer-events-auto"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-blue-400"><Icon name="rupee" /></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-slate-400">Payroll Processed</div>
-                  <div className="text-[10px] font-bold text-blue-400">This month</div>
-                </div>
-                <div className="mt-0.5 flex items-center gap-2">
-                  <div className="text-xl font-bold text-white">₹2.84 Cr</div>
-                  <div className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">↑ 12%</div>
-                </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full w-[75%] rounded-full bg-gradient-to-r from-blue-600 to-indigo-500"></div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            initial={{ x: 50, opacity: 0 }} 
-            animate={{ x: 0, opacity: 1, y: [-4, 4, -4] }} 
-            transition={{ x: { delay: 0.7 }, opacity: { delay: 0.7 }, y: { repeat: Infinity, duration: 7, ease: "easeInOut", delay: 0.7 } }} 
-            className="w-64 translate-x-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_0_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_0_25px_rgba(245,158,11,0.15)] pointer-events-auto"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400"><Icon name="calendar" /></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-slate-400">Pending Leaves</div>
-                  <div className="text-[10px] font-bold text-amber-400">Needs review</div>
-                </div>
-                <div className="mt-0.5 text-xl font-bold text-white">18</div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full w-[40%] rounded-full bg-gradient-to-r from-amber-500 to-orange-500"></div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Testimonial Card */}
-          <motion.div 
-            initial={{ x: 50, opacity: 0 }} 
-            animate={{ x: 0, opacity: 1, y: [-2, 2, -2] }} 
-            transition={{ x: { delay: 0.8 }, opacity: { delay: 0.8 }, y: { repeat: Infinity, duration: 9, ease: "easeInOut", delay: 0.8 } }} 
-            className="w-64 translate-x-1 mt-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_0_20px_rgba(0,0,0,0.3)] backdrop-blur-md pointer-events-auto"
-          >
-            <div className="flex gap-1 text-amber-400 mb-2 text-xs">★★★★★</div>
-            <p className="text-xs font-medium text-slate-300 mb-3 italic">"HRMSPro reduced payroll processing time by 60%."</p>
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center text-[10px] font-bold text-blue-400 border border-blue-500/30">SJ</div>
-              <div>
-                <div className="text-[10px] font-bold text-white tracking-wide">Sarah Johnson</div>
-                <div className="text-[8px] text-slate-500 uppercase tracking-wider">HR Director</div>
-              </div>
-            </div>
-          </motion.div>
-
-        </div>
-
       </motion.aside>
 
       {/* ── RIGHT PANEL (REGISTER CARD) ── */}
       <section className="relative z-10 flex flex-1 flex-col items-center justify-center p-4 sm:p-8">
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
@@ -300,8 +212,8 @@ export default function RegisterPage() {
           {/* Top Bar above card */}
           <div className="mb-4 flex items-center justify-between">
             {/* Premium Back to Home Button */}
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="group flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-sm font-semibold text-slate-300 shadow-[0_0_15px_rgba(0,0,0,0.1)] backdrop-blur-md transition-all duration-300 hover:bg-white/[0.08] hover:text-white"
             >
               <Icon name="arrowLeft" className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
@@ -322,7 +234,7 @@ export default function RegisterPage() {
 
           {/* Dark Glass Register Card */}
           <div className="relative rounded-[32px] border border-white/10 bg-slate-900/75 p-6 shadow-[0_0_80px_rgba(37,99,235,0.18)] backdrop-blur-xl sm:p-8">
-            
+
             {/* Horizontal Stepper inside card */}
             <div className="mb-6 flex items-center justify-between">
               {stepData.map((item, index) => {
@@ -331,21 +243,20 @@ export default function RegisterPage() {
                 return (
                   <div key={item.id} className="flex flex-1 items-center">
                     <motion.div layout className="flex flex-col items-center gap-2 sm:flex-row">
-                      <motion.span 
+                      <motion.span
                         initial={false}
                         animate={{
                           scale: current ? [1, 1.1, 1] : complete ? [1, 1.1, 1] : 1,
                           boxShadow: current ? '0 0 15px rgba(37,99,235,0.4)' : complete ? '0 0 15px rgba(34,197,94,0.4)' : 'none'
                         }}
-                        transition={{ 
+                        transition={{
                           scale: { repeat: current ? Infinity : 0, duration: 2, ease: "easeInOut" },
                           boxShadow: { duration: 0.3 }
                         }}
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-500 border ${
-                        complete ? 'border-emerald-500/40 bg-green-500 text-white' : 
-                        current ? 'border-blue-500/50 bg-blue-600 text-white ring-2 ring-blue-600/20' : 
-                        'border-white/10 bg-slate-800 text-slate-500'
-                      }`}>
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-500 border ${complete ? 'border-emerald-500/40 bg-green-500 text-white' :
+                            current ? 'border-blue-500/50 bg-blue-600 text-white ring-2 ring-blue-600/20' :
+                              'border-white/10 bg-slate-800 text-slate-500'
+                          }`}>
                         {complete ? <Icon name="check" className="h-4 w-4" /> : item.id}
                       </motion.span>
                       <span className={`text-xs font-bold tracking-wide transition-colors duration-500 ${current || complete ? 'text-white' : 'text-slate-500'}`}>
@@ -354,8 +265,8 @@ export default function RegisterPage() {
                     </motion.div>
                     {index < stepData.length - 1 && (
                       <div className="mx-1.5 sm:mx-2 h-px flex-1 bg-white/5 relative overflow-hidden">
-                        <motion.div 
-                          className="absolute inset-0 bg-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.5)]" 
+                        <motion.div
+                          className="absolute inset-0 bg-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
                           initial={{ x: '-100%' }}
                           animate={{ x: complete ? '0%' : '-100%' }}
                           transition={{ duration: 0.6, ease: "easeInOut" }}
@@ -369,7 +280,7 @@ export default function RegisterPage() {
 
             <AnimatePresence mode="wait">
               {isSuccess ? (
-                <motion.div 
+                <motion.div
                   key="success"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -383,7 +294,7 @@ export default function RegisterPage() {
                   </div>
                   <h2 className="text-2xl font-bold text-white tracking-tight">Workspace Created</h2>
                   <p className="mt-2 text-sm font-medium text-slate-400">Welcome to HRMSPro</p>
-                  
+
                   <div className="mt-8 w-full max-w-xs space-y-3">
                     <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
                       <span>{progress < 25 ? 'Creating secure workspace...' : progress < 50 ? 'Configuring RBAC permissions...' : progress < 75 ? 'Preparing dashboard...' : progress < 100 ? 'Launching employee portal...' : 'Redirecting to Dashboard in 3 seconds...'}</span>
@@ -395,7 +306,7 @@ export default function RegisterPage() {
                   </div>
                 </motion.div>
               ) : (
-                <motion.form 
+                <motion.form
                   key={`step-${step}`}
                   variants={containerVariants}
                   initial="hidden"
@@ -465,16 +376,15 @@ export default function RegisterPage() {
                           variants={itemVariants}
                           type="button"
                           onClick={() => setRole('HR Manager')}
-                          className={`group relative flex flex-col items-start rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 overflow-hidden ${
-                            role === 'HR Manager' 
-                              ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] ring-1 ring-blue-500/50' 
+                          className={`group relative flex flex-col items-start rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 overflow-hidden ${role === 'HR Manager'
+                              ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] ring-1 ring-blue-500/50'
                               : 'border-white/10 bg-slate-950/50 hover:border-blue-500/50 hover:bg-slate-900 hover:shadow-[0_0_30px_rgba(37,99,235,0.2)]'
-                          }`}
+                            }`}
                         >
                           {role === 'HR Manager' && <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />}
                           <h3 className={`text-lg font-bold mb-2 ${role === 'HR Manager' ? 'text-white' : 'text-slate-300'}`}>HR Manager</h3>
                           <p className="text-xs font-medium leading-relaxed text-slate-500 mb-4">Manage workforce operations and approvals.</p>
-                          
+
                           <div className="grid grid-cols-2 gap-2 w-full mt-auto">
                             <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 bg-white/5 rounded-md px-2 py-1"><span className="text-[14px]">👥</span> Employees</span>
                             <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 bg-white/5 rounded-md px-2 py-1"><span className="text-[14px]">💰</span> Payroll</span>
@@ -491,16 +401,15 @@ export default function RegisterPage() {
                           variants={itemVariants}
                           type="button"
                           onClick={() => setRole('Employee')}
-                          className={`group relative flex flex-col items-start rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 overflow-hidden ${
-                            role === 'Employee' 
-                              ? 'border-indigo-500 bg-indigo-500/10 shadow-[0_0_30px_rgba(99,102,241,0.2)] ring-1 ring-indigo-500/50' 
+                          className={`group relative flex flex-col items-start rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 overflow-hidden ${role === 'Employee'
+                              ? 'border-indigo-500 bg-indigo-500/10 shadow-[0_0_30px_rgba(99,102,241,0.2)] ring-1 ring-indigo-500/50'
                               : 'border-white/10 bg-slate-950/50 hover:border-indigo-500/50 hover:bg-slate-900 hover:shadow-[0_0_30px_rgba(99,102,241,0.2)]'
-                          }`}
+                            }`}
                         >
                           {role === 'Employee' && <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />}
                           <h3 className={`text-lg font-bold mb-2 ${role === 'Employee' ? 'text-white' : 'text-slate-300'}`}>Employee</h3>
                           <p className="text-xs font-medium leading-relaxed text-slate-500 mb-4">Self-service employee workspace.</p>
-                          
+
                           <div className="grid grid-cols-2 gap-2 w-full mt-auto">
                             <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 bg-white/5 rounded-md px-2 py-1"><span className="text-[14px]">🕒</span> Attendance</span>
                             <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 bg-white/5 rounded-md px-2 py-1"><span className="text-[14px]">🏖</span> Leave</span>
@@ -552,7 +461,7 @@ export default function RegisterPage() {
                             <Icon name={showPassword ? 'eyeOff' : 'eye'} />
                           </button>
                         </div>
-                        
+
                         {/* Password Strength Meter */}
                         <div className="mt-4 rounded-xl border border-white/5 bg-slate-950/50 p-4">
                           <div className="flex items-center justify-between mb-2">
@@ -564,20 +473,19 @@ export default function RegisterPage() {
                           <div className="flex w-full gap-1.5 mb-4">
                             {[1, 2, 3, 4].map((item) => (
                               <div key={item} className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
-                                <motion.div 
+                                <motion.div
                                   initial={false}
                                   animate={{ width: strength >= item ? '100%' : '0%' }}
                                   transition={{ duration: 0.3 }}
-                                  className={`h-full rounded-full ${
-                                    strength < 2 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 
-                                    strength < 4 ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 
-                                    'bg-gradient-to-r from-emerald-400 to-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]'
-                                  }`} 
+                                  className={`h-full rounded-full ${strength < 2 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' :
+                                      strength < 4 ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' :
+                                        'bg-gradient-to-r from-emerald-400 to-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]'
+                                    }`}
                                 />
                               </div>
                             ))}
                           </div>
-                          
+
                           {/* Live Checklist */}
                           <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs font-medium">
                             <span className={`flex items-center gap-2 transition-colors duration-300 ${has8Chars ? 'text-emerald-400' : 'text-red-400/80'}`}>
@@ -647,7 +555,7 @@ export default function RegisterPage() {
                       </motion.div>
                     </>
                   )}
-                  
+
                   {/* Global Form Footer (SignIn Link) */}
                   <motion.div variants={itemVariants} className="mt-4 border-t border-white/5 pt-5 text-center">
                     <p className="text-sm font-medium text-slate-400">

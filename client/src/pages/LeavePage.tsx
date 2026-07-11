@@ -39,6 +39,7 @@ export default function LeavePage() {
   const contextTargetRef = useRef<ApiLeave | null>(null);
 
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<{
     leave: ApiLeave;
     action: 'Approved' | 'Rejected';
@@ -81,7 +82,7 @@ export default function LeavePage() {
 
   const [isFormLeaveTypeOpen, setIsFormLeaveTypeOpen] = useState(false);
   const leaveTypeOptions = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Work From Home', 'Optional Holiday'];
-  const filters = ['All', 'Pending', 'Approved', 'Rejected'];
+  const filters = ['All', 'Pending', 'Approved', 'Rejected', 'Cancelled'];
 
   const fetchLeaves = useCallback(async () => {
     try {
@@ -109,6 +110,7 @@ export default function LeavePage() {
     Pending: leaveRequests.filter((item) => item.status === 'Pending').length,
     Approved: leaveRequests.filter((item) => item.status === 'Approved').length,
     Rejected: leaveRequests.filter((item) => item.status === 'Rejected').length,
+    Cancelled: leaveRequests.filter((item) => item.status === 'Cancelled').length,
   };
 
   const totalRequests = leaveRequests.length;
@@ -139,14 +141,18 @@ export default function LeavePage() {
   });
 
   const cancelLeave = useCallback(async (id: string) => {
+    if (cancellingId) return;
+    setCancellingId(id);
     try {
       await leaveService.cancel(id);
-      setLeaveRequests(prev => prev.filter(req => req._id !== id));
+      setLeaveRequests(prev => prev.map(req => req._id === id ? { ...req, status: 'Cancelled' } : req));
       success('Leave request cancelled.');
     } catch (err: any) {
       toastError(err?.message || 'Failed to cancel leave request');
+    } finally {
+      setCancellingId(null);
     }
-  }, [success, toastError]);
+  }, [cancellingId, success, toastError]);
 
   const handleUpdateStatus = useCallback(async (id: string, newStatus: "Pending" | "Approved" | "Rejected") => {
     setApprovingIds(prev => new Set(prev).add(id));
@@ -291,14 +297,15 @@ export default function LeavePage() {
                  onMouseEnter={() => { contextTargetRef.current = row; }}>
               <button
                 type="button"
+                disabled={cancellingId === row._id}
                 onClick={() => cancelLeave(row._id as string)}
                 className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1
                            text-xs font-bold text-amber-600 transition
-                           hover:bg-amber-100
+                           hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed
                            dark:border-amber-500/30 dark:bg-amber-500/20
                            dark:text-amber-400 dark:hover:bg-amber-500/30"
               >
-                Cancel
+                {cancellingId === row._id ? '…' : 'Cancel'}
               </button>
             </div>
           );
@@ -574,22 +581,37 @@ export default function LeavePage() {
                   </div>
                 </div>
 
-                {!isEmployee && st === 'Pending' && (
+                {st === 'Pending' && (
                   <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/10">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus(leave._id as string, 'Approved')}
-                      className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus(leave._id as string, 'Rejected')}
-                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
-                    >
-                      Reject
-                    </button>
+                    {!isEmployee ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={approvingIds.has(leave._id as string)}
+                          onClick={() => handleUpdateStatus(leave._id as string, 'Approved')}
+                          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30"
+                        >
+                          {approvingIds.has(leave._id as string) ? '…' : 'Approve'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={approvingIds.has(leave._id as string)}
+                          onClick={() => handleUpdateStatus(leave._id as string, 'Rejected')}
+                          className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+                        >
+                          {approvingIds.has(leave._id as string) ? '…' : 'Reject'}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={cancellingId === leave._id}
+                        onClick={() => cancelLeave(leave._id as string)}
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-600 transition hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400 dark:hover:bg-amber-500/30"
+                      >
+                        {cancellingId === leave._id ? '…' : 'Cancel'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -604,7 +626,7 @@ export default function LeavePage() {
 
       </div>
       <LeaveApprovalModal
-        open={pendingApproval !== null}
+        open={pendingApproval !== null && pendingApproval.action !== null && pendingApproval.leave !== null}
         action={pendingApproval?.action ?? null}
         leave={pendingApproval?.leave ?? null}
         onConfirm={confirmApproval}

@@ -89,7 +89,7 @@ export default function WorkforceHealthWidget() {
       {/* CTA */}
       <button
         type="button"
-        onClick={() => navigate('/reports')}
+        onClick={() => navigate('/analytics')}
         className="w-full rounded-xl py-2.5 text-sm font-bold text-white transition-all duration-200"
         style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}
         onMouseEnter={(e) => {

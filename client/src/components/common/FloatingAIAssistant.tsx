@@ -13,6 +13,15 @@ const SUGGESTIONS = [
 
 export default function FloatingAIAssistant() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(() => {
+    return localStorage.getItem('hrms_ai_minimized') === 'true';
+  });
+
+  const toggleMinimize = (value: boolean) => {
+    setIsMinimized(value);
+    localStorage.setItem('hrms_ai_minimized', value.toString());
+  };
+
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
     { role: 'ai', text: 'Hello! I am your AI Assistant. How can I help you today?' },
@@ -55,6 +64,21 @@ export default function FloatingAIAssistant() {
     }
   };
 
+  // If minimized, show a tiny tab on the right edge
+  if (isMinimized) {
+    return (
+      <div className="fixed top-1/2 right-0 z-50 -translate-y-1/2 translate-x-1 hover:translate-x-0 transition-transform">
+        <button
+          onClick={() => toggleMinimize(false)}
+          className="flex h-12 w-6 items-center justify-center rounded-l-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 border border-r-0 border-blue-400/30"
+          aria-label="Expand AI Assistant"
+        >
+          <Sparkles size={14} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed bottom-6 right-6 z-50">
       <AnimatePresence>
@@ -90,7 +114,7 @@ export default function FloatingAIAssistant() {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-5 scrollbar-hide bg-slate-50/50 dark:bg-transparent dark:bg-gradient-to-b dark:from-transparent dark:to-[#0B1121]/50">
+            <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-slate-50/50 dark:bg-transparent dark:bg-gradient-to-b dark:from-transparent dark:to-[#0B1121]/50">
               <div className="flex flex-col gap-5">
                 {messages.map((msg, idx) => (
                   <div
@@ -164,7 +188,18 @@ export default function FloatingAIAssistant() {
         )}
       </AnimatePresence>
 
-      <div className="group/btn relative">
+      <div className="group/btn relative flex items-center">
+        {!isOpen && (
+          <button
+            onClick={() => toggleMinimize(true)}
+            className="absolute -top-2 -right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-white opacity-0 shadow-lg transition-all hover:bg-red-500 group-hover/btn:opacity-100 dark:bg-white/10 dark:hover:bg-red-500"
+            aria-label="Minimize AI Assistant"
+            title="Minimize"
+          >
+            <X size={12} />
+          </button>
+        )}
+
         {/* Tooltip */}
         <div className="pointer-events-none absolute -left-32 top-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-1.5 text-[12px] font-bold text-white opacity-0 shadow-xl transition-all duration-300 group-hover/btn:-translate-x-2 group-hover/btn:opacity-100 whitespace-nowrap border border-slate-800 dark:bg-[#0B1121] dark:border-white/10">
           Ask HRMS AI

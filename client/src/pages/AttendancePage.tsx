@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { attendanceService, ApiAttendance } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
@@ -41,12 +42,16 @@ function calculateHours(checkIn?: string, checkOut?: string): string {
 
 export default function AttendancePage() {
   const { user } = useAuthContext();
+  const toast = useToast();
   const displayName = user?.name || 'HR Manager';
   const isHR = ['hr-manager', 'admin', 'hr'].includes(user?.role?.toLowerCase() || '');
 
   const [records, setRecords]   = useState<ApiAttendance[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
+  // Tracks which row's approve/reject is in-flight — prevents double-fires
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
   const fetchAttendance = useCallback(async () => {
     try {
@@ -63,11 +68,30 @@ export default function AttendancePage() {
   }, []);
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
+    if (updatingId) return; // race-condition guard — ignore if any row is already updating
+    setUpdatingId(id);
     try {
       await attendanceService.updateStatus(id, newStatus);
+      toast.success(`Status updated to ${newStatus}.`);
       void fetchAttendance();
     } catch (err: any) {
-      alert(err.message || "Failed to update status");
+      toast.error(err.message || 'Failed to update status');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleDeactivate = async (id: string) => {
+    if (deactivatingId) return;
+    setDeactivatingId(id);
+    try {
+      await attendanceService.deactivate(id);
+      toast.success('Attendance record deactivated.');
+      void fetchAttendance();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to deactivate record');
+    } finally {
+      setDeactivatingId(null);
     }
   };
 
@@ -147,25 +171,38 @@ export default function AttendancePage() {
       key: 'actions',
       header: 'Actions',
       render: (row) => {
-        if (row.status === 'Pending') {
-          return (
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => handleStatusUpdate(row._id, 'Present')}
-                className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-              >
-                Approve
-              </button>
-              <button 
-                onClick={() => handleStatusUpdate(row._id, 'Rejected')}
-                className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
-              >
-                Reject
-              </button>
-            </div>
-          );
-        }
-        return null;
+        const isUpdating = updatingId === row._id;
+        const isDeactivating = deactivatingId === row._id;
+        
+        return (
+          <div className="flex items-center gap-2">
+            {row.status === 'Pending' && (
+              <>
+                <button
+                  disabled={isUpdating || isDeactivating}
+                  onClick={() => handleStatusUpdate(row._id, 'Present')}
+                  className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                >
+                  {isUpdating ? '…' : 'Approve'}
+                </button>
+                <button
+                  disabled={isUpdating || isDeactivating}
+                  onClick={() => handleStatusUpdate(row._id, 'Rejected')}
+                  className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+                >
+                  {isUpdating ? '…' : 'Reject'}
+                </button>
+              </>
+            )}
+            <button
+              disabled={isUpdating || isDeactivating}
+              onClick={() => handleDeactivate(row._id as string)}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-red-400"
+            >
+              {isDeactivating ? '…' : 'Delete'}
+            </button>
+          </div>
+        );
       }
     }
   ];
@@ -289,7 +326,6 @@ export default function AttendancePage() {
         </div>
 
         {/* ── Attendance DataTable ── */}
-        {/* ── Attendance DataTable ── */}
         <div className="hidden md:block">
           <DataTable<ApiAttendance>
             columns={COLUMNS}
@@ -366,22 +402,33 @@ export default function AttendancePage() {
                     <p className="text-slate-400">Total Hours</p>
                     <p className="font-bold text-slate-900 dark:text-white">{calculateHours(record.checkIn, record.checkOut)}</p>
                   </div>
-                  {st === 'Pending' && (
-                    <div className="col-span-2 mt-3 flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-white/10">
-                      <button 
-                        onClick={() => handleStatusUpdate(record._id, 'Present')}
-                        className="flex-1 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-                      >
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => handleStatusUpdate(record._id, 'Rejected')}
-                        className="flex-1 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
+                  <div className="col-span-2 mt-3 flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-white/10">
+                    {st === 'Pending' && (
+                      <>
+                        <button
+                          disabled={updatingId === record._id || deactivatingId === record._id}
+                          onClick={() => handleStatusUpdate(record._id, 'Present')}
+                          className="flex-1 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                        >
+                          {updatingId === record._id ? '…' : 'Approve'}
+                        </button>
+                        <button
+                          disabled={updatingId === record._id || deactivatingId === record._id}
+                          onClick={() => handleStatusUpdate(record._id, 'Rejected')}
+                          className="flex-1 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+                        >
+                          {updatingId === record._id ? '…' : 'Reject'}
+                        </button>
+                      </>
+                    )}
+                    <button
+                      disabled={updatingId === record._id || deactivatingId === record._id}
+                      onClick={() => handleDeactivate(record._id as string)}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-red-400"
+                    >
+                      {deactivatingId === record._id ? '…' : 'Delete'}
+                    </button>
+                  </div>
                 </div>
               </div>
             );

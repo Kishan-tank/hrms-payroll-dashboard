@@ -6,9 +6,13 @@ import type { HrSummary } from '../../services/hrmsApi';
 // ─── CountUp Component ────────────────────────────────────────────────────────
 function CountUp({ value, prefix = '', suffix = '' }: { value: number; prefix?: string; suffix?: string }) {
   const spring = useSpring(0, { stiffness: 50, damping: 20 });
+  
+  // Determine if the target value is a float
+  const isFloat = value % 1 !== 0;
+
   const display = useTransform(spring, (current) => {
     let formatted;
-    if (current % 1 !== 0) {
+    if (isFloat) {
       formatted = current.toFixed(2);
     } else {
       formatted = Math.round(current).toLocaleString();

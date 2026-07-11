@@ -26,6 +26,14 @@ const attendanceSchema = new mongoose.Schema({
     trim: true,
     default: "",
   },
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
 }, { timestamps: true });
 
 attendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });

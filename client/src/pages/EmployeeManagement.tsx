@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { employeeService } from '../services/hrmsApi';
 import type { ApiEmployee } from '../services/hrmsApi';
@@ -14,6 +15,7 @@ import ErrorState from '../components/common/ErrorState';
 import DataTable from '../components/common/DataTable';
 import type { DataTableColumn } from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
+import { useToast } from '../context/ToastContext';
 
 const departments = ['All', 'Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations'];
 const statuses = ['All', 'Active', 'On Leave', 'Inactive'];
@@ -78,6 +80,8 @@ export default function EmployeeManagement() {
   // add/edit modal
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<ApiEmployee | null>(null);
+  const [isModalFullyVisible, setIsModalFullyVisible] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -91,8 +95,17 @@ export default function EmployeeManagement() {
   // delete confirm
   const [deleteTarget, setDeleteTarget] = useState<ApiEmployee | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [isDeleteModalFullyVisible, setIsDeleteModalFullyVisible] = useState(false);
+  
+  useEffect(() => {
+    if (!deleteTarget) setIsDeleteModalFullyVisible(false);
+    else if (shouldReduceMotion) setIsDeleteModalFullyVisible(true);
+  }, [deleteTarget, shouldReduceMotion]);
+
   const deleteModalRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(!!deleteTarget, () => setDeleteTarget(null), deleteModalRef);
+  useFocusTrap(isDeleteModalFullyVisible, () => {
+    if (!deleting) setDeleteTarget(null);
+  }, deleteModalRef);
 
   const { openDrawer } = useEmployeeDrawer();
 
@@ -100,15 +113,24 @@ export default function EmployeeManagement() {
   const contextTargetRef = useRef<ApiEmployee | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(showModal, () => {
-    setShowModal(false);
-    reset(emptyForm);
-    setIsFormDeptOpen(false);
+
+  useEffect(() => {
+    if (!showModal) setIsModalFullyVisible(false);
+    else if (shouldReduceMotion) setIsModalFullyVisible(true);
+  }, [showModal, shouldReduceMotion]);
+
+  useFocusTrap(isModalFullyVisible, () => {
+    if (!saving) {
+      setShowModal(false);
+      reset(emptyForm);
+      setIsFormDeptOpen(false);
+    }
   }, modalRef);
+
+  const toast = useToast();
 
   // bulk actions
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const toggleSelectAll = useCallback(() => {
     setSelectedRowIds((prev) => {
@@ -157,10 +179,6 @@ export default function EmployeeManagement() {
     setSelectedRowIds(new Set());
   };
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
-  };
 
   const [showBulkDeptModal, setShowBulkDeptModal] = useState(false);
   const [showBulkDeactivateModal, setShowBulkDeactivateModal] = useState(false);
@@ -173,12 +191,12 @@ export default function EmployeeManagement() {
   const handleBulkDeactivate = async () => {
     try {
       const res = await employeeService.bulkDeactivate(Array.from(selectedRowIds));
-      showToast(res.message || 'Employees deactivated successfully');
+      toast.success(res.message || 'Employees deactivated successfully');
       setSelectedRowIds(new Set());
       setShowBulkDeactivateModal(false);
       void fetchEmployees();
     } catch (err) {
-      showToast((err as Error).message);
+      toast.error((err as Error).message);
     }
   };
 
@@ -236,13 +254,17 @@ export default function EmployeeManagement() {
     try {
       if (editTarget) {
         await employeeService.update(editTarget._id, data);
+        toast.success('Employee updated successfully.');
       } else {
         await employeeService.add(data);
+        toast.success('Employee added successfully.');
       }
       setShowModal(false);
       reset(emptyForm);
       void fetchEmployees();
     } catch (err) {
+      // Inline error — shown inside the modal, right above the form fields.
+      // Intentionally NOT a toast: form errors belong next to the form.
       setFormError((err as Error).message);
     } finally {
       setSaving(false);
@@ -255,10 +277,11 @@ export default function EmployeeManagement() {
     setDeleting(true);
     try {
       await employeeService.deactivate(deleteTarget._id);
+      toast.success(`${deleteTarget.name} has been deactivated.`);
       setDeleteTarget(null);
       void fetchEmployees();
     } catch (err) {
-      alert((err as Error).message);
+      toast.error((err as Error).message);
     } finally {
       setDeleting(false);
     }
@@ -355,11 +378,6 @@ export default function EmployeeManagement() {
 
   return (
     <DashboardLayout title="Employee Management">
-      {toastMsg && (
-        <div className="fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white shadow-xl dark:bg-white dark:text-slate-900">
-          {toastMsg}
-        </div>
-      )}
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -586,15 +604,33 @@ export default function EmployeeManagement() {
 
 
       {/* ── Add / Edit Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div 
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => {
+                if (!saving) {
+                  setShowModal(false);
+                  reset(emptyForm);
+                  setIsFormDeptOpen(false);
+                }
+              }}
+            />
+            <motion.div 
             ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="employee-modal-title"
             tabIndex={-1}
-            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] outline-none dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 15, scale: 0.95 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }}
+            onAnimationComplete={() => { if (showModal) setIsModalFullyVisible(true); }}
+            className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] outline-none dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
           >
             <h2 id="employee-modal-title" className="mb-5 text-lg font-bold text-slate-950 dark:text-white">{editTarget ? 'Edit Employee' : 'Add New Employee'}</h2>
             {formError && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">{formError}</p>}
@@ -672,34 +708,48 @@ export default function EmployeeManagement() {
                 </button>
               </div>
             </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* ── Delete Confirm ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div 
-            ref={deleteModalRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-employee-modal"
-            tabIndex={-1}
-            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] outline-none dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
-          >
-            <h2 id="delete-employee-modal" className="mb-2 text-lg font-bold text-slate-950 dark:text-white">Deactivate Employee?</h2>
-            <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
-              This will mark <strong>{deleteTarget.name}</strong> as Inactive. They can be re-activated later.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setDeleteTarget(null)} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">Cancel</button>
-              <button type="button" onClick={() => void handleDelete()} disabled={deleting} className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-70 dark:bg-red-500 dark:hover:bg-red-600">
-                {deleting && <Icon name="spinner" />} Deactivate
-              </button>
-            </div>
+      <AnimatePresence>
+        {deleteTarget && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm dark:bg-black/50" 
+              onClick={() => { if (!deleting) setDeleteTarget(null); }}
+            />
+            <motion.div 
+              ref={deleteModalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-employee-modal"
+              tabIndex={-1}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 15, scale: 0.95 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }}
+              onAnimationComplete={() => { if (deleteTarget) setIsDeleteModalFullyVisible(true); }}
+              className="relative z-10 w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] outline-none dark:border-white/10 dark:bg-[#0B1121] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+            >
+              <h2 id="delete-employee-modal" className="mb-2 text-lg font-bold text-slate-950 dark:text-white">Deactivate Employee?</h2>
+              <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
+                This will mark <strong>{deleteTarget.name}</strong> as Inactive. They can be re-activated later.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={() => setDeleteTarget(null)} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white">Cancel</button>
+                <button type="button" onClick={() => void handleDelete()} disabled={deleting} className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-70 dark:bg-red-500 dark:hover:bg-red-600">
+                  {deleting && <Icon name="spinner" />} Deactivate
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* ── Bulk Change Department Modal ── */}
       {showBulkDeptModal && (
@@ -734,12 +784,12 @@ export default function EmployeeManagement() {
                 onClick={async () => {
                   try {
                     const res = await employeeService.bulkChangeDepartment(Array.from(selectedRowIds), bulkDeptSelect);
-                    showToast(res.message || 'Department updated successfully');
+                    toast.success(res.message || 'Department updated successfully');
                     setSelectedRowIds(new Set());
                     setShowBulkDeptModal(false);
                     void fetchEmployees();
                   } catch (err) {
-                    showToast((err as Error).message);
+                    toast.error((err as Error).message);
                   }
                 }}
                 className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
