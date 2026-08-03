@@ -45,6 +45,7 @@ export default function AttendancePage() {
   const toast = useToast();
   const displayName = user?.name || 'HR Manager';
   const isHR = ['hr-manager', 'admin', 'hr'].includes(user?.role?.toLowerCase() || '');
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   const [records, setRecords]   = useState<ApiAttendance[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -52,6 +53,14 @@ export default function AttendancePage() {
   // Tracks which row's approve/reject is in-flight — prevents double-fires
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+
+  // Admin Edit Modal State
+  const [editingRecord, setEditingRecord] = useState<ApiAttendance | null>(null);
+  const [editStatus, setEditStatus] = useState<string>('Present');
+  const [editCheckIn, setEditCheckIn] = useState<string>('');
+  const [editCheckOut, setEditCheckOut] = useState<string>('');
+  const [editReason, setEditReason] = useState<string>('');
+  const [editLoading, setEditLoading] = useState<boolean>(false);
 
   const fetchAttendance = useCallback(async () => {
     try {
@@ -73,6 +82,7 @@ export default function AttendancePage() {
     try {
       await attendanceService.updateStatus(id, newStatus);
       toast.success(`Status updated to ${newStatus}.`);
+      setRecords((prev) => prev.map((r) => (r._id === id ? { ...r, status: newStatus as any } : r)));
       void fetchAttendance();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update status');
@@ -87,6 +97,7 @@ export default function AttendancePage() {
     try {
       await attendanceService.deactivate(id);
       toast.success('Attendance record deactivated.');
+      setRecords((prev) => prev.filter((r) => r._id !== id));
       void fetchAttendance();
     } catch (err: any) {
       toast.error(err.message || 'Failed to deactivate record');
@@ -94,6 +105,44 @@ export default function AttendancePage() {
       setDeactivatingId(null);
     }
   };
+
+  const openEditModal = (row: ApiAttendance) => {
+    setEditingRecord(row);
+    setEditStatus(row.status || 'Present');
+    setEditCheckIn(row.checkIn || '');
+    setEditCheckOut(row.checkOut || '');
+    setEditReason(row.reason || '');
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRecord || editLoading) return;
+    setEditLoading(true);
+    try {
+      const res = await attendanceService.editRecord(editingRecord._id, {
+        status: editStatus,
+        checkIn: editCheckIn || undefined,
+        checkOut: editCheckOut || undefined,
+        reason: editReason || undefined,
+      });
+      toast.success(res.message || 'Attendance record corrected successfully.');
+      // Optimistic state update
+      setRecords((prev) =>
+        prev.map((r) =>
+          r._id === editingRecord._id
+            ? { ...r, status: editStatus as any, checkIn: editCheckIn, checkOut: editCheckOut, reason: editReason }
+            : r
+        )
+      );
+      setEditingRecord(null);
+      void fetchAttendance();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to edit attendance record');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
 
   const COLUMNS: DataTableColumn<ApiAttendance>[] = [
     {
@@ -194,13 +243,26 @@ export default function AttendancePage() {
                 </button>
               </>
             )}
-            <button
-              disabled={isUpdating || isDeactivating}
-              onClick={() => handleDeactivate(row._id as string)}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-red-400"
-            >
-              {isDeactivating ? '…' : 'Delete'}
-            </button>
+
+            {/* Admin-only record correction and deletion */}
+            {isAdmin && (
+              <>
+                <button
+                  disabled={isUpdating || isDeactivating}
+                  onClick={() => openEditModal(row)}
+                  className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-600 transition hover:bg-amber-500/20 dark:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Edit
+                </button>
+                <button
+                  disabled={isUpdating || isDeactivating}
+                  onClick={() => handleDeactivate(row._id as string)}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-red-400"
+                >
+                  {isDeactivating ? '…' : 'Delete'}
+                </button>
+              </>
+            )}
           </div>
         );
       }
@@ -421,13 +483,24 @@ export default function AttendancePage() {
                         </button>
                       </>
                     )}
-                    <button
-                      disabled={updatingId === record._id || deactivatingId === record._id}
-                      onClick={() => handleDeactivate(record._id as string)}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-red-400"
-                    >
-                      {deactivatingId === record._id ? '…' : 'Delete'}
-                    </button>
+                    {isAdmin && (
+                      <>
+                        <button
+                          disabled={updatingId === record._id || deactivatingId === record._id}
+                          onClick={() => openEditModal(record)}
+                          className="flex-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-600 transition hover:bg-amber-500/20 dark:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          disabled={updatingId === record._id || deactivatingId === record._id}
+                          onClick={() => handleDeactivate(record._id as string)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-red-400"
+                        >
+                          {deactivatingId === record._id ? '…' : 'Delete'}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -442,6 +515,108 @@ export default function AttendancePage() {
           </>
         )}
       </div>
+
+      {/* ── ADMIN ATTENDANCE CORRECTION MODAL ── */}
+      {editingRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0B1121] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white">Correct Attendance Record</h3>
+                <p className="text-xs text-slate-400">
+                  {editingRecord.employeeId?.name || 'Employee'} • {editingRecord.date}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingRecord(null)}
+                className="text-slate-400 hover:text-white transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Attendance Status
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm font-semibold text-white outline-none focus:border-blue-500"
+                >
+                  <option value="Present" className="dark:bg-[#0B1121]">Present</option>
+                  <option value="Late" className="dark:bg-[#0B1121]">Late</option>
+                  <option value="Absent" className="dark:bg-[#0B1121]">Absent</option>
+                  <option value="Leave" className="dark:bg-[#0B1121]">Leave</option>
+                  <option value="Half-Day" className="dark:bg-[#0B1121]">Half-Day</option>
+                  <option value="Pending" className="dark:bg-[#0B1121]">Pending</option>
+                  <option value="Rejected" className="dark:bg-[#0B1121]">Rejected</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Check In
+                  </label>
+                  <input
+                    type="text"
+                    value={editCheckIn}
+                    onChange={(e) => setEditCheckIn(e.target.value)}
+                    placeholder="e.g. 09:00 AM"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Check Out
+                  </label>
+                  <input
+                    type="text"
+                    value={editCheckOut}
+                    onChange={(e) => setEditCheckOut(e.target.value)}
+                    placeholder="e.g. 05:00 PM"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Correction Reason / Audit Notes
+                </label>
+                <input
+                  type="text"
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  placeholder="e.g. Corrected missed punch in system"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingRecord(null)}
+                  className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="flex-1 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white transition hover:bg-blue-500 disabled:opacity-50"
+                >
+                  {editLoading ? 'Saving...' : 'Save Correction'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
+

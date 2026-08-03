@@ -1,8 +1,10 @@
 import Attendance from "../models/attendance.js";
 import Employee from "../models/employee.js";
+import { notifyChange } from "../utils/mailer.js";
 
-// Allowed attendance statuses — used for HR status updates
-const VALID_STATUSES = ["Present", "Late", "Absent", "Leave", "Pending", "Rejected"];
+// Allowed attendance statuses — used for HR/Admin status updates
+const VALID_STATUSES = ["Present", "Late", "Absent", "Leave", "Half-Day", "Pending", "Rejected"];
+
 
 const resolveEmployeeForUser = async (user) => {
   const userId = user?._id || user?.id;
@@ -179,14 +181,85 @@ export const updateAttendanceStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Attendance record not found" });
     }
 
+    const oldStatus = record.status;
     record.status = status;
     await record.save();
 
-    res.status(200).json({ success: true, message: "Status updated successfully", record });
+    const populated = await record.populate("employeeId", "name email employeeId department");
+    notifyChange({
+      user: populated.employeeId || { name: "Employee" },
+      action: "ATTENDANCE_MUTATION",
+      details: { date: record.date, oldStatus, newStatus: status, actionType: "Updated" },
+      actor: req.user,
+    });
+
+    res.status(200).json({ success: true, message: "Status updated successfully", record: populated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update status", error: error.message });
   }
 };
+
+// PATCH /api/attendance/:id — Admin-only: direct attendance record correction
+export const editAttendanceRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, checkIn, checkOut, reason } = req.body;
+
+    const userRole = req.user?.role ? String(req.user.role).toLowerCase() : "";
+    if (userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Forbidden: Only admin can edit attendance records" });
+    }
+
+    const record = await Attendance.findById(id);
+    if (!record) {
+      return res.status(404).json({ success: false, message: "Attendance record not found" });
+    }
+    if (!record.isActive) {
+      return res.status(400).json({ success: false, message: "Cannot edit a deactivated attendance record" });
+    }
+
+    const oldStatus = record.status;
+    const oldCheckIn = record.checkIn;
+    const oldCheckOut = record.checkOut;
+
+    if (status !== undefined) {
+      if (!VALID_STATUSES.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`
+        });
+      }
+      record.status = status;
+    }
+
+    if (checkIn !== undefined) record.checkIn = checkIn;
+    if (checkOut !== undefined) record.checkOut = checkOut;
+    if (reason !== undefined) record.reason = reason;
+
+    await record.save();
+    const populated = await record.populate("employeeId", "name email employeeId department");
+
+    notifyChange({
+      user: populated.employeeId || { name: "Employee" },
+      action: "ATTENDANCE_MUTATION",
+      details: {
+        date: record.date,
+        oldStatus,
+        newStatus: record.status,
+        checkIn: record.checkIn || "N/A",
+        checkOut: record.checkOut || "N/A",
+        actionType: "Corrected",
+      },
+      actor: req.user,
+    });
+
+    res.status(200).json({ success: true, message: "Attendance record corrected successfully", record: populated });
+  } catch (error) {
+    console.error("editAttendanceRecord error:", error);
+    res.status(500).json({ success: false, message: "Failed to edit attendance record", error: error.message });
+  }
+};
+
 
 // Soft-delete an attendance record — HR/Admin only
 // Sets isActive: false and deletedAt. The record is preserved in the DB for audit purposes
@@ -194,10 +267,10 @@ export const updateAttendanceStatus = async (req, res) => {
 export const deactivateAttendance = async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.user?.role;
+    const userRole = req.user?.role ? String(req.user.role).toLowerCase() : "";
 
-    if (!["admin", "hr", "hr-manager"].includes(userRole)) {
-      return res.status(403).json({ success: false, message: "Forbidden" });
+    if (userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Forbidden: Only admin can delete attendance records" });
     }
 
     const record = await Attendance.findById(id);
@@ -212,8 +285,17 @@ export const deactivateAttendance = async (req, res) => {
     record.deletedAt = new Date();
     await record.save();
 
+    const populated = await record.populate("employeeId", "name email employeeId department");
+    notifyChange({
+      user: populated.employeeId || { name: "Employee" },
+      action: "ATTENDANCE_MUTATION",
+      details: { date: record.date, status: record.status, actionType: "Deleted" },
+      actor: req.user,
+    });
+
     res.status(200).json({ success: true, message: "Attendance record deactivated successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to deactivate attendance record", error: error.message });
   }
 };
+

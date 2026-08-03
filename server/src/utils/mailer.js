@@ -176,6 +176,13 @@ const ACTION_CONFIGS = {
     userDesc: (u, d) => `Hello ${u.name}, your onboarding progress was updated (${d.completedSteps || 0}/${d.totalSteps || 0} steps completed).`,
     adminDesc: (u, d) => `Onboarding progress for ${u.name} updated to ${d.completedSteps || 0}/${d.totalSteps || 0} steps.`,
   },
+  ATTENDANCE_MUTATION: {
+    heading: (u, d) => `Attendance Record ${d.actionType || 'Corrected'} (${d.date || ''})`,
+    badgeVariant: (u, d) => (d.actionType === "Deleted" ? "danger" : "warning"),
+    actionBadge: "Attendance Correction",
+    userDesc: (u, d) => `Hello ${u.name || 'Employee'}, your attendance record for ${d.date || 'date'} was ${String(d.actionType || 'modified').toLowerCase()} by an administrator.`,
+    adminDesc: (u, d) => `Attendance record for ${u.name || 'Employee'} on ${d.date || 'date'} was ${String(d.actionType || 'modified').toLowerCase()} by Admin.`,
+  },
   PASSWORD_CHANGED: {
     heading: (u) => `Account Password Changed`,
     badgeVariant: "success",

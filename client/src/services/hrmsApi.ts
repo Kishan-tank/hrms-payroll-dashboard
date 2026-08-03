@@ -405,7 +405,10 @@ export const attendanceService = {
     request<{ success: boolean; message: string; record: ApiAttendance }>('POST', '/attendance/regularize', payload),
   updateStatus: (id: string, status: string) =>
     request<{ success: boolean; message: string; record: ApiAttendance }>('PUT', `/attendance/${id}/status`, { status }),
-  // HR/Admin only: soft-delete (deactivate) an attendance record
+  // Admin-only: direct correction of status, check-in, or check-out times
+  editRecord: (id: string, payload: { status?: string; checkIn?: string; checkOut?: string; reason?: string }) =>
+    request<{ success: boolean; message: string; record: ApiAttendance }>('PATCH', `/attendance/${id}`, payload),
+  // Admin-only: soft-delete (deactivate) an attendance record
   deactivate: (id: string) =>
     request<{ success: boolean; message: string }>('DELETE', `/attendance/${id}`),
 };
