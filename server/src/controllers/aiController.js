@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import Employee from "../models/employee.js";
 import Attendance from "../models/attendance.js";
@@ -12,58 +12,67 @@ export const askAI = async (req, res) => {
         if (!prompt) {
             return res.status(400).json({ success: false, message: "Prompt is required" });
         }
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ success: false, message: "GEMINI_API_KEY is not configured on the server." });
+        
+        const apiKey = process.env.GROQ_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ success: false, message: "GROQ_API_KEY is not configured on the server." });
         }
         
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        
-        const systemInstruction = `You are Ask HRMS AI, an intelligent agent integrated into an HRMS and Payroll Dashboard called "HRMSPro". 
-You are assisting a user with the role of ${req.user.role}.
-You can perform actions on behalf of the user using the provided tools. If a tool fails, inform the user politely.
-Answer concisely, professionally, and helpfully. Keep your responses short as they will be displayed in a small chat window. Do not use complex markdown that requires a full markdown renderer, but basic line breaks and simple lists are fine.
+        const groq = new Groq({ apiKey });
 
-Here is the structure and knowledge of the website you should use to guide users:
-- Dashboard (/employee-dashboard or /hr-dashboard depending on role)
+        const systemInstruction = `You are Ask HRMS AI, an intelligent assistant integrated into HRMSPro dashboard.
+You are assisting a user with the role of ${req.user.role}.
+Answer concisely, professionally, and helpfully. Keep responses short and friendly for a chat widget.
+You can perform actions using function tools when requested (such as checking in or checking out for today).
+
+Site Structure Knowledge:
+- Dashboard (/employee-dashboard or /hr-dashboard)
 - Attendance (/attendance)
 - Leave Management (/leave)
 - Payroll (/payroll)
 - Employees (/employees)
-- Reports (/reports)
+- Analytics (/analytics)
 - Settings (/settings)
 `;
 
-        const tools = [{
-            functionDeclarations: [
-                {
+        const tools = [
+            {
+                type: "function",
+                function: {
                     name: "checkIn",
                     description: "Checks the currently logged-in user into the HRMS attendance system for today.",
-                    parameters: { type: "OBJECT", properties: {} }
-                },
-                {
+                    parameters: { type: "object", properties: {} }
+                }
+            },
+            {
+                type: "function",
+                function: {
                     name: "checkOut",
                     description: "Checks the currently logged-in user out of the HRMS attendance system for today.",
-                    parameters: { type: "OBJECT", properties: {} }
+                    parameters: { type: "object", properties: {} }
                 }
-            ]
-        }];
-
-        const chat = ai.chats.create({
-            model: 'gemini-2.5-flash',
-            config: {
-                systemInstruction,
-                temperature: 0.7,
-                tools
             }
+        ];
+
+        let messages = [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: prompt }
+        ];
+
+        let completion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages,
+            tools,
+            tool_choice: "auto",
+            temperature: 0.7,
         });
 
-        let response = await chat.sendMessage({ message: prompt });
+        let responseMessage = completion.choices[0]?.message;
 
-        // Check if Gemini wants to call a function
-        if (response.functionCalls && response.functionCalls.length > 0) {
-            const call = response.functionCalls[0];
+        if (responseMessage?.tool_calls && responseMessage.tool_calls.length > 0) {
+            const toolCall = responseMessage.tool_calls[0];
             let apiResponse = {};
-            
+
             try {
                 const employee = await Employee.findOne({ userId: req.user.id });
                 if (!employee) {
@@ -76,7 +85,7 @@ Here is the structure and knowledge of the website you should use to guide users
                     
                     let record = await Attendance.findOne({ employeeId: employee._id, date });
 
-                    if (call.name === "checkIn") {
+                    if (toolCall.function.name === "checkIn") {
                         if (record && record.checkIn && record.checkIn !== "-") {
                             apiResponse = { success: false, message: "You are already checked in for today." };
                         } else {
@@ -94,7 +103,7 @@ Here is the structure and knowledge of the website you should use to guide users
                             }
                             apiResponse = { success: true, message: `Successfully checked in at ${currentTime}` };
                         }
-                    } else if (call.name === "checkOut") {
+                    } else if (toolCall.function.name === "checkOut") {
                         if (!record || !record.checkIn || record.checkIn === "-") {
                             apiResponse = { success: false, message: "You must check in first before checking out." };
                         } else if (record.checkOut && record.checkOut !== "-") {
@@ -110,20 +119,30 @@ Here is the structure and knowledge of the website you should use to guide users
                 apiResponse = { success: false, message: err.message };
             }
 
-            // Send the function response back to Gemini
-            response = await chat.sendMessage({
-                message: [{
-                    functionResponse: {
-                        name: call.name,
-                        response: apiResponse
-                    }
-                }]
+            messages.push(responseMessage);
+            messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(apiResponse)
+            });
+
+            const secondCompletion = await groq.chat.completions.create({
+                model: "llama-3.3-70b-versatile",
+                messages,
+            });
+
+            return res.status(200).json({
+                success: true,
+                response: secondCompletion.choices[0]?.message?.content || apiResponse.message,
             });
         }
 
-        res.status(200).json({ success: true, response: response.text });
+        res.status(200).json({
+            success: true,
+            response: responseMessage?.content || "No response generated",
+        });
     } catch (error) {
-        console.error("AI Error:", error);
+        console.error("Groq AI Error:", error);
         res.status(500).json({ success: false, message: "AI Assistant failed to respond", error: error.message });
     }
 };
@@ -132,8 +151,9 @@ export const getAIInsights = async (req, res) => {
     try {
         const { summary } = req.body;
         
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ success: false, message: "GEMINI_API_KEY is not configured on the server." });
+        const apiKey = process.env.GROQ_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ success: false, message: "GROQ_API_KEY is not configured on the server." });
         }
 
         const ctx = summary
@@ -148,65 +168,50 @@ export const getAIInsights = async (req, res) => {
       `.trim()
             : 'No summary data available — generate general HRMS insights.';
 
-        const systemInstruction = `You are an expert HR analytics AI embedded in HRMSPro, 
-an enterprise HRMS platform. You analyse workforce data and return structured 
-JSON insights. You are precise, data-driven, and commercially focused. 
-You never fabricate specific employee names or IDs. 
-You always return ONLY valid JSON — no markdown, no preamble, no explanation.`;
+        const systemInstruction = `You are an expert HR analytics AI embedded in HRMSPro. You analyze workforce data and return structured JSON insights. You return ONLY valid JSON inside an object with an "insights" key.`;
 
-        const userPrompt = `Analyse this HR workforce snapshot and return exactly 4 
-insight cards as a JSON array. Each card identifies a workforce signal, risk, or 
-opportunity an HR manager should act on today.
+        const userPrompt = `Analyze this HR workforce snapshot and return exactly 4 insight cards as a JSON object containing an "insights" array.
 
 Current workforce data:
 ${ctx}
 
-Return this exact JSON structure (array of 4 objects, nothing else):
-[
-  {
-    "id": "unique_string",
-    "category": "ATTENDANCE" | "LEAVE" | "PAYROLL" | "APPROVALS",
-    "title": "concise headline under 8 words",
-    "body": "1-2 sentence insight with specific numbers where available. Be direct.",
-    "confidence": number between 70 and 99,
-    "action": "2-3 word CTA e.g. Review now",
-    "sentiment": "positive" | "warning" | "critical" | "neutral"
-  }
-]
+Return this exact JSON structure:
+{
+  "insights": [
+    {
+      "id": "unique_string",
+      "category": "ATTENDANCE" | "LEAVE" | "PAYROLL" | "APPROVALS",
+      "title": "concise headline under 8 words",
+      "body": "1-2 sentence insight with specific numbers where available. Be direct.",
+      "confidence": 85,
+      "action": "Review now",
+      "sentiment": "positive" | "warning" | "critical" | "neutral"
+    }
+  ]
+}
 
 Rules:
 - Use exactly these 4 categories, one card each: ATTENDANCE, LEAVE, PAYROLL, APPROVALS
-- confidence reflects how certain you are given the data quality (higher if data is specific)
-- sentiment: positive=good news, warning=needs attention, critical=urgent, neutral=informational
-- If a data field is unknown, make a reasonable inference but lower confidence accordingly
-- Return ONLY the JSON array. No markdown. No explanation. No backticks.`;
+- Return ONLY the JSON object. No markdown. No explanation.`;
 
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: userPrompt,
-            config: {
-                systemInstruction,
-                temperature: 0.4,
-                responseMimeType: "application/json"
-            }
+        const groq = new Groq({ apiKey });
+
+        const completion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+                { role: "system", content: systemInstruction },
+                { role: "user", content: userPrompt }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.4,
         });
 
-        const dataText = response.text;
+        const dataText = completion.choices[0]?.message?.content || "{}";
         
         let parsed;
         try {
-            let cleanText = dataText.trim();
-            if (cleanText.startsWith('```json')) {
-                cleanText = cleanText.substring(7);
-            } else if (cleanText.startsWith('```')) {
-                cleanText = cleanText.substring(3);
-            }
-            if (cleanText.endsWith('```')) {
-                cleanText = cleanText.slice(0, -3);
-            }
-            parsed = JSON.parse(cleanText.trim());
+            const raw = JSON.parse(dataText);
+            parsed = Array.isArray(raw) ? raw : (raw.insights || raw.cards || []);
         } catch (e) {
             return res.status(500).json({ success: false, message: "AI response was not valid JSON", error: dataText });
         }
@@ -230,8 +235,7 @@ Rules:
 
         res.status(200).json({ success: true, insights: validated });
     } catch (error) {
-        console.error("AI Insights Error:", error);
-        import('fs').then(fs => fs.appendFileSync('ai-error.log', new Date().toISOString() + ': ' + error.stack + '\n'));
+        console.error("Groq AI Insights Error:", error);
         res.status(500).json({ success: false, message: "Failed to generate AI insights", error: error.message });
     }
 };
