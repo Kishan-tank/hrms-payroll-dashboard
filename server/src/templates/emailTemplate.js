@@ -224,6 +224,77 @@ export const renderRoleUpdatedEmail = ({ name, oldRole, newRole, isAdminNotice =
   return renderEmailWrapper({ title, bodyHtml });
 };
 
+/** Leave Status Notification Email Template (Employee & Admin audit copies) */
+export const renderLeaveStatusEmail = ({
+  name,
+  status,
+  leaveType,
+  dateRange,
+  days,
+  reason,
+  isAdminNotice = false,
+  actorName = "HR/Admin",
+  timestamp = new Date().toLocaleString(),
+}) => {
+  const isApproved = status === "Approved";
+  const statusLabel = isApproved ? "Approved" : "Rejected";
+  const badgeClass = isApproved ? "badge-success" : "badge-danger";
+  const statusColor = isApproved ? "#34d399" : "#f87171";
+
+  const reasonSection = reason
+    ? `<div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 14px 16px; margin: 16px 0;">
+        <p style="margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em;">Reason / Notes</p>
+        <p style="margin: 6px 0 0 0; font-size: 13px; color: #cbd5e1;">${reason}</p>
+      </div>`
+    : "";
+
+  const title = isAdminNotice
+    ? `HRMSPro Audit: Leave ${statusLabel} for ${name}`
+    : `HRMSPro: Your Leave Request Has Been ${statusLabel}`;
+
+  const bodyHtml = isAdminNotice
+    ? `
+      <div>
+        <span class="badge badge-info">Admin Audit Trail</span>
+        <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Leave Decision Logged</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+          <strong>${actorName}</strong> <strong style="color: ${statusColor};">${statusLabel.toLowerCase()}</strong> <strong>${name}</strong>'s <strong>${leaveType}</strong> request on <code>${timestamp}</code>.
+        </p>
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Leave Type:</strong> ${leaveType}</p>
+          <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Date(s):</strong> ${dateRange}</p>
+          <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Duration:</strong> ${days} day${days !== 1 ? "s" : ""}</p>
+          <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Decision:</strong> <span style="color: ${statusColor}; font-weight: 700;">${statusLabel}</span></p>
+        </div>
+        ${reasonSection}
+      </div>
+    `
+    : `
+      <div>
+        <span class="badge ${badgeClass}">Leave ${statusLabel}</span>
+        <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Your Leave Request Update</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+          Hello <strong>${name}</strong>, your <strong>${leaveType}</strong> request has been <strong style="color: ${statusColor};">${statusLabel.toLowerCase()}</strong>.
+        </p>
+        <div class="otp-box" style="text-align: left;">
+          <p style="color: #94a3b8; font-size: 12px; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.06em;">Request Details</p>
+          <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Leave Type:</strong> ${leaveType}</p>
+          <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Date(s):</strong> ${dateRange}</p>
+          <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Duration:</strong> ${days} day${days !== 1 ? "s" : ""}</p>
+          <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: 700; color: ${statusColor};">Status: ${statusLabel}</p>
+        </div>
+        ${reasonSection}
+        <p style="color: #64748b; font-size: 12px; margin-top: 16px;">
+          ${isApproved
+            ? "Your leave has been approved. Please ensure your team is informed about your absence."
+            : "If you have questions about this decision, please contact your HR department."}
+        </p>
+      </div>
+    `;
+
+  return renderEmailWrapper({ title, bodyHtml });
+};
+
 /** Account Deactivation Email Template (User & Admin copies) */
 export const renderAccountDeactivatedEmail = ({ name, email, isAdminNotice = false, timestamp = new Date().toLocaleString() }) => {
   const title = isAdminNotice ? `HRMSPro Audit: Removed user ${name}` : "HRMSPro: Your account access was revoked";

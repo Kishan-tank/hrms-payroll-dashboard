@@ -215,8 +215,13 @@ export default function AdminUserManagement() {
   };
 
   const handleToggleRole = async (user: User) => {
-    const userId = user._id || user.id;
-    if (actionLoadingId || !userId) return;
+    if (actionLoadingId) return;
+
+    const userId = user._id || (user as any).id;
+    if (!userId) {
+      toast.error('Cannot update role: user ID is missing.');
+      return;
+    }
 
     const currentRole = String(user.role).toLowerCase();
     if (currentRole === 'admin') {
@@ -232,9 +237,11 @@ export default function AdminUserManagement() {
       if (res.data.success) {
         toast.success(`Updated ${user.name}'s role to ${nextRole === 'hr-manager' ? 'HR Manager' : 'Employee'}`);
         fetchUsers(currentPage, searchQuery, roleFilter);
+      } else {
+        toast.error(res.data.message || 'Failed to update role');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to update role';
+      const msg = err.response?.data?.message || err.message || 'Failed to update role';
       toast.error(msg);
     } finally {
       setActionLoadingId(null);
@@ -330,7 +337,7 @@ export default function AdminUserManagement() {
       key: 'actions',
       header: 'Actions',
       render: (user: User) => {
-        const userId = user._id || user.id;
+        const userId = user._id || (user as any).id;
         const isCurrentAdmin = String(user.role).toLowerCase() === 'admin';
         const isLoadingThis = actionLoadingId === userId;
 

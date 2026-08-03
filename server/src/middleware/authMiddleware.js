@@ -42,7 +42,9 @@ export const verifyToken = async (req, res, next) => {
       id: user._id,
       role: user.role,
       email: user.email,
+      name: user.name,
     };
+
 
     next();
   } catch (error) {

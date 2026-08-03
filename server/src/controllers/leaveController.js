@@ -1,5 +1,7 @@
 import Leave from "../models/leave.js";
 import Employee from "../models/employee.js";
+import { sendEmail } from "../utils/mailer.js";
+import { renderLeaveStatusEmail } from "../templates/emailTemplate.js";
 
 // Get all leave requests
 export const getLeaves = async (req, res) => {
@@ -104,6 +106,64 @@ export const updateLeaveStatus = async (req, res) => {
 
     existingLeave.status = status;
     await existingLeave.save();
+
+    // Fire-and-forget dual email notifications (employee + admin audit copy)
+    // Only send notifications for final decisions, not re-opens to Pending
+    if (["Approved", "Rejected"].includes(status)) {
+      const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+      const timestamp = new Date().toLocaleString();
+
+      // Resolve acting user name (the one who approved/rejected)
+      const actorName = req.user?.name || req.user?.email || "HR/Admin";
+
+      // Resolve employee email from the populated employeeId
+      const populatedLeave = await Leave.findById(existingLeave._id).populate("employeeId", "name email userId");
+      const employeeName = populatedLeave?.employeeId?.name || "Employee";
+      const employeeEmail = populatedLeave?.employeeId?.email;
+
+      const fromDate = new Date(existingLeave.fromDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const toDate = new Date(existingLeave.toDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const dateRange = fromDate === toDate ? fromDate : `${fromDate} – ${toDate}`;
+      const days = existingLeave.days || 1;
+      const leaveType = existingLeave.type || "Leave";
+
+      // Employee notification
+      if (employeeEmail) {
+        sendEmail({
+          to: employeeEmail,
+          subject: `HRMSPro: Your ${leaveType} request has been ${status.toLowerCase()}`,
+          html: renderLeaveStatusEmail({
+            name: employeeName,
+            status,
+            leaveType,
+            dateRange,
+            days,
+            reason: existingLeave.reason || "",
+            isAdminNotice: false,
+            timestamp,
+          }),
+        }).catch((err) => console.error("[Mailer] Leave status employee notification error:", err));
+      }
+
+      // Admin audit copy
+      if (adminEmail) {
+        sendEmail({
+          to: adminEmail,
+          subject: `HRMSPro Audit: Leave request ${status.toLowerCase()} for ${employeeName}`,
+          html: renderLeaveStatusEmail({
+            name: employeeName,
+            status,
+            leaveType,
+            dateRange,
+            days,
+            reason: existingLeave.reason || "",
+            isAdminNotice: true,
+            actorName,
+            timestamp,
+          }),
+        }).catch((err) => console.error("[Mailer] Leave status admin audit notification error:", err));
+      }
+    }
 
     res.status(200).json({ success: true, message: `Leave ${status.toLowerCase()} successfully.`, leave: existingLeave });
   } catch (error) {

@@ -356,6 +356,11 @@ export const payrollService = {
   // HR/Admin only: void (soft-delete) a Processing/Pending payroll record
   void: (id: string) =>
     request<{ success: boolean; message: string }>('DELETE', `/payroll/${id}`),
+
+  // Admin-only: edit a payroll record
+  edit: (id: string, data: { basicPay?: number; deductions?: number; netPay?: number; status?: string }) =>
+    request<{ success: boolean; message: string; record: PayrollRecord }>('PATCH', `/payroll/${id}`, data),
+
 };
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
