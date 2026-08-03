@@ -13,9 +13,11 @@ function authHeaders(): Record<string, string> {
 }
 export interface ApiGoal {
   _id: string;
-  employeeId: string;
+  employeeId: string | { _id: string; name: string; department: string; role?: string; email?: string };
   title: string;
+  description?: string;
   progress: number;
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'Missed';
   dueDate?: string;
   createdAt: string;
 }
@@ -31,10 +33,12 @@ export interface ApiTask {
 
 export interface ApiPerformanceReview {
   _id: string;
-  employeeId: { _id: string; name: string; department: string; role: string };
+  employeeId: { _id: string; name: string; department: string; role: string; email?: string };
+  reviewerId?: { _id: string; name: string; department: string; role?: string };
   score: number;
   reviewPeriod: string;
   managerFeedback?: string;
+  status: 'Draft' | 'Submitted' | 'Acknowledged';
   createdAt: string;
 }
 
@@ -42,10 +46,12 @@ export const performanceService = {
   // Goals
   getGoals: (employeeId?: string) =>
     request<{ success: boolean; goals: ApiGoal[] }>('GET', employeeId ? `/performance/goals?employeeId=${employeeId}` : '/performance/goals'),
-  createGoal: (title: string, dueDate?: string, employeeId?: string) =>
-    request<{ success: boolean; goal: ApiGoal; message: string }>('POST', '/performance/goals', { title, dueDate, employeeId }),
+  createGoal: (payload: { title: string; description?: string; dueDate?: string; progress?: number; status?: string; employeeId?: string }) =>
+    request<{ success: boolean; goal: ApiGoal; message: string }>('POST', '/performance/goals', payload),
   updateGoalProgress: (id: string, progress: number) =>
-    request<{ success: boolean; goal: ApiGoal; message: string }>('PUT', `/performance/goals/${id}`, { progress }),
+    request<{ success: boolean; goal: ApiGoal; message: string }>('PATCH', `/performance/goals/${id}/progress`, { progress }),
+  updateGoal: (id: string, payload: { title?: string; description?: string; dueDate?: string; progress?: number; status?: string }) =>
+    request<{ success: boolean; goal: ApiGoal; message: string }>('PUT', `/performance/goals/${id}`, payload),
   deleteGoal: (id: string) =>
     request<{ success: boolean; message: string }>('DELETE', `/performance/goals/${id}`),
 
@@ -62,12 +68,16 @@ export const performanceService = {
   // Reviews
   getReviews: (employeeId?: string) =>
     request<{ success: boolean; reviews: ApiPerformanceReview[] }>('GET', employeeId ? `/performance/reviews?employeeId=${employeeId}` : '/performance/reviews'),
-  createReview: (employeeId: string, score: number, reviewPeriod: string, managerFeedback: string) =>
-    request<{ success: boolean; review: ApiPerformanceReview; message: string }>('POST', '/performance/reviews', { employeeId, score, reviewPeriod, managerFeedback }),
+  createReview: (employeeId: string, score: number, reviewPeriod: string, managerFeedback: string, status?: string) =>
+    request<{ success: boolean; review: ApiPerformanceReview; message: string }>('POST', '/performance/reviews', { employeeId, score, reviewPeriod, managerFeedback, status }),
+  updateReview: (id: string, payload: { score?: number; reviewPeriod?: string; managerFeedback?: string; status?: string }) =>
+    request<{ success: boolean; review: ApiPerformanceReview; message: string }>('PUT', `/performance/reviews/${id}`, payload),
+  deleteReview: (id: string) =>
+    request<{ success: boolean; message: string }>('DELETE', `/performance/reviews/${id}`),
 };
 
 async function request<T>(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
   path: string,
   body?: unknown,
   customOptions?: RequestInit
@@ -522,7 +532,9 @@ export interface ApiEvent {
   _id: string;
   title: string;
   date: string;
-  type: 'Holiday' | 'Birthday' | 'Anniversary' | 'Training';
+  type: 'Holiday' | 'Birthday' | 'Anniversary' | 'Training' | 'Meeting' | 'Other';
+  description?: string;
+  relatedEmployeeId?: string | { _id: string; name: string; department: string; role?: string };
   createdAt: string;
 }
 
@@ -538,8 +550,10 @@ export interface ApiSkill {
 export const companyService = {
   // Events
   getEvents: () => request<{ success: boolean; events: ApiEvent[] }>('GET', '/company/events'),
-  createEvent: (title: string, date: string, type: string) =>
-    request<{ success: boolean; event: ApiEvent; message: string }>('POST', '/company/events', { title, date, type }),
+  createEvent: (payload: { title: string; date: string; type: string; description?: string; relatedEmployeeId?: string }) =>
+    request<{ success: boolean; event: ApiEvent; message: string }>('POST', '/company/events', payload),
+  updateEvent: (id: string, payload: { title?: string; date?: string; type?: string; description?: string; relatedEmployeeId?: string }) =>
+    request<{ success: boolean; event: ApiEvent; message: string }>('PUT', `/company/events/${id}`, payload),
   deleteEvent: (id: string) => request<{ success: boolean; message: string }>('DELETE', `/company/events/${id}`),
 
   // Skills

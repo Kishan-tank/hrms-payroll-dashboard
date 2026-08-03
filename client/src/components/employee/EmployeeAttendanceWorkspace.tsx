@@ -167,6 +167,35 @@ export default function EmployeeAttendanceWorkspace({
     }
   };
 
+  const avgHoursStr = useMemo(() => {
+    let totalMinutes = 0;
+    let validCount = 0;
+    for (const r of records) {
+      if (r.checkIn && r.checkOut) {
+        try {
+          const parseTime = (t: string) => {
+            const [time, modifier] = t.split(' ');
+            let [hours, minutes] = time.split(':');
+            if (hours === '12') hours = '00';
+            if (modifier && modifier.toUpperCase() === 'PM') hours = parseInt(hours, 10) + 12 + '';
+            return new Date(1970, 0, 1, parseInt(hours, 10), parseInt(minutes, 10), 0);
+          };
+          const start = parseTime(r.checkIn);
+          const end = parseTime(r.checkOut);
+          let diff = (end.getTime() - start.getTime()) / 1000 / 60;
+          if (diff < 0) diff += 24 * 60;
+          if (diff > 0) {
+            totalMinutes += diff;
+            validCount++;
+          }
+        } catch (e) {}
+      }
+    }
+    if (validCount === 0) return '0.0h';
+    const avgMinutes = totalMinutes / validCount;
+    return `${(avgMinutes / 60).toFixed(1)}h`;
+  }, [records]);
+
   const presentCount = records.filter((r) => r.status === 'Present').length;
   const lateCount    = records.filter((r) => r.status === 'Late').length;
   const absentCount  = records.filter((r) => r.status === 'Absent').length;
@@ -383,7 +412,7 @@ export default function EmployeeAttendanceWorkspace({
                 { label: 'Late', val: lateCount, c: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
                 { label: 'Absent', val: absentCount, c: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' },
                 { label: 'Leave', val: leaveCount, c: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10' },
-                { label: 'Avg. Hours', val: '7.8h', c: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+                { label: 'Avg. Hours', val: avgHoursStr, c: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
                 { label: 'Attendance', val: `${attendanceRate}%`, c: 'text-slate-800 dark:text-slate-200', bg: 'bg-slate-100 dark:bg-white/10' },
               ].map((item, i) => (
                 <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">

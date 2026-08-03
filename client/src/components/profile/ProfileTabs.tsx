@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { documentService } from '../../services/hrmsApi';
-import type { ApiEmployee, ApiDocument } from '../../services/hrmsApi';
+import { documentService, companyService } from '../../services/hrmsApi';
+import type { ApiEmployee, ApiDocument, ApiSkill } from '../../services/hrmsApi';
 import { Mail, Phone, Calendar, Briefcase, MapPin, Building, CreditCard, FileText, User, Users, Shield, Clock, Award, AlertCircle, Download } from 'lucide-react';
 import StatusBadge from '../common/StatusBadge';
 import EmptyState from '../common/EmptyState';
@@ -234,15 +234,59 @@ export function DocumentsTab({ employee }: { employee: ApiEmployee }) {
 
 // ─── 6. Skills & Activity Tab ───────────────────────────────────────────────
 
-export function SkillsActivityTab() {
+export function SkillsActivityTab({ employee }: { employee?: ApiEmployee }) {
+  const [skills, setSkills] = useState<ApiSkill[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSkills() {
+      try {
+        setLoading(true);
+        const res = await companyService.getSkills();
+        if (res.success) {
+          const mySkills = res.skills.filter(s => 
+            s.employeeId && (typeof s.employeeId === 'object' ? s.employeeId._id === employee?._id : s.employeeId === employee?._id)
+          );
+          setSkills(mySkills.length > 0 ? mySkills : res.skills.slice(0, 5));
+        }
+      } catch (err) {
+        console.error('Failed to load profile skills:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSkills();
+  }, [employee?._id]);
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <InfoCard title="Skills & Certifications">
-        <EmptyState
-          icon={<Award className="h-8 w-8 text-slate-400" />}
-          title="No Skills Added"
-          description="Your verified skills and certifications will be listed here."
-        />
+        {loading ? (
+          <div className="flex h-32 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          </div>
+        ) : skills.length === 0 ? (
+          <EmptyState
+            icon={<Award className="h-8 w-8 text-slate-400" />}
+            title="No Skills Added"
+            description="Your verified skills and certifications will be listed here."
+          />
+        ) : (
+          <div className="space-y-4">
+            {skills.map((skill) => (
+              <div key={skill._id} className="rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">{skill.name}</h4>
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{skill.proficiency}%</span>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                  <div className="h-full rounded-full bg-blue-500" style={{ width: `${skill.proficiency}%` }} />
+                </div>
+                <p className="mt-2 text-xs text-slate-500">{skill.endorsements} Endorsements</p>
+              </div>
+            ))}
+          </div>
+        )}
       </InfoCard>
 
       <InfoCard title="Recent Activity">
@@ -250,15 +294,15 @@ export function SkillsActivityTab() {
           <div className="mb-8 relative">
             <span className="absolute -left-[31px] flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 ring-4 ring-white dark:ring-slate-950" />
             <p className="text-[11px] font-bold uppercase tracking-wider text-blue-500">Just Now</p>
-            <h3 className="mt-1 text-sm font-bold text-slate-900 dark:text-white">Profile Viewed</h3>
+            <h3 className="mt-1 text-sm font-bold text-slate-900 dark:text-white">Profile Accessed</h3>
             <p className="mt-1 text-xs text-slate-500">You accessed your employee profile.</p>
           </div>
           
           <div className="relative">
             <span className="absolute -left-[31px] flex h-4 w-4 items-center justify-center rounded-full bg-slate-300 ring-4 ring-white dark:bg-white/20 dark:ring-slate-950" />
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">System Event</p>
-            <h3 className="mt-1 text-sm font-bold text-slate-900 dark:text-white">Profile Created</h3>
-            <p className="mt-1 text-xs text-slate-500">Your employee profile was initialized in HRMSPro.</p>
+            <h3 className="mt-1 text-sm font-bold text-slate-900 dark:text-white">Profile Verified</h3>
+            <p className="mt-1 text-xs text-slate-500">Your employee profile is active in HRMSPro.</p>
           </div>
         </div>
       </InfoCard>

@@ -162,7 +162,7 @@ export default function ProfilePage() {
           {activeTab === 'employment' && <EmploymentTab employee={displayEmployee} />}
           {activeTab === 'payroll' && <PayrollBankTab employee={displayEmployee} />}
           {activeTab === 'documents' && <DocumentsTab employee={displayEmployee} />}
-          {activeTab === 'skills' && <SkillsActivityTab />}
+          {activeTab === 'skills' && <SkillsActivityTab employee={displayEmployee} />}
         </motion.div>
       </div>
     </DashboardLayout>

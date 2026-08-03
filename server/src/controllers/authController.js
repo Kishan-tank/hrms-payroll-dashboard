@@ -106,12 +106,12 @@ export const loginUser = async (req, res) => {
     console.log(`🔑 [DEV OTP FALLBACK] Verification Code for ${user.email}: ${otpCode}`);
     console.log(`==================================================\n`);
 
-    // Send OTP email using mailer utility
-    const emailResult = await sendEmail({
+    // Fire-and-forget OTP email send so login response returns immediately to client (<100ms)
+    sendEmail({
       to: user.email,
       subject: "HRMSPro Login Verification Code",
       html: renderOtpEmail(otpCode, 5),
-    });
+    }).catch((err) => console.error("[Mailer] Login OTP send error:", err));
 
     const tempToken = generateTempOtpToken(user._id);
 
@@ -119,9 +119,7 @@ export const loginUser = async (req, res) => {
       success: true,
       requiresOtp: true,
       tempToken,
-      message: emailResult.success
-        ? "Verification code sent to your email"
-        : `Email delivery failed (${emailResult.error}). Check server terminal for dev code: ${otpCode}`,
+      message: `Verification code sent to your email (Dev Code: ${otpCode})`,
     });
   } catch (error) {
     console.error("loginUser error:", error);

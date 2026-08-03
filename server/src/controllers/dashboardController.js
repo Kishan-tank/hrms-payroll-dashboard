@@ -139,8 +139,8 @@ export const getHrSummary = async (req, res) => {
       {
         id: 'att',
         category: 'ATTENDANCE',
-        title: `Attendance climbing (${attendanceRate})`,
-        body: `On-site attendance trending strongly for 3rd consecutive week. ${departments[0]?.name || 'Engineering'} leading at 99.1%.`,
+        title: `Attendance rate (${attendanceRate})`,
+        body: `On-site attendance tracking live for active workforce. ${departments[0]?.name || 'General'} department leading active team count (${departments[0]?.count || totalEmployees}).`,
         confidence: 94,
         accent: '#3b82f6',
         accentDim: 'rgba(59,130,246,0.10)',
@@ -149,8 +149,8 @@ export const getHrSummary = async (req, res) => {
       {
         id: 'leave',
         category: 'LEAVE',
-        title: 'Leave spike predicted',
-        body: `Model forecasts +31% leave requests next week due to regional holiday cluster. Currently ${pendingApprovals} requests pending.`,
+        title: 'Leave tracking summary',
+        body: `Currently ${pendingApprovals} leave request(s) pending review across all departments.`,
         confidence: 87,
         accent: '#22c55e',
         accentDim: 'rgba(34,197,94,0.10)',
@@ -171,8 +171,8 @@ export const getHrSummary = async (req, res) => {
       {
         id: 'approvals',
         category: 'APPROVALS',
-        title: `${pendingApprovals} approvals pending review`,
-        body: 'Reminder sent to relevant department managers. Avg approval time improved to 9.2h this month.',
+        title: `${pendingApprovals} approval(s) pending review`,
+        body: 'Pending requests in queue for manager & HR action.',
         confidence: 99,
         accent: '#f59e0b',
         accentDim: 'rgba(245,158,11,0.10)',

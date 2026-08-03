@@ -3,15 +3,6 @@ import { Download, DollarSign, Calendar, TrendingUp, ArrowUpRight, FileText, Shi
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Sector } from 'recharts';
 import type { EmployeeSummary } from '../../services/hrmsApi';
 
-const salaryTrend = [
-  { month: 'Jan', salary: 82000 },
-  { month: 'Feb', salary: 82000 },
-  { month: 'Mar', salary: 82000 },
-  { month: 'Apr', salary: 89500 },
-  { month: 'May', salary: 89500 },
-  { month: 'Jun', salary: 95000 },
-];
-
 
 
 function SalaryTooltip({ active, payload, label }: any) {
@@ -63,12 +54,41 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
 
   const leavesTaken = summary?.payrollLeave.leavesTaken || 0;
   const leaveBalance = summary?.payrollLeave.leaveBalance || 0;
+  const netPay = summary?.payrollLeave.latestNetPay || 0;
 
-  // We map the total leaves taken into some dummy breakdown for the pie chart, but use the real total
+  // Calculate dynamic cycle string
+  const now = new Date();
+  const currentMonthStr = now.toLocaleString('default', { month: 'long' });
+  const currentYearStr = now.getFullYear();
+
+  // Calculate next credit date (1st of next month)
+  const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const daysRemaining = Math.ceil((nextMonthDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
+  const nextCreditMonth = nextMonthDate.toLocaleString('default', { month: 'short' });
+
+  // Calculate YTD earnings dynamically (Months passed in current year * Net Pay)
+  const monthsPassed = now.getMonth() + 1;
+  const ytdEarnings = netPay * monthsPassed;
+
+  // Build dynamic salary trend for the past 6 months
+  const salaryTrend = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonthIndex = now.getMonth();
+    const trend = [];
+    for (let i = 5; i >= 0; i--) {
+      const idx = (currentMonthIndex - i + 12) % 12;
+      trend.push({
+        month: months[idx],
+        salary: netPay > 0 ? netPay : 50000,
+      });
+    }
+    return trend;
+  }, [netPay]);
+
   const leaveData = useMemo(() => [
     { name: 'Leaves Taken', value: leavesTaken, color: '#3b82f6' },
-    { name: 'Sick Leave', value: 0, color: '#8b5cf6' }, // Phase 2
-    { name: 'Casual Leave', value: 0, color: '#06b6d4' }, // Phase 2
+    { name: 'Sick Leave', value: 0, color: '#8b5cf6' },
+    { name: 'Casual Leave', value: 0, color: '#06b6d4' },
     { name: 'Remaining', value: leaveBalance, color: 'remaining' },
   ], [leavesTaken, leaveBalance]);
 
@@ -82,7 +102,7 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
         <div className="flex items-start justify-between z-10">
           <div>
             <h2 className="text-[16px] font-extrabold text-slate-900 tracking-wide dark:text-white">Payroll Insights</h2>
-            <p className="mt-0.5 text-[12px] font-semibold uppercase text-slate-500 tracking-wider">June 2026 Cycle</p>
+            <p className="mt-0.5 text-[12px] font-semibold uppercase text-slate-500 tracking-wider">{currentMonthStr} {currentYearStr} Cycle</p>
           </div>
           <button className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:text-slate-900 hover:border-emerald-500/30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">
             <Download size={13} /> Download Payslip
@@ -100,7 +120,7 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
             </div>
             <div>
               <div className="text-[26px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                ₹{((summary?.payrollLeave.latestNetPay || 0)).toLocaleString()}
+                ₹{netPay.toLocaleString()}
               </div>
               <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-500">
                 <ArrowUpRight size={12} /> Real-time tracking
@@ -117,8 +137,8 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
               <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">Next Credit</span>
             </div>
             <div>
-              <div className="text-[26px] font-extrabold tracking-tight text-slate-900 dark:text-white">Jul 1</div>
-              <div className="mt-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">13 days remaining</div>
+              <div className="text-[26px] font-extrabold tracking-tight text-slate-900 dark:text-white">{nextCreditMonth} 1</div>
+              <div className="mt-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">{daysRemaining} days remaining</div>
             </div>
           </div>
         </div>
@@ -131,7 +151,7 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] uppercase font-bold text-slate-500">Tax Status</span>
-              <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">Regime: Old</span>
+              <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">Standard Tax</span>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
@@ -140,7 +160,7 @@ export default function PayrollAndLeave({ summary }: { summary?: EmployeeSummary
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] uppercase font-bold text-slate-500">YTD Earnings</span>
-              <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">₹5,18,000</span>
+              <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">₹{ytdEarnings.toLocaleString()}</span>
             </div>
           </div>
         </div>

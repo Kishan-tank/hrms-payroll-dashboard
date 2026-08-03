@@ -22,8 +22,9 @@ const getEmployeeId = async (user, providedEmpId) => {
 
 export const getEvents = async (req, res) => {
     try {
-        // Return all upcoming company events sorted by date
-        const events = await Event.find().sort({ date: 1 });
+        const events = await Event.find()
+            .populate("relatedEmployeeId", "name department role email")
+            .sort({ date: 1 });
         res.status(200).json({ success: true, events });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -32,7 +33,7 @@ export const getEvents = async (req, res) => {
 
 export const createEvent = async (req, res) => {
     try {
-        const { title, date, type } = req.body;
+        const { title, date, type, description, relatedEmployeeId } = req.body;
         if (!title || !date) {
             return res.status(400).json({ success: false, message: "Title and date are required." });
         }
@@ -40,19 +41,59 @@ export const createEvent = async (req, res) => {
         const event = new Event({
             title,
             date: new Date(date),
-            type: type || "Holiday",
+            type: type || "Other",
+            description: description || "",
+            relatedEmployeeId: relatedEmployeeId || undefined,
         });
 
         await event.save();
+        if (event.relatedEmployeeId) {
+            await event.populate("relatedEmployeeId", "name department role email");
+        }
+
+        const targetUser = event.relatedEmployeeId || { name: "All Company Staff", email: process.env.ADMIN_EMAIL };
 
         notifyChange({
-            user: { name: "All Company Staff", email: process.env.ADMIN_EMAIL },
+            user: targetUser,
             action: "EVENT_MUTATION",
             details: { eventTitle: title, eventType: event.type, eventDate: new Date(date).toLocaleDateString(), actionType: "Created" },
             actor: req.user,
         });
 
         res.status(201).json({ success: true, event, message: "Event created successfully" });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const updateEvent = async (req, res) => {
+    try {
+        const { title, date, type, description, relatedEmployeeId } = req.body;
+        const event = await Event.findById(req.params.id);
+        if (!event) return res.status(404).json({ success: false, message: "Event not found" });
+
+        if (title !== undefined) event.title = title;
+        if (date !== undefined) event.date = new Date(date);
+        if (type !== undefined) event.type = type;
+        if (description !== undefined) event.description = description;
+        if (relatedEmployeeId !== undefined) event.relatedEmployeeId = relatedEmployeeId || undefined;
+
+        await event.save();
+        if (event.relatedEmployeeId) {
+            await event.populate("relatedEmployeeId", "name department role email");
+        }
+
+        const targetUser = event.relatedEmployeeId || { name: "All Company Staff", email: process.env.ADMIN_EMAIL };
+
+        notifyChange({
+            user: targetUser,
+            action: "EVENT_MUTATION",
+            details: { eventTitle: event.title, eventType: event.type, eventDate: new Date(event.date).toLocaleDateString(), actionType: "Updated" },
+            actor: req.user,
+        });
+
+        res.status(200).json({ success: true, event, message: "Event updated successfully" });
 
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
