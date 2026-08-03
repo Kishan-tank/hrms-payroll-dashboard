@@ -13,9 +13,10 @@ export interface RegisterRequest {
   role?: string;
 }
 
-export type UserRole = "employee" | "hr-manager";
+export type UserRole = "admin" | "employee" | "hr-manager";
 
 export interface User {
+  _id?: string;
   id: string;
   name: string;
   fullName?: string;
@@ -27,6 +28,9 @@ export interface User {
   employeeId?: string;
   joinDate?: string;
   avatar?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type LoginForm = LoginRequest;

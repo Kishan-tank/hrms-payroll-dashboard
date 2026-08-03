@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BarChart2, Users, Clock, Umbrella, Coins, Download, Calendar, ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { reportsService, employeeService, attendanceService, leaveService, analyticsService } from '../services/hrmsApi';
+import {
+  reportsService,
+  employeeService,
+  attendanceService,
+  leaveService,
+  analyticsService,
+  ApiAnalyticsOverview,
+} from '../services/hrmsApi';
 import type { ApiEmployee, ApiAttendance, ApiLeave } from '../services/hrmsApi';
 
 import ExecutiveOverview from '../components/analytics/ExecutiveOverview';
@@ -38,11 +45,28 @@ const TABS = [
   { id: 'export', label: 'Export Center', icon: Download },
 ];
 
+function getRangeParam(label: string): string {
+  switch (label) {
+    case 'Last 12 Months':
+      return '12m';
+    case 'This Year':
+      return 'this_year';
+    case 'All Time':
+      return 'all';
+    case 'Last 6 Months':
+    default:
+      return '6m';
+  }
+}
+
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState('executive');
   const [loading, setLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dateRange, setDateRange] = useState('Last 6 Months');
+
+  // Real aggregated overview state
+  const [overview, setOverview] = useState<ApiAnalyticsOverview | null>(null);
 
   // Data states
   const [headcountData, setHeadcountData] = useState<any[]>([]);
@@ -59,8 +83,11 @@ export default function AnalyticsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
+      const rangeParam = getRangeParam(dateRange);
+
       try {
-        const [hc, pt, lb, da, empRes, attRes, levRes, pdRes] = await Promise.allSettled([
+        const [ovRes, hc, pt, lb, da, empRes, attRes, levRes, pdRes] = await Promise.allSettled([
+          analyticsService.getOverview(rangeParam),
           reportsService.getHeadcountTrend(),
           reportsService.getPayrollTrend(),
           reportsService.getLeaveBreakdown(),
@@ -71,7 +98,15 @@ export default function AnalyticsPage() {
           analyticsService.getPayrollDistribution(),
         ]);
 
-        if (hc.status === 'fulfilled') setHeadcountData(hc.value.trend.map(([name, headcount]) => ({ name, headcount })));
+        if (ovRes.status === 'fulfilled' && ovRes.value.success) {
+          setOverview(ovRes.value);
+          if (ovRes.value.headcountTrend) {
+            setHeadcountData(ovRes.value.headcountTrend);
+          }
+        } else if (hc.status === 'fulfilled') {
+          setHeadcountData(hc.value.trend.map(([name, headcount]) => ({ name, headcount })));
+        }
+
         if (pt.status === 'fulfilled') setPayrollTrend(pt.value.trend.map(([name, amount]) => ({ name, amount })));
         if (lb.status === 'fulfilled') setLeaveByType(lb.value.breakdown.map(([name, value, color]) => ({ name, value, color })));
         if (da.status === 'fulfilled') setDeptAttn(da.value.attendance.map(([name, attendance]) => ({ name, attendance })));
@@ -97,44 +132,28 @@ export default function AnalyticsPage() {
 
   const averageAttendancePercent = useMemo(() => {
     const total = attendanceRecords.length;
-    if (total === 0) return '—';
-    const presentCount = attendanceRecords.filter((record) => record.status === 'Present').length;
+    if (total === 0) return 'No data yet';
+    const presentCount = attendanceRecords.filter((record) => ['Present', 'Late'].includes(record.status)).length;
     return `${((presentCount / total) * 100).toFixed(1)}%`;
   }, [attendanceRecords]);
 
-  const attendanceTrend = useMemo(() => {
-    if (attendanceRecords.length === 0) return '—';
-    const monthStats = attendanceRecords.reduce((acc, record) => {
-      const date = new Date(record.date);
-      if (Number.isNaN(date.getTime())) return acc;
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const current = acc[monthKey] ?? { present: 0, total: 0 };
-      current.total += 1;
-      if (record.status === 'Present') current.present += 1;
-      acc[monthKey] = current;
-      return acc;
-    }, {} as Record<string, { present: number; total: number }>);
-
-    const months = Object.keys(monthStats).sort();
-    if (months.length < 2) return '—';
-    const lastMonth = monthStats[months[months.length - 1]];
-    const prevMonth = monthStats[months[months.length - 2]];
-    const lastPct = (lastMonth.present / lastMonth.total) * 100;
-    const prevPct = (prevMonth.present / prevMonth.total) * 100;
-    const diff = lastPct - prevPct;
-    return `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`;
-  }, [attendanceRecords]);
+  const totalHc = overview ? String(overview.totalHeadcount) : (latestHeadcount > 0 ? String(latestHeadcount) : '0');
+  const avgAttn = overview ? (overview.avgAttendance === '0.0%' ? 'No data yet' : overview.avgAttendance) : averageAttendancePercent;
+  const totalPay = overview ? (overview.totalPayrollRaw > 0 ? `₹${overview.totalPayroll}` : 'No data yet') : (latestPayroll > 0 ? `₹${latestPayroll}L` : 'No data yet');
+  const leaveUtil = overview ? (overview.leaveUtilization === '0.0%' ? 'No data yet' : overview.leaveUtilization) : 'No data yet';
+  const attrRisk = overview ? overview.attritionRisk : '0%';
 
   const summaryCards: [string, string | number, string, string, string][] = [
-    ['Total Headcount', latestHeadcount > 0 ? String(latestHeadcount) : '—', '', 'text-blue-500', 'bg-blue-50 dark:bg-blue-500/10'],
-    ['Avg Attendance', averageAttendancePercent, attendanceTrend, 'text-emerald-500', 'bg-emerald-50 dark:bg-emerald-500/10'],
-    ['Total Payroll', latestPayroll > 0 ? `₹${latestPayroll}L` : '—', '', 'text-purple-500', 'bg-purple-50 dark:bg-purple-500/10'],
+    ['Total Headcount', totalHc, '', 'text-blue-500', 'bg-blue-50 dark:bg-blue-500/10'],
+    ['Avg Attendance', avgAttn, '', 'text-emerald-500', 'bg-emerald-50 dark:bg-emerald-500/10'],
+    ['Total Payroll', totalPay, '', 'text-purple-500', 'bg-purple-50 dark:bg-purple-500/10'],
+    ['Leave Utilization', leaveUtil, '', 'text-violet-500', 'bg-violet-50 dark:bg-violet-500/10'],
+    ['Attrition Risk', attrRisk, '', 'text-red-500', 'bg-red-50 dark:bg-red-500/10'],
   ];
 
   return (
     <DashboardLayout title="Analytics">
       <div className="flex h-full flex-col space-y-6 pb-12">
-
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -146,33 +165,35 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-3">
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <Calendar className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                {dateRange}
-                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <Calendar className="h-4 w-4 text-blue-500" />
+                <span>{dateRange}</span>
+                <ChevronDown className="h-4 w-4 text-slate-400" />
               </button>
 
               {isDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                  <div className="absolute right-0 z-50 mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-slate-900">
-                    {['Last 30 Days', 'Last 6 Months', 'Year to Date', 'All Time'].map((option) => (
-                      <button
-                        key={option}
-                        onClick={() => { setDateRange(option); setIsDropdownOpen(false); }}
-                        className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                          dateRange === option
-                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
-                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </>
+                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-30 dark:border-white/10 dark:bg-slate-900">
+                  {['Last 6 Months', 'Last 12 Months', 'This Year', 'All Time'].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setDateRange(option);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={`w-full text-left rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
+                        dateRange === option
+                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                          : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -186,6 +207,7 @@ export default function AnalyticsPage() {
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
                     activeTab === tab.id
@@ -206,6 +228,7 @@ export default function AnalyticsPage() {
             <ExecutiveOverview
               summaryCards={summaryCards}
               headcountData={headcountData}
+              attritionRiskProfile={overview?.attritionRiskProfile}
               loading={loading}
               CustomTooltip={CustomTooltip}
             />
@@ -256,7 +279,6 @@ export default function AnalyticsPage() {
             />
           )}
         </div>
-
       </div>
     </DashboardLayout>
   );

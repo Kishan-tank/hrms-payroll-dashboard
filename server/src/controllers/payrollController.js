@@ -1,6 +1,9 @@
 import Payroll from "../models/payroll.js";
 import Employee from "../models/employee.js";
 
+// Validate editable payroll fields
+const VALID_STATUSES = ["Pending", "Processing", "Paid"];
+
 // Run payroll for a specific month/year
 export const runPayroll = async (req, res) => {
   try {
@@ -184,5 +187,83 @@ export const voidPayrollRecord = async (req, res) => {
     res.status(200).json({ success: true, message: "Payroll record voided successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to void payroll record", error: error.message });
+  }
+};
+
+// PATCH /api/payroll/:id — Admin-only: edit a payroll record
+export const editPayrollRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user?.role;
+
+    if (userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Only admin can edit payroll records" });
+    }
+
+    const record = await Payroll.findById(id);
+    if (!record) {
+      return res.status(404).json({ success: false, message: "Payroll record not found" });
+    }
+    if (!record.isActive) {
+      return res.status(400).json({ success: false, message: "Cannot edit a voided payroll record" });
+    }
+
+    const { basicPay, deductions, netPay, status } = req.body;
+
+    // Validate types if provided
+    if (basicPay !== undefined) {
+      const bp = Number(basicPay);
+      if (isNaN(bp) || bp < 0) {
+        return res.status(400).json({ success: false, message: "basicPay must be a non-negative number" });
+      }
+      record.basicPay = bp;
+      // Recalculate deductions + netPay automatically if basicPay is updated
+      // unless the caller is also explicitly overriding them
+      if (deductions === undefined && netPay === undefined) {
+        const pf = Math.round(bp * 0.12);
+        const tdsRate = bp < 50000 ? 0.10 : 0.20;
+        const tds = Math.round(bp * tdsRate);
+        record.deductions = pf + tds;
+        record.netPay = bp - record.deductions;
+      }
+    }
+
+    if (deductions !== undefined) {
+      const d = Number(deductions);
+      if (isNaN(d) || d < 0) {
+        return res.status(400).json({ success: false, message: "deductions must be a non-negative number" });
+      }
+      record.deductions = d;
+      // Recalculate netPay if not explicitly set
+      if (netPay === undefined) {
+        record.netPay = record.basicPay - d;
+      }
+    }
+
+    if (netPay !== undefined) {
+      const np = Number(netPay);
+      if (isNaN(np) || np < 0) {
+        return res.status(400).json({ success: false, message: "netPay must be a non-negative number" });
+      }
+      record.netPay = np;
+    }
+
+    if (status !== undefined) {
+      if (!VALID_STATUSES.includes(status)) {
+        return res.status(400).json({ success: false, message: `status must be one of: ${VALID_STATUSES.join(", ")}` });
+      }
+      if (status === "Paid" && !record.paidAt) {
+        record.paidAt = new Date();
+      }
+      record.status = status;
+    }
+
+    await record.save();
+    const populated = await record.populate("employeeId", "name employeeId department");
+
+    res.status(200).json({ success: true, message: "Payroll record updated successfully", record: populated });
+  } catch (error) {
+    console.error("editPayrollRecord error:", error);
+    res.status(500).json({ success: false, message: "Failed to update payroll record", error: error.message });
   }
 };

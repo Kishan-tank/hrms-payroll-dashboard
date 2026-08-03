@@ -2,6 +2,146 @@ import Employee from "../models/employee.js";
 import Leave from "../models/leave.js";
 import Payroll from "../models/payroll.js";
 import Attendance from "../models/attendance.js";
+import LeavePolicy from "../models/leavePolicy.js";
+
+// GET /api/analytics/overview — End-to-end real aggregation
+export const getAnalyticsOverview = async (req, res) => {
+  try {
+    const { range = "6m" } = req.query;
+
+    const now = new Date();
+    let startDate = new Date();
+
+    if (range === "12m") {
+      startDate.setMonth(now.getMonth() - 12);
+    } else if (range === "this_year") {
+      startDate = new Date(now.getFullYear(), 0, 1);
+    } else if (range === "all") {
+      startDate = new Date(0);
+    } else {
+      // Default: 6m
+      startDate.setMonth(now.getMonth() - 6);
+    }
+
+    // 1. Total Headcount (Active non-deleted employees)
+    const activeEmployees = await Employee.find({
+      isActive: { $ne: false },
+      status: { $ne: "Inactive" },
+    });
+    const totalHeadcount = activeEmployees.length;
+
+    // 2. Avg Attendance (% present/late within date range)
+    const attendanceRecords = await Attendance.find({
+      createdAt: { $gte: startDate },
+    });
+
+    let avgAttendance = "0.0%";
+    if (attendanceRecords.length > 0) {
+      const presentCount = attendanceRecords.filter((r) =>
+        ["Present", "Late"].includes(r.status)
+      ).length;
+      avgAttendance = `${((presentCount / attendanceRecords.length) * 100).toFixed(1)}%`;
+    }
+
+    // 3. Total Payroll (Sum of processed/approved payroll netPay in date range)
+    const payrollRecords = await Payroll.find({
+      createdAt: { $gte: startDate },
+    });
+    const totalPayrollRaw = payrollRecords.reduce((sum, p) => sum + (p.netPay || 0), 0);
+    const totalPayrollLakhs = (totalPayrollRaw / 100000).toFixed(1);
+
+    // 4. Leave Utilization % (Approved leave days / Total allotted leave policy days * 100)
+    const approvedLeaves = await Leave.find({
+      status: "Approved",
+      createdAt: { $gte: startDate },
+    });
+    const totalLeaveDaysTaken = approvedLeaves.reduce((sum, l) => sum + (l.days || 0), 0);
+
+    const activePolicies = await LeavePolicy.find({ isActive: true });
+    const totalPolicyDaysPerEmp = activePolicies.reduce((sum, p) => sum + (p.daysAllotted || 0), 0);
+    const totalOrganizationAllottedDays = (totalPolicyDaysPerEmp || 12) * (totalHeadcount || 1);
+
+    const leaveUtilizationPct = totalOrganizationAllottedDays > 0
+      ? `${((totalLeaveDaysTaken / totalOrganizationAllottedDays) * 100).toFixed(1)}%`
+      : "0.0%";
+
+    // 5. Attrition Risk (Option B: Real Deactivation/Removal Rate)
+    // Formula: (Inactive employees) / (Total employees ever, active + inactive) * 100
+    const allEmployees = await Employee.find({});
+    const totalAllEmployees = allEmployees.length;
+    const inactiveEmployees = allEmployees.filter(
+      (e) => e.isActive === false || e.status === "Inactive"
+    );
+
+    const overallDeactivationRate = totalAllEmployees > 0
+      ? Math.round((inactiveEmployees.length / totalAllEmployees) * 100)
+      : 0;
+
+    // Attrition Risk Profile by Department (Deactivation rate per department)
+    const deptMap = {};
+    allEmployees.forEach((emp) => {
+      const dept = emp.department || "General";
+      if (!deptMap[dept]) {
+        deptMap[dept] = { total: 0, inactive: 0 };
+      }
+      deptMap[dept].total += 1;
+      if (emp.isActive === false || emp.status === "Inactive") {
+        deptMap[dept].inactive += 1;
+      }
+    });
+
+    const attritionRiskProfile = Object.keys(deptMap).map((dept) => {
+      const { total, inactive } = deptMap[dept];
+      const riskScore = total > 0 ? Math.round((inactive / total) * 100) : 0;
+      return {
+        department: dept,
+        riskScore,
+        totalEmployees: total,
+        inactiveEmployees: inactive,
+      };
+    });
+
+    // 6. Real Headcount Growth Trend (Month by Month in date range)
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const headcountTrendMap = {};
+
+    activeEmployees.forEach((emp) => {
+      const d = emp.joinDate ? new Date(emp.joinDate) : new Date(emp.createdAt);
+      if (!isNaN(d.getTime()) && d >= startDate) {
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${monthNames[d.getMonth()]}`;
+        headcountTrendMap[monthKey] = (headcountTrendMap[monthKey] || 0) + 1;
+      }
+    });
+
+    const sortedMonthKeys = Object.keys(headcountTrendMap).sort();
+    let cumulativeHc = 0;
+    const headcountTrend = sortedMonthKeys.map((key) => {
+      cumulativeHc += headcountTrendMap[key];
+      const [, , monthLabel] = key.split("-");
+      return { name: monthLabel, headcount: cumulativeHc };
+    });
+
+    res.status(200).json({
+      success: true,
+      range,
+      totalHeadcount,
+      avgAttendance,
+      totalPayroll: `${totalPayrollLakhs}L`,
+      totalPayrollRaw,
+      leaveUtilization: leaveUtilizationPct,
+      attritionRisk: `${overallDeactivationRate}%`,
+      attritionRiskProfile,
+      headcountTrend,
+    });
+  } catch (error) {
+    console.error("getAnalyticsOverview error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch analytics overview",
+      error: error.message,
+    });
+  }
+};
 
 // Returns Attendance Heatmap data
 export const getAttendanceHeatmap = async (req, res) => {
@@ -71,42 +211,28 @@ export const getAttendanceHeatmap = async (req, res) => {
 
 export const getAttritionRisk = async (req, res) => {
   try {
-    const depts = await Employee.aggregate([
-      { 
-        $group: { 
-          _id: "$department", 
-          empCount: { $sum: 1 }, 
-          avgTenureMs: { $avg: { $subtract: [new Date(), "$joinDate"] } } 
-        } 
+    const allEmployees = await Employee.find({});
+    const deptMap = {};
+
+    allEmployees.forEach((emp) => {
+      const dept = emp.department || "General";
+      if (!deptMap[dept]) {
+        deptMap[dept] = { total: 0, inactive: 0 };
       }
-    ]);
-    
-    const leaves = await Leave.populate(await Leave.find(), { path: 'employeeId', select: 'department' });
-    const leaveMap = {};
-    leaves.forEach(l => {
-      if (l.employeeId && l.employeeId.department) {
-        const d = l.employeeId.department;
-        leaveMap[d] = (leaveMap[d] || 0) + 1;
+      deptMap[dept].total += 1;
+      if (emp.isActive === false || emp.status === "Inactive") {
+        deptMap[dept].inactive += 1;
       }
     });
 
-    let riskData = depts.map(d => {
-      const deptName = d._id;
-      const tenureYears = (d.avgTenureMs || 0) / (1000 * 60 * 60 * 24 * 365);
-      
-      const totalLeaves = leaveMap[deptName] || 0;
-      const leaveFrequency = d.empCount > 0 ? (totalLeaves / d.empCount) : 0;
-      
-      let riskScore = 10 + (leaveFrequency * 2) - (tenureYears * 2);
-      riskScore = Math.max(5, Math.min(95, Math.round(riskScore)));
-      
+    const riskData = Object.keys(deptMap).map((dept) => {
+      const { total, inactive } = deptMap[dept];
+      const riskScore = total > 0 ? Math.round((inactive / total) * 100) : 0;
       return {
-        department: deptName,
+        department: dept,
         riskScore,
-        factors: {
-          leaveFrequency: Math.round(leaveFrequency),
-          tenure: Math.round(tenureYears * 10) / 10
-        }
+        totalEmployees: total,
+        inactiveEmployees: inactive,
       };
     });
 

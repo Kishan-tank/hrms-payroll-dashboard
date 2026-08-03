@@ -257,10 +257,10 @@ export default function HeroSection() {
           {/* CTAs */}
           <div className="animate-fade-in-up animation-delay-300 flex justify-center lg:justify-start">
             <Link
-              to="/register"
+              to="/login"
               className="group flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-500 hover:shadow-blue-500/50 hover:scale-[1.02]"
             >
-              Start Free Trial
+              Sign In to Portal
               <ArrowRightIcon />
             </Link>
           </div>

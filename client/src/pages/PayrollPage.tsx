@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { payrollService } from '../services/hrmsApi';
@@ -31,6 +31,7 @@ export default function PayrollPage() {
   const { user } = useAuthContext();
   const toast = useToast();
   const isEmployee = user?.role === 'employee';
+  const isAdmin = user?.role === 'admin';
 
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -42,6 +43,11 @@ export default function PayrollPage() {
   const [runMsg, setRunMsg] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
   const [voidingId, setVoidingId] = useState<string | null>(null);
+
+  // Edit payroll modal state (admin-only)
+  const [editRecord, setEditRecord] = useState<PayrollRecord | null>(null);
+  const [editForm, setEditForm] = useState({ basicPay: '', deductions: '', netPay: '', status: '' });
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const { menuProps, handleContextMenu } = useContextMenu();
   const contextTargetRef = useRef<PayrollRecord | null>(null);
@@ -119,6 +125,39 @@ export default function PayrollPage() {
       toast.error(err.message || 'Failed to void payroll record');
     } finally {
       setVoidingId(null);
+    }
+  }
+
+  function openEditModal(row: PayrollRecord) {
+    setEditRecord(row);
+    setEditForm({
+      basicPay: String(row.basicPay ?? ''),
+      deductions: String(row.deductions ?? ''),
+      netPay: String(row.netPay ?? ''),
+      status: row.status ?? 'Processing',
+    });
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editRecord || editSubmitting) return;
+    const id = editRecord._id;
+    if (!id) return;
+    setEditSubmitting(true);
+    try {
+      const payload: { basicPay?: number; deductions?: number; netPay?: number; status?: string } = {};
+      if (editForm.basicPay !== '') payload.basicPay = Number(editForm.basicPay);
+      if (editForm.deductions !== '') payload.deductions = Number(editForm.deductions);
+      if (editForm.netPay !== '') payload.netPay = Number(editForm.netPay);
+      if (editForm.status !== '') payload.status = editForm.status;
+      await payrollService.edit(id as string, payload);
+      toast.success('Payroll record updated successfully.');
+      setEditRecord(null);
+      void fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update payroll record');
+    } finally {
+      setEditSubmitting(false);
     }
   }
 
@@ -342,6 +381,15 @@ export default function PayrollPage() {
           >
             Download
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => openEditModal(row)}
+              className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-600 transition hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
+            >
+              Edit
+            </button>
+          )}
           {row.status !== 'Paid' && (
             <button 
               type="button"
@@ -355,7 +403,7 @@ export default function PayrollPage() {
         </div>
       ),
     },
-  ], [voidingId]);
+  ], [voidingId, isAdmin]);
 
   const employeeColumns = useMemo<DataTableColumn<PayrollRecord>[]>(() => [
     {
@@ -741,6 +789,103 @@ export default function PayrollPage() {
         onDownload={handleDownloadPayslip}
       />
       <ContextMenu {...menuProps} />
+
+      {/* ── EDIT PAYROLL MODAL (Admin-only) ── */}
+      {editRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            onClick={() => setEditRecord(null)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/60">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">Edit Payroll Record</h2>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {editRecord.employeeId?.name ?? 'Employee'} — {editRecord.month} {editRecord.year}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditRecord(null)}
+                className="rounded-xl border border-white/10 p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Basic Pay (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editForm.basicPay}
+                  onChange={(e) => setEditForm((f) => ({ ...f, basicPay: e.target.value }))}
+                  placeholder="e.g. 50000"
+                  className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-slate-500">Deductions &amp; Net Pay recalculate automatically if left unchanged below.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Deductions (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.deductions}
+                    onChange={(e) => setEditForm((f) => ({ ...f, deductions: e.target.value }))}
+                    placeholder="Auto"
+                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Net Pay (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.netPay}
+                    onChange={(e) => setEditForm((f) => ({ ...f, netPay: e.target.value }))}
+                    placeholder="Auto"
+                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                  className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Paid">Paid</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditRecord(null)}
+                  className="flex-1 rounded-xl border border-white/10 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white transition hover:bg-blue-500 disabled:opacity-60"
+                >
+                  {editSubmitting ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

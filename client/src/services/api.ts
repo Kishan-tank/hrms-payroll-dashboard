@@ -27,18 +27,32 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (data: { email: string; password: string }) => api.post('/auth/login', data),
-  register: (data: { fullName: string; email: string; password: string; role?: string }) => api.post('/auth/register', {
-    name: data.fullName,
-    email: data.email,
-    password: data.password,
-    // Map display label → DB enum value ('hr-manager' matches the User model enum)
-    role: data.role === 'HR Manager' ? 'hr-manager' : 'employee',
-  }),
+  verifyOtp: (data: { tempToken: string; otp: string }) => api.post('/auth/login/verify-otp', data),
+  resendOtp: (data: { tempToken: string }) => api.post('/auth/login/resend-otp', data),
+  verifyAccount: (data: { email: string; otp: string }) => api.post('/auth/verify-account', data),
+  resendAccountVerification: (data: { email: string }) => api.post('/auth/verify-account/resend', data),
   /** Validate the stored token and return the current user from the server. */
   me: () => api.get('/auth/me'),
   logout: () => { localStorage.removeItem('token'); localStorage.removeItem('user'); },
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (password: string, resetToken: string) => api.put(`/auth/reset-password/${resetToken}`, { password }),
+  resendResetOtp: (email: string) => api.post('/auth/forgot-password/resend', { email }),
+  verifyResetOtp: (data: { email: string; otp: string }) => api.post('/auth/verify-reset-otp', data),
+  resetPassword: (data: { resetToken: string; newPassword: string; confirmPassword: string }) => api.post('/auth/reset-password', data),
+};
+
+export const userAPI = {
+  getUsers: (params?: { search?: string; role?: string; page?: number; limit?: number }) =>
+    api.get('/users', { params }),
+  initiateUser: (data: { name: string; email: string; role: string; department?: string; designation?: string }) =>
+    api.post('/users/initiate', data),
+  confirmUser: (data: { pendingId?: string; email?: string; otp: string; password?: string }) =>
+    api.post('/users/confirm', data),
+  resendPendingOtp: (data: { pendingId?: string; email?: string }) =>
+    api.post('/users/resend-otp', data),
+  updateRole: (id: string, role: string) =>
+    api.patch(`/users/${id}/role`, { role }),
+  deleteUser: (id: string) =>
+    api.delete(`/users/${id}`),
 };
 
 export default api;

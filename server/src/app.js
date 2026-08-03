@@ -19,6 +19,8 @@ import taskRoutes from "./routes/taskRoutes.js";
 import onboardingRoutes from "./routes/onboardingRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import helpCenterRoutes from "./routes/helpCenterRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import leavePolicyRoutes from "./routes/leavePolicyRoutes.js";
 const app = express();
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -37,7 +39,7 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -86,5 +88,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/help-center", helpCenterRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/leave-policies", leavePolicyRoutes);
 
 export default app;

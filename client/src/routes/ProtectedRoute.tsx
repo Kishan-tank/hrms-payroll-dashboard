@@ -14,8 +14,15 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (allowedRoles && allowedRoles.length > 0) {
-    if (!user.role || !allowedRoles.includes(user.role)) {
-      const fallback = user.role === 'employee' ? '/employee-dashboard' : '/hr-dashboard';
+    const userRole = String(user.role || '').toLowerCase();
+    const isAllowed = allowedRoles.includes(userRole) || userRole === 'admin';
+    if (!isAllowed) {
+      const fallback =
+        userRole === 'admin'
+          ? '/admin/users'
+          : userRole === 'employee'
+          ? '/employee-dashboard'
+          : '/hr-dashboard';
       return <Navigate to={fallback} replace />;
     }
   }

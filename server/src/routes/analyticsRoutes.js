@@ -1,6 +1,7 @@
 import express from "express";
 import { verifyToken, requireRole } from "../middleware/authMiddleware.js";
 import {
+  getAnalyticsOverview,
   getAttendanceHeatmap,
   getAttritionRisk,
   getLeaveApprovalTrend,
@@ -9,9 +10,10 @@ import {
 
 const router = express.Router();
 
-router.use(verifyToken); // Requires login
+router.use(verifyToken);
 
-// Only HR/Admin can access analytics
+// Access guard: Admin + HR + HR-Manager
+router.get("/overview", requireRole("hr", "admin", "hr-manager"), getAnalyticsOverview);
 router.get("/attendance-heatmap", requireRole("hr", "admin", "hr-manager"), getAttendanceHeatmap);
 router.get("/attrition-risk", requireRole("hr", "admin", "hr-manager"), getAttritionRisk);
 router.get("/leave-approval-trend", requireRole("hr", "admin", "hr-manager"), getLeaveApprovalTrend);

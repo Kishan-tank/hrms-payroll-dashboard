@@ -356,6 +356,11 @@ export const payrollService = {
   // HR/Admin only: void (soft-delete) a Processing/Pending payroll record
   void: (id: string) =>
     request<{ success: boolean; message: string }>('DELETE', `/payroll/${id}`),
+
+  // Admin-only: edit a payroll record
+  edit: (id: string, data: { basicPay?: number; deductions?: number; netPay?: number; status?: string }) =>
+    request<{ success: boolean; message: string; record: PayrollRecord }>('PATCH', `/payroll/${id}`, data),
+
 };
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -417,6 +422,32 @@ export const leaveService = {
     request<{ success: boolean; message: string }>('DELETE', `/leave/${id}/cancel`),
 };
 
+export interface ApiLeavePolicy {
+  _id: string;
+  name: string;
+  leaveType: string;
+  daysAllotted: number;
+  department?: string;
+  applicableRoles?: string[];
+  allowCarryForward?: boolean;
+  maxCarryForwardDays?: number;
+  isActive?: boolean;
+  createdAt?: string;
+}
+
+export const leavePolicyService = {
+  getPolicies: () => request<{ success: boolean; policies: ApiLeavePolicy[] }>('GET', '/leave-policies'),
+  createPolicy: (payload: {
+    name: string;
+    leaveType: string;
+    daysAllotted: number;
+    department?: string;
+    applicableRoles?: string[];
+    allowCarryForward?: boolean;
+    maxCarryForwardDays?: number;
+  }) => request<{ success: boolean; message: string; policy: ApiLeavePolicy }>('POST', '/leave-policies', payload),
+};
+
 // ─── AI Assistant ────────────────────────────────────────────────────────────
 
 export interface AIInsight {
@@ -437,7 +468,27 @@ export const aiService = {
 
 // ─── Analytics ───────────────────────────────────────────────────────────────
 
+export interface ApiAnalyticsOverview {
+  success: boolean;
+  range: string;
+  totalHeadcount: number;
+  avgAttendance: string;
+  totalPayroll: string;
+  totalPayrollRaw: number;
+  leaveUtilization: string;
+  attritionRisk: string;
+  attritionRiskProfile: Array<{
+    department: string;
+    riskScore: number;
+    totalEmployees: number;
+    inactiveEmployees: number;
+  }>;
+  headcountTrend: Array<{ name: string; headcount: number }>;
+}
+
 export const analyticsService = {
+  getOverview: (range: string = '6m') =>
+    request<ApiAnalyticsOverview>('GET', `/analytics/overview?range=${range}`),
   getAttendanceHeatmap: () => request<{ success: boolean; heatmap: any[] }>('GET', '/analytics/attendance-heatmap'),
   getAttritionRisk: () => request<{ success: boolean; attritionRisk: any[] }>('GET', '/analytics/attrition-risk'),
   getLeaveApprovalTrend: () => request<{ success: boolean; trend: any[] }>('GET', '/analytics/leave-approval-trend'),
