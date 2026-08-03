@@ -1,6 +1,12 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.js";
 import Employee from "../models/employee.js";
+import { sendEmail } from "../utils/mailer.js";
+import {
+  renderAccountCreatedEmail,
+  renderRoleUpdatedEmail,
+  renderAccountDeactivatedEmail,
+} from "../templates/emailTemplate.js";
 
 const normaliseRole = (rawRole) => {
   if (!rawRole) return "employee";
@@ -73,6 +79,17 @@ export const createUser = async (req, res) => {
       isActive: true,
     });
 
+    // Fire-and-forget welcome email notification
+    sendEmail({
+      to: user.email,
+      subject: "Welcome to HRMSPro - Account Created",
+      html: renderAccountCreatedEmail({
+        name: user.name,
+        email: user.email,
+        tempPassword: isTempPassword || password ? initialPassword : null,
+      }),
+    }).catch((err) => console.error("[Mailer] Account creation notification error:", err));
+
     const userResponse = user.toObject();
     delete userResponse.password;
 
@@ -144,6 +161,16 @@ export const updateUserRole = async (req, res) => {
       { $set: { role: newRole } }
     );
 
+    // Fire-and-forget role update notification email
+    sendEmail({
+      to: user.email,
+      subject: "HRMSPro Account Role Updated",
+      html: renderRoleUpdatedEmail({
+        name: user.name,
+        newRole,
+      }),
+    }).catch((err) => console.error("[Mailer] Role update notification error:", err));
+
     const userResponse = user.toObject();
     delete userResponse.password;
 
@@ -197,6 +224,15 @@ export const deleteUser = async (req, res) => {
       { $or: [{ userId: user._id }, { email: user.email }] },
       { $set: { status: "Inactive", isActive: false, deletedAt: new Date() } }
     );
+
+    // Fire-and-forget account deactivation notification email
+    sendEmail({
+      to: user.email,
+      subject: "HRMSPro Account Access Revoked",
+      html: renderAccountDeactivatedEmail({
+        name: user.name,
+      }),
+    }).catch((err) => console.error("[Mailer] Account deactivation notification error:", err));
 
     res.status(200).json({
       success: true,

@@ -5,9 +5,17 @@ import type { User } from '../types';
 import { authAPI } from '../services/api';
 import { useTheme } from './ThemeContext';
 
+interface LoginResponseData {
+  requiresOtp?: boolean;
+  tempToken?: string;
+  token?: string;
+  user?: User;
+}
+
 interface AuthContextValue {
   user: User | null;
-  login: (credentials: { email: string; password: string }, selectedRole?: string) => Promise<void>;
+  login: (credentials: { email: string; password: string }, selectedRole?: string) => Promise<LoginResponseData | void>;
+  completeLoginSession: (token: string, user: User) => void;
   logout: () => void;
   isLoading: boolean;
   error: string | null;
@@ -65,43 +73,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [navigate, setTheme],
   );
 
+  const completeLoginSession = useCallback(
+    (token: string, u: User) => {
+      localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(u));
+      setUser(u);
+      redirectByRole(u);
+    },
+    [redirectByRole]
+  );
+
   /** Real API login */
   const login = useCallback(
-    async (credentials: { email: string; password: string }, selectedRole?: string) => {
+    async (credentials: { email: string; password: string }, selectedRole?: string): Promise<LoginResponseData | void> => {
       setIsLoading(true);
       setError(null);
       try {
         const res = await authAPI.login(credentials);
-        const { token, user: u } = res.data as { token: string; user: User };
+        const data = res.data as LoginResponseData;
 
-        const actualRole = String(u.role).toLowerCase();
-
-        if (actualRole !== 'admin' && selectedRole && selectedRole !== actualRole) {
-          const expected = actualRole === 'hr-manager' ? 'HR Manager' : 'Employee';
-          throw new Error(`This account is registered as ${expected}. Please select ${expected} to continue.`);
+        if (data.requiresOtp && data.tempToken) {
+          return data;
         }
 
-        localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(u));
-        setUser(u);
-        redirectByRole(u);
+        if (data.token && data.user) {
+          const actualRole = String(data.user.role).toLowerCase();
+
+          if (actualRole !== 'admin' && selectedRole && selectedRole !== actualRole) {
+            const expected = actualRole === 'hr-manager' ? 'HR Manager' : 'Employee';
+            throw new Error(`This account is registered as ${expected}. Please select ${expected} to continue.`);
+          }
+
+          completeLoginSession(data.token, data.user);
+          return data;
+        }
       } catch (err: any) {
         console.error('Login error:', err);
         let msg = 'Login failed';
-        if (err instanceof Error) {
-          msg = err.message;
-        } else if (err?.response?.data?.message) {
+        if (err?.response?.data?.message) {
           msg = err.response.data.message;
         } else if (err?.message) {
           msg = err.message;
         }
         setError(msg);
+        throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    [redirectByRole],
+    [completeLoginSession],
   );
 
   const logout = useCallback(() => {
@@ -116,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, isLoading, error, clearError }}
+      value={{ user, login, completeLoginSession, logout, isLoading, error, clearError }}
     >
       {children}
     </AuthContext.Provider>

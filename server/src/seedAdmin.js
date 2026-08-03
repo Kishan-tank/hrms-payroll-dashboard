@@ -15,28 +15,32 @@ const seedAdmin = async () => {
     await mongoose.connect(mongoUri);
     console.log("Connected to MongoDB for admin seeding...");
 
+    const adminEmail = (process.env.ADMIN_EMAIL || "adminhrms080@gmail.com").toLowerCase().trim();
+    const adminPassword = process.env.ADMIN_PASSWORD || "AdminPassword123!";
+
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
     // Check if an admin account already exists
-    const existingAdmin = await User.findOne({ role: "admin" });
+    let existingAdmin = await User.findOne({ role: "admin" });
     if (existingAdmin) {
-      console.log(`Admin account already exists (${existingAdmin.email}). Skipping creation.`);
+      existingAdmin.email = adminEmail;
+      existingAdmin.password = hashedPassword;
+      await existingAdmin.save();
+
+      // Sync linked Employee profile
+      await Employee.updateOne(
+        { $or: [{ userId: existingAdmin._id }, { role: "admin" }] },
+        { $set: { email: adminEmail } }
+      );
+
+      console.log(`Admin account updated successfully to: ${adminEmail}`);
       await mongoose.disconnect();
       process.exit(0);
     }
 
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-
-    if (!adminEmail || !adminPassword) {
-      console.error("Error: ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required.");
-      await mongoose.disconnect();
-      process.exit(1);
-    }
-
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
-
     const adminUser = await User.create({
       name: "System Admin",
-      email: adminEmail.toLowerCase().trim(),
+      email: adminEmail,
       password: hashedPassword,
       role: "admin",
       department: "Administration",

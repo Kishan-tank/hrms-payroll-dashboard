@@ -1,6 +1,8 @@
 import express from "express";
 import {
   loginUser,
+  verifyOtp,
+  resendOtp,
   getCurrentUser,
   forgotPassword,
   resetPassword,
@@ -10,6 +12,8 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 router.post("/login", loginUser);
+router.post("/login/verify-otp", verifyOtp);
+router.post("/login/resend-otp", resendOtp);
 router.get("/me", verifyToken, getCurrentUser);
 router.post("/forgot-password", forgotPassword);
 router.put("/reset-password/:resetToken", resetPassword);
