@@ -1,7 +1,8 @@
 import Leave from "../models/leave.js";
 import Employee from "../models/employee.js";
-import { sendEmail } from "../utils/mailer.js";
+import { sendEmail, notifyChange } from "../utils/mailer.js";
 import { renderLeaveStatusEmail } from "../templates/emailTemplate.js";
+
 
 // Get all leave requests
 export const getLeaves = async (req, res) => {
@@ -74,7 +75,16 @@ export const applyLeave = async (req, res) => {
       reason,
       status: 'Pending'
     });
+
+    notifyChange({
+      user: employee,
+      action: "LEAVE_REQUESTED",
+      details: { type, dateRange: `${fromDate} to ${toDate}`, days: computedDays, reason },
+      actor: req.user,
+    });
+
     res.status(201).json({ success: true, message: "Leave applied successfully.", leave: newLeave });
+
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to apply leave.", error: error.message });
   }

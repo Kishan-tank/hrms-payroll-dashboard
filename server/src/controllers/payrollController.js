@@ -1,5 +1,6 @@
 import Payroll from "../models/payroll.js";
 import Employee from "../models/employee.js";
+import { notifyChange } from "../utils/mailer.js";
 
 // Validate editable payroll fields
 const VALID_STATUSES = ["Pending", "Processing", "Paid"];
@@ -61,12 +62,20 @@ export const runPayroll = async (req, res) => {
       return res.status(400).json({ success: false, message: "No active employees with a valid basic pay found" });
     }
 
-    const result = await Payroll.insertMany(payrollRecords);
+    const inserted = await Payroll.insertMany(payrollRecords);
+
+    // Audit notification for payroll run
+    notifyChange({
+      user: { email: process.env.ADMIN_EMAIL || process.env.EMAIL_USER, name: "All Employees" },
+      action: "PAYROLL_RUN",
+      details: { month, year, recordsGenerated: inserted.length },
+      actor: req.user,
+    });
 
     res.status(201).json({ 
       success: true, 
       message: `Payroll run successfully for ${activeEmployees.length} employees`,
-      recordsGenerated: result.length
+      recordsGenerated: inserted.length
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to run payroll", error: error.message });
@@ -184,7 +193,17 @@ export const voidPayrollRecord = async (req, res) => {
     record.deletedAt = new Date();
     await record.save();
 
+    const populated = await record.populate("employeeId", "name email employeeId department");
+
+    notifyChange({
+      user: populated.employeeId || { name: "Employee" },
+      action: "PAYROLL_VOID",
+      details: { month: record.month, year: record.year, recordId: id },
+      actor: req.user,
+    });
+
     res.status(200).json({ success: true, message: "Payroll record voided successfully" });
+
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to void payroll record", error: error.message });
   }
@@ -259,9 +278,17 @@ export const editPayrollRecord = async (req, res) => {
     }
 
     await record.save();
-    const populated = await record.populate("employeeId", "name employeeId department");
+    const populated = await record.populate("employeeId", "name email employeeId department");
+
+    notifyChange({
+      user: populated.employeeId || { name: "Employee" },
+      action: "PAYROLL_EDIT",
+      details: { month: record.month, year: record.year, basicPay: record.basicPay, deductions: record.deductions, netPay: record.netPay, status: record.status },
+      actor: req.user,
+    });
 
     res.status(200).json({ success: true, message: "Payroll record updated successfully", record: populated });
+
   } catch (error) {
     console.error("editPayrollRecord error:", error);
     res.status(500).json({ success: false, message: "Failed to update payroll record", error: error.message });

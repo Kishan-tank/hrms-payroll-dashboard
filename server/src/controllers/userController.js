@@ -88,12 +88,20 @@ export const initiateUser = async (req, res) => {
       html: renderAccountVerificationEmail(otpCode, 15),
     }).catch((err) => console.error("[Mailer] Pending user OTP send error:", err));
 
+    notifyChange({
+      user: { name: pendingUser.name, email: pendingUser.email },
+      action: "USER_INITIATE",
+      details: { role: pendingUser.role, department: pendingUser.department, designation: pendingUser.designation },
+      actor: req.user,
+    });
+
     res.status(200).json({
       success: true,
       pendingId: pendingUser._id,
       email: pendingUser.email,
       message: "Verification OTP code sent to user's email",
     });
+
   } catch (error) {
     console.error("initiateUser error:", error);
     res.status(500).json({
@@ -212,6 +220,14 @@ export const confirmUser = async (req, res) => {
         tempPassword: isTempPassword || password ? initialPassword : null,
       }),
     }).catch((err) => console.error("[Mailer] Account creation notification error:", err));
+
+    // Audit notification
+    notifyChange({
+      user,
+      action: "USER_CONFIRMED",
+      details: { role: user.role, department: user.department },
+      actor: req.user,
+    });
 
     const userResponse = user.toObject();
     delete userResponse.password;
@@ -450,7 +466,11 @@ export const getUsers = async (req, res) => {
 
     if (role && role !== "All") {
       const normRole = normaliseRole(role);
-      query.role = normRole;
+      if (normRole === "hr-manager") {
+        query.role = { $in: ["hr", "HR", "hr-manager", "HR Manager", "HR-Manager"] };
+      } else {
+        query.role = normRole;
+      }
     }
 
     const pageNum = parseInt(page, 10) || 1;

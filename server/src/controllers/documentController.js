@@ -1,5 +1,8 @@
 import Document from "../models/Document.js";
+import Employee from "../models/employee.js";
+import { notifyChange } from "../utils/mailer.js";
 import path from "path";
+
 
 export const uploadDocument = async (req, res) => {
   try {
@@ -18,7 +21,16 @@ export const uploadDocument = async (req, res) => {
       uploadedBy: req.user.id
     });
 
+    const targetEmp = employeeId ? await Employee.findById(employeeId) : null;
+    notifyChange({
+      user: targetEmp || { name: "All Staff", email: process.env.ADMIN_EMAIL },
+      action: "DOCUMENT_MUTATION",
+      details: { fileName: newDoc.title, type: newDoc.type, actionType: "Uploaded" },
+      actor: req.user,
+    });
+
     res.status(201).json({ success: true, document: newDoc });
+
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to upload document", error: error.message });
   }
@@ -52,8 +64,15 @@ export const deleteDocument = async (req, res) => {
     }
     
     await document.deleteOne();
-    // (Optional) Remove file from disk using fs.unlink
+    const targetEmp = document.employeeId ? await Employee.findById(document.employeeId) : null;
+    notifyChange({
+      user: targetEmp || { name: "All Staff", email: process.env.ADMIN_EMAIL },
+      action: "DOCUMENT_MUTATION",
+      details: { fileName: document.title, type: document.type, actionType: "Deleted" },
+      actor: req.user,
+    });
     res.status(200).json({ success: true, message: "Document deleted" });
+
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to delete document", error: error.message });
   }

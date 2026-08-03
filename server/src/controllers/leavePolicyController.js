@@ -1,4 +1,6 @@
 import LeavePolicy from "../models/leavePolicy.js";
+import { notifyChange } from "../utils/mailer.js";
+
 
 // POST /api/leave-policies — Admin creates a leave policy
 export const createLeavePolicy = async (req, res) => {
@@ -76,11 +78,19 @@ export const createLeavePolicy = async (req, res) => {
       createdBy: req.user.id,
     });
 
+    notifyChange({
+      user: { name: "All Organization Members", email: process.env.ADMIN_EMAIL },
+      action: "LEAVE_POLICY_MUTATION",
+      details: { policyName: policy.name, leaveType: policy.leaveType, daysAllotted: policy.daysAllotted, actionType: "Created" },
+      actor: req.user,
+    });
+
     res.status(201).json({
       success: true,
       message: "Leave policy created successfully",
       policy,
     });
+
   } catch (error) {
     console.error("createLeavePolicy error:", error);
     res.status(500).json({

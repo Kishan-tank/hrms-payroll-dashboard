@@ -2,18 +2,22 @@ import Goal from "../models/Goal.js";
 import Task from "../models/Task.js";
 import PerformanceReview from "../models/PerformanceReview.js";
 import Employee from "../models/employee.js";
+import { notifyChange } from "../utils/mailer.js";
 
 // Helper to get Employee ID from logged-in user email
 const getEmployeeId = async (user, providedEmpId) => {
-    if (providedEmpId && user.role === "hr-manager") {
+    const role = user.role ? String(user.role).toLowerCase() : "";
+    if (providedEmpId && (role === "admin" || role.includes("hr"))) {
         return providedEmpId;
     }
     const employee = await Employee.findOne({ email: user.email });
     if (!employee) {
+        if (role === "admin") return null;
         throw new Error("Employee profile not found for the logged-in user.");
     }
     return employee._id;
 };
+
 
 // =================== GOALS ===================
 
@@ -40,7 +44,16 @@ export const createGoal = async (req, res) => {
         });
 
         await goal.save();
+        const emp = await Employee.findById(employeeId);
+        notifyChange({
+            user: emp || { name: "Employee" },
+            action: "GOAL_MUTATION",
+            details: { title, actionType: "Created", dueDate: dueDate || "No due date" },
+            actor: req.user,
+        });
+
         res.status(201).json({ success: true, goal, message: "Goal created successfully" });
+
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -55,7 +68,15 @@ export const updateGoal = async (req, res) => {
             { new: true }
         );
         if (!goal) return res.status(404).json({ success: false, message: "Goal not found" });
+        const emp = await Employee.findById(goal.employeeId);
+        notifyChange({
+            user: emp || { name: "Employee" },
+            action: "GOAL_MUTATION",
+            details: { title: goal.title, actionType: "Updated", progress: goal.progress },
+            actor: req.user,
+        });
         res.status(200).json({ success: true, goal, message: "Goal updated successfully" });
+
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -65,7 +86,15 @@ export const deleteGoal = async (req, res) => {
     try {
         const goal = await Goal.findByIdAndDelete(req.params.id);
         if (!goal) return res.status(404).json({ success: false, message: "Goal not found" });
+        const emp = await Employee.findById(goal.employeeId);
+        notifyChange({
+            user: emp || { name: "Employee" },
+            action: "GOAL_MUTATION",
+            details: { title: goal.title, actionType: "Deleted" },
+            actor: req.user,
+        });
         res.status(200).json({ success: true, message: "Goal deleted successfully" });
+
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -96,7 +125,15 @@ export const createTask = async (req, res) => {
         });
 
         await task.save();
+        const emp = await Employee.findById(employeeId);
+        notifyChange({
+            user: emp || { name: "Employee" },
+            action: "TASK_MUTATION",
+            details: { title, actionType: "Created", priority, status },
+            actor: req.user,
+        });
         res.status(201).json({ success: true, task, message: "Task created successfully" });
+
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -163,9 +200,17 @@ export const createPerformanceReview = async (req, res) => {
         });
 
         await review.save();
-        await review.populate("employeeId", "name department role");
+        await review.populate("employeeId", "name email department role");
+
+        notifyChange({
+            user: review.employeeId || { name: "Employee" },
+            action: "PERFORMANCE_REVIEW_CREATED",
+            details: { reviewPeriod, score, managerFeedback },
+            actor: req.user,
+        });
+
         res.status(201).json({ success: true, review, message: "Performance review submitted successfully" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
-};
+};

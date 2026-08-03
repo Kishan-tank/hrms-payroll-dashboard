@@ -1,10 +1,19 @@
 import Employee from "../models/employee.js";
+import { notifyChange } from "../utils/mailer.js";
+
 
 // Add new employee
 export const addEmployee = async (req, res) => {
   try {
     const newEmployee = await Employee.create(req.body);
+    notifyChange({
+      user: newEmployee,
+      action: "EMPLOYEE_PROFILE_UPDATED",
+      details: { name: newEmployee.name, department: newEmployee.department, role: newEmployee.role, actionType: "Created" },
+      actor: req.user,
+    });
     res.status(201).json({ success: true, employee: newEmployee });
+
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ success: false, message: "Employee ID or Email already exists" });
@@ -99,7 +108,14 @@ export const updateEmployee = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ success: false, message: "Employee not found" });
     }
+    notifyChange({
+      user: employee,
+      action: "EMPLOYEE_PROFILE_UPDATED",
+      details: { name: employee.name, department: employee.department, role: employee.role, actionType: "Updated" },
+      actor: req.user,
+    });
     res.status(200).json({ success: true, employee });
+
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update employee", error: error.message });
   }
@@ -113,7 +129,14 @@ export const deleteEmployee = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ success: false, message: "Employee not found" });
     }
+    notifyChange({
+      user: employee,
+      action: "ACCOUNT_DEACTIVATE",
+      details: { email: employee.email },
+      actor: req.user,
+    });
     res.status(200).json({ success: true, message: "Employee deactivated successfully" });
+
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to delete employee", error: error.message });
   }

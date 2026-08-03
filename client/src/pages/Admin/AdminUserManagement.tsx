@@ -214,6 +214,14 @@ export default function AdminUserManagement() {
     }
   };
 
+  const getNormalizedRole = (rawRole?: string) => {
+    if (!rawRole) return 'employee';
+    const r = String(rawRole).toLowerCase().replace(/\s+/g, '-');
+    if (r === 'admin') return 'admin';
+    if (r.includes('hr')) return 'hr-manager';
+    return 'employee';
+  };
+
   const handleToggleRole = async (user: User) => {
     if (actionLoadingId) return;
 
@@ -223,19 +231,30 @@ export default function AdminUserManagement() {
       return;
     }
 
-    const currentRole = String(user.role).toLowerCase();
-    if (currentRole === 'admin') {
+    const normRole = getNormalizedRole(user.role);
+    if (normRole === 'admin') {
       toast.error('Admin role cannot be changed');
       return;
     }
 
-    const nextRole = currentRole === 'employee' ? 'hr-manager' : 'employee';
+    const nextRole = normRole === 'employee' ? 'hr-manager' : 'employee';
     setActionLoadingId(userId);
 
     try {
       const res = await userAPI.updateRole(userId, nextRole);
       if (res.data.success) {
         toast.success(`Updated ${user.name}'s role to ${nextRole === 'hr-manager' ? 'HR Manager' : 'Employee'}`);
+        const updatedUserObj = res.data.user;
+        // Optimistic local state update for instant UI feedback
+        setUsers((prev) =>
+          prev.map((u) => {
+            const uId = u._id || (u as any).id;
+            if (uId === userId) {
+              return updatedUserObj ? { ...u, ...updatedUserObj, role: nextRole } : { ...u, role: nextRole };
+            }
+            return u;
+          })
+        );
         fetchUsers(currentPage, searchQuery, roleFilter);
       } else {
         toast.error(res.data.message || 'Failed to update role');
@@ -258,6 +277,8 @@ export default function AdminUserManagement() {
       const res = await userAPI.deleteUser(userId);
       if (res.data.success) {
         toast.success(`User ${userToDelete.name} deactivated successfully!`);
+        // Optimistic local state update
+        setUsers((prev) => prev.filter((u) => (u._id || (u as any).id) !== userId));
         setUserToDelete(null);
         fetchUsers(currentPage, searchQuery, roleFilter);
       }
@@ -289,14 +310,14 @@ export default function AdminUserManagement() {
       key: 'role',
       header: 'Role',
       render: (user: User) => {
-        const r = String(user.role).toLowerCase();
+        const normRole = getNormalizedRole(user.role);
         let bgClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
         let label = 'Employee';
 
-        if (r === 'admin') {
+        if (normRole === 'admin') {
           bgClass = 'bg-purple-500/15 text-purple-300 border-purple-500/30';
           label = 'System Admin';
-        } else if (r === 'hr-manager') {
+        } else if (normRole === 'hr-manager') {
           bgClass = 'bg-blue-500/15 text-blue-300 border-blue-500/30';
           label = 'HR Manager';
         }
@@ -338,7 +359,8 @@ export default function AdminUserManagement() {
       header: 'Actions',
       render: (user: User) => {
         const userId = user._id || (user as any).id;
-        const isCurrentAdmin = String(user.role).toLowerCase() === 'admin';
+        const normRole = getNormalizedRole(user.role);
+        const isCurrentAdmin = normRole === 'admin';
         const isLoadingThis = actionLoadingId === userId;
 
         if (isCurrentAdmin) {
@@ -353,7 +375,7 @@ export default function AdminUserManagement() {
               disabled={isLoadingThis}
               className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
             >
-              {isLoadingThis ? '...' : String(user.role).toLowerCase() === 'employee' ? 'Make HR' : 'Make Employee'}
+              {isLoadingThis ? '...' : normRole === 'employee' ? 'Make HR' : 'Make Employee'}
             </button>
 
             <button

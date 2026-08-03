@@ -367,3 +367,67 @@ export const renderAccountDeactivatedEmail = ({ name, email, isAdminNotice = fal
 
   return renderEmailWrapper({ title, bodyHtml });
 };
+
+/** Centralized Generic System Notification Email Template (User & Admin Audit copies) */
+export const renderGenericNotificationEmail = ({
+  actionBadge = "System Notification",
+  badgeVariant = "info", // info | success | warning | danger
+  heading,
+  description,
+  detailsMap = {},
+  isAdminNotice = false,
+  actorName = "HR/Admin",
+  timestamp = new Date().toLocaleString(),
+}) => {
+  const badgeClass =
+    badgeVariant === "success"
+      ? "badge-success"
+      : badgeVariant === "warning"
+      ? "badge-warning"
+      : badgeVariant === "danger"
+      ? "badge-danger"
+      : "badge-info";
+
+  const detailsRows = Object.entries(detailsMap)
+    .filter(([_, v]) => v !== undefined && v !== null && v !== "")
+    .map(([k, v]) => `<p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>${k}:</strong> ${v}</p>`)
+    .join("");
+
+  const detailsBox = detailsRows
+    ? `<div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">Action Summary</p>
+        ${detailsRows}
+      </div>`
+    : "";
+
+  const title = isAdminNotice
+    ? `HRMSPro Audit: ${heading}`
+    : `HRMSPro: ${heading}`;
+
+  const bodyHtml = isAdminNotice
+    ? `
+      <div>
+        <span class="badge ${badgeClass}">Admin Audit Trail</span>
+        <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">${heading}</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+          Action performed by <strong>${actorName}</strong> on <code>${timestamp}</code>.
+        </p>
+        <p style="color: #cbd5e1; font-size: 14px; margin-top: 12px;">${description}</p>
+        ${detailsBox}
+      </div>
+    `
+    : `
+      <div>
+        <span class="badge ${badgeClass}">${actionBadge}</span>
+        <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">${heading}</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">${description}</p>
+        ${detailsBox}
+        <p style="color: #64748b; font-size: 12px; margin-top: 20px;">
+          If you have questions regarding this update, please contact your HR administrator.
+        </p>
+      </div>
+    `;
+
+  return renderEmailWrapper({ title, bodyHtml });
+};
+

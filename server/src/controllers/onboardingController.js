@@ -1,4 +1,6 @@
 import Onboarding from '../models/Onboarding.js';
+import { notifyChange } from '../utils/mailer.js';
+
 
 const DEFAULT_STEPS = [
   {
@@ -68,7 +70,16 @@ export const updateOnboardingState = async (req, res) => {
       { new: true, upsert: true }
     );
 
+    const completedCount = steps ? steps.filter((s) => s.status === 'completed').length : 0;
+    notifyChange({
+      user: req.user,
+      action: "ONBOARDING_UPDATED",
+      details: { completedSteps: completedCount, totalSteps: steps ? steps.length : 5 },
+      actor: req.user,
+    });
+
     res.status(200).json({ success: true, onboarding });
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -94,12 +105,19 @@ import Employee from '../models/employee.js';
 export const saveProfile = async (req, res) => {
   try {
     const { phone, dob, gender, address } = req.body;
-    await Employee.findOneAndUpdate(
+    const emp = await Employee.findOneAndUpdate(
       { $or: [{ userId: req.user.id }, { email: req.user.email }] },
       { phone, dob, gender, address },
       { new: true }
     );
+    notifyChange({
+      user: emp || req.user,
+      action: "EMPLOYEE_PROFILE_UPDATED",
+      details: { section: "Personal Information & Address" },
+      actor: req.user,
+    });
     res.status(200).json({ success: true, message: 'Profile saved successfully' });
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -108,12 +126,19 @@ export const saveProfile = async (req, res) => {
 export const saveBank = async (req, res) => {
   try {
     const { account, ifsc, bankName } = req.body;
-    await Employee.findOneAndUpdate(
+    const emp = await Employee.findOneAndUpdate(
       { $or: [{ userId: req.user.id }, { email: req.user.email }] },
       { bankAccount: account, ifscCode: ifsc, bankName },
       { new: true }
     );
+    notifyChange({
+      user: emp || req.user,
+      action: "EMPLOYEE_PROFILE_UPDATED",
+      details: { section: "Bank Account Details", bankName },
+      actor: req.user,
+    });
     res.status(200).json({ success: true, message: 'Bank details saved successfully' });
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

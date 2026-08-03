@@ -1,18 +1,22 @@
 import Event from "../models/Event.js";
 import Skill from "../models/Skill.js";
 import Employee from "../models/employee.js";
+import { notifyChange } from "../utils/mailer.js";
 
 // Helper to get Employee ID from logged-in user email
 const getEmployeeId = async (user, providedEmpId) => {
-    if (providedEmpId && user.role === "hr-manager") {
+    const role = user.role ? String(user.role).toLowerCase() : "";
+    if (providedEmpId && (role === "admin" || role.includes("hr"))) {
         return providedEmpId;
     }
     const employee = await Employee.findOne({ email: user.email });
     if (!employee) {
+        if (role === "admin") return null;
         throw new Error("Employee profile not found for the logged-in user.");
     }
     return employee._id;
 };
+
 
 // =================== COMPANY EVENTS ===================
 
@@ -40,7 +44,16 @@ export const createEvent = async (req, res) => {
         });
 
         await event.save();
+
+        notifyChange({
+            user: { name: "All Company Staff", email: process.env.ADMIN_EMAIL },
+            action: "EVENT_MUTATION",
+            details: { eventTitle: title, eventType: event.type, eventDate: new Date(date).toLocaleDateString(), actionType: "Created" },
+            actor: req.user,
+        });
+
         res.status(201).json({ success: true, event, message: "Event created successfully" });
+
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -50,7 +63,16 @@ export const deleteEvent = async (req, res) => {
     try {
         const event = await Event.findByIdAndDelete(req.params.id);
         if (!event) return res.status(404).json({ success: false, message: "Event not found" });
+
+        notifyChange({
+            user: { name: "All Company Staff", email: process.env.ADMIN_EMAIL },
+            action: "EVENT_MUTATION",
+            details: { eventTitle: event.title, eventType: event.type, eventDate: new Date(event.date).toLocaleDateString(), actionType: "Deleted" },
+            actor: req.user,
+        });
+
         res.status(200).json({ success: true, message: "Event deleted successfully" });
+
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -98,8 +120,17 @@ export const createSkill = async (req, res) => {
         });
 
         await skill.save();
-        await skill.populate("employeeId", "name department role");
+        await skill.populate("employeeId", "name email department role");
+
+        notifyChange({
+            user: skill.employeeId || { name: "Employee" },
+            action: "SKILL_MUTATION",
+            details: { skillName: name, proficiency: `${proficiency}%`, actionType: "Created" },
+            actor: req.user,
+        });
+
         res.status(201).json({ success: true, skill, message: "Skill added successfully" });
+
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -115,7 +146,16 @@ export const endorseSkill = async (req, res) => {
         ).populate("employeeId", "name department role");
 
         if (!skill) return res.status(404).json({ success: false, message: "Skill not found" });
+
+        notifyChange({
+            user: skill.employeeId || { name: "Employee" },
+            action: "SKILL_MUTATION",
+            details: { skillName: skill.name, endorsements: skill.endorsements, actionType: "Endorsed" },
+            actor: req.user,
+        });
+
         res.status(200).json({ success: true, skill, message: "Skill endorsed successfully" });
+
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
