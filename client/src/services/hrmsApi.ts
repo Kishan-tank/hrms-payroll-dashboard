@@ -510,6 +510,17 @@ export const analyticsService = {
 
 // ─── Documents ───────────────────────────────────────────────────────────────
 
+export interface ApiDocument {
+  _id: string;
+  employeeId?: string | { _id: string; name: string; department: string; email?: string } | null;
+  title: string;
+  type: 'Offer Letter' | 'Payslip' | 'Policy' | 'Other' | 'ID Proof' | string;
+  fileUrl: string;
+  uploadedBy?: string | { _id: string; name: string; role?: string } | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const documentService = {
   getAll: (employeeId?: string) => request<{ success: boolean; documents: ApiDocument[] }>('GET', employeeId ? `/documents?employeeId=${employeeId}` : '/documents'),
   upload: async (formData: FormData) => {
