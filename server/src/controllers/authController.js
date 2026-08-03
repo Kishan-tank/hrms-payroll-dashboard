@@ -4,7 +4,12 @@ import crypto from "crypto";
 import User from "../models/user.js";
 import Employee from "../models/employee.js";
 import { sendEmail } from "../utils/mailer.js";
-import { renderOtpEmail, renderAccountVerificationEmail } from "../templates/emailTemplate.js";
+import {
+  renderOtpEmail,
+  renderAccountVerificationEmail,
+  renderPasswordResetOtpEmail,
+  renderPasswordChangedEmail,
+} from "../templates/emailTemplate.js";
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -465,37 +470,59 @@ export const getCurrentUser = async (req, res) => {
   }
 };
 
+// ============================================================
+// STEP 1: Request reset OTP  POST /auth/forgot-password
+// ============================================================
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email: email ? email.toLowerCase().trim() : "" });
+    const GENERIC = "If this email is registered, a verification code has been sent.";
 
-    if (!user) {
-      return res.status(200).json({ success: true, message: "If an account with that email exists, a reset link has been sent." });
+    if (!email) return res.status(200).json({ success: true, message: GENERIC });
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    // Always return the generic response — don't reveal whether the email exists
+    if (!user) return res.status(200).json({ success: true, message: GENERIC });
+
+    if (!user.isActive) return res.status(200).json({ success: true, message: GENERIC });
+
+    // 30-second cooldown (same pattern as login OTP resend)
+    if (user.resetOtpLastSentAt) {
+      const elapsed = Date.now() - new Date(user.resetOtpLastSentAt).getTime();
+      if (elapsed < 30000) {
+        const remainingSec = Math.ceil((30000 - elapsed) / 1000);
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${remainingSec} seconds before requesting another code.`,
+        });
+      }
     }
 
-    const resetToken = crypto.randomBytes(20).toString("hex");
-    user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = await bcrypt.hash(otpCode, 10);
 
+    user.resetOtpHash = otpHash;
+    user.resetOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    user.resetOtpAttempts = 0;
+    user.resetOtpLastSentAt = new Date();
     await user.save();
 
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    console.log(`\n==================================================`);
+    console.log(`🔑 [DEV RESET OTP] Code for ${user.email}: ${otpCode}`);
+    console.log(`==================================================\n`);
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: user.email,
-      subject: "Password Reset Request - HRMSPro",
-      html: `
-        <h3>Password Reset Request</h3>
-        <p>You requested a password reset. Click the link below to set a new password:</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
-        <p>This link is valid for 15 minutes.</p>
-      `,
+      subject: "HRMSPro: Reset your password",
+      html: renderPasswordResetOtpEmail(otpCode, 10),
     });
 
     res.status(200).json({
       success: true,
-      message: "If an account with that email exists, a reset link has been sent.",
+      message: emailResult.success
+        ? GENERIC
+        : `Email delivery failed (${emailResult.error}). Check server terminal for dev code: ${otpCode}`,
     });
   } catch (error) {
     console.error("forgotPassword error:", error);
@@ -503,32 +530,187 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-export const resetPassword = async (req, res) => {
+// ============================================================
+// RESEND reset OTP  POST /auth/forgot-password/resend
+// ============================================================
+export const resendResetOtp = async (req, res) => {
   try {
-    const resetPasswordToken = crypto.createHash("sha256").update(req.params.resetToken).digest("hex");
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: "Email is required" });
 
-    const user = await User.findOne({
-      resetPasswordToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).json({ success: false, message: "Invalid or expired token" });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user || !user.isActive) {
+      return res.status(200).json({ success: true, message: "If this email is registered, a new code has been sent." });
     }
 
-    const { password } = req.body;
-    if (!password || password.length < 8) {
+    if (user.resetOtpLastSentAt) {
+      const elapsed = Date.now() - new Date(user.resetOtpLastSentAt).getTime();
+      if (elapsed < 30000) {
+        const remainingSec = Math.ceil((30000 - elapsed) / 1000);
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${remainingSec} seconds before requesting another code.`,
+        });
+      }
+    }
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+
+    user.resetOtpHash = otpHash;
+    user.resetOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.resetOtpAttempts = 0;
+    user.resetOtpLastSentAt = new Date();
+    await user.save();
+
+    console.log(`\n==================================================`);
+    console.log(`🔑 [DEV RESET OTP RESEND] Code for ${user.email}: ${otpCode}`);
+    console.log(`==================================================\n`);
+
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: "HRMSPro: Reset your password",
+      html: renderPasswordResetOtpEmail(otpCode, 10),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: emailResult.success
+        ? "A new verification code has been sent."
+        : `Email failed. Check server terminal for dev code: ${otpCode}`,
+    });
+  } catch (error) {
+    console.error("resendResetOtp error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ============================================================
+// STEP 2: Verify reset OTP  POST /auth/verify-reset-otp
+// ============================================================
+export const verifyResetOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: "Email and code are required" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    if (!user || !user.isActive || !user.resetOtpHash || !user.resetOtpExpiresAt) {
+      return res.status(400).json({ success: false, message: "Invalid or expired code" });
+    }
+
+    if (new Date() > new Date(user.resetOtpExpiresAt)) {
+      user.resetOtpHash = undefined;
+      user.resetOtpExpiresAt = undefined;
+      user.resetOtpAttempts = 0;
+      await user.save();
+      return res.status(400).json({ success: false, message: "Invalid or expired code" });
+    }
+
+    if ((user.resetOtpAttempts || 0) >= 5) {
+      user.resetOtpHash = undefined;
+      user.resetOtpExpiresAt = undefined;
+      user.resetOtpAttempts = 0;
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        message: "Max attempts exceeded. Please request a new code.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(String(otp).trim(), user.resetOtpHash);
+
+    if (!isMatch) {
+      user.resetOtpAttempts = (user.resetOtpAttempts || 0) + 1;
+      await user.save();
+      return res.status(400).json({ success: false, message: "Invalid or expired code" });
+    }
+
+    // OTP correct — clear it (single use) and issue a short-lived reset JWT
+    user.resetOtpHash = undefined;
+    user.resetOtpExpiresAt = undefined;
+    user.resetOtpAttempts = 0;
+    user.resetOtpLastSentAt = undefined;
+    await user.save();
+
+    const resetToken = jwt.sign(
+      { id: user._id, purpose: "password-reset" },
+      process.env.JWT_SECRET,
+      { expiresIn: "10m" }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "OTP verified. You may now set a new password.",
+      resetToken,
+    });
+  } catch (error) {
+    console.error("verifyResetOtp error:", error);
+    res.status(500).json({ success: false, message: "Verification failed" });
+  }
+};
+
+// ============================================================
+// STEP 3: Set new password  POST /auth/reset-password
+// ============================================================
+export const resetPassword = async (req, res) => {
+  try {
+    const { resetToken, newPassword, confirmPassword } = req.body;
+
+    if (!resetToken) {
+      return res.status(400).json({ success: false, message: "Reset token is required" });
+    }
+
+    // Verify JWT signature, expiry, and purpose claim
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: "Invalid or expired reset session. Please start over." });
+    }
+
+    if (!decoded || decoded.purpose !== "password-reset") {
+      return res.status(400).json({ success: false, message: "Invalid reset token" });
+    }
+
+    // Server-side password validation
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, message: "New password and confirmation are required" });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: "Passwords do not match" });
+    }
+    if (newPassword.length < 8) {
       return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
     }
 
+    const user = await User.findById(decoded.id);
+    if (!user || !user.isActive) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
     const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
+    user.password = await bcrypt.hash(newPassword, salt);
+    // Invalidate any leftover reset OTP fields for cleanliness
+    user.resetOtpHash = undefined;
+    user.resetOtpExpiresAt = undefined;
+    user.resetOtpAttempts = 0;
+    user.resetOtpLastSentAt = undefined;
+    // Also keep old fields cleared (backward-compat)
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
-
     await user.save();
 
-    res.status(200).json({ success: true, message: "Password reset successful" });
+    // Fire-and-forget security confirmation email
+    sendEmail({
+      to: user.email,
+      subject: "HRMSPro: Your password was changed",
+      html: renderPasswordChangedEmail(user.name),
+    }).catch((err) => console.error("[Mailer] Password changed confirmation error:", err));
+
+    res.status(200).json({ success: true, message: "Password reset successful. You can now log in." });
   } catch (error) {
     console.error("resetPassword error:", error);
     res.status(500).json({ success: false, message: "Server error" });

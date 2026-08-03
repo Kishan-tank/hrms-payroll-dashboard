@@ -154,6 +154,52 @@ export const renderOtpEmail = (otpCode, expiresMinutes = 5) => {
   return renderEmailWrapper({ title: "HRMSPro Login Verification Code", bodyHtml });
 };
 
+/** Password Reset OTP Email Template (10 min expiry) */
+export const renderPasswordResetOtpEmail = (otpCode, expiresMinutes = 10) => {
+  const bodyHtml = `
+    <div style="text-align: center;">
+      <span class="badge badge-warning">Password Reset Request</span>
+      <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Reset Your Password</h2>
+      <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+        We received a request to reset the password for your <strong>HRMSPro</strong> account. Use the code below to proceed.
+      </p>
+      
+      <div class="otp-box">
+        <p class="otp-code">${otpCode}</p>
+        <p style="color: #64748b; font-size: 11px; margin-top: 8px;">Valid for ${expiresMinutes} minutes · Single use</p>
+      </div>
+
+      <p style="color: #64748b; font-size: 12px;">
+        If you did <strong>not</strong> request a password reset, you can safely ignore this email.
+        Your password will remain unchanged.
+      </p>
+    </div>
+  `;
+  return renderEmailWrapper({ title: "HRMSPro: Reset your password", bodyHtml });
+};
+
+/** Password Successfully Changed Confirmation Email */
+export const renderPasswordChangedEmail = (name) => {
+  const bodyHtml = `
+    <div>
+      <span class="badge badge-success">Password Changed</span>
+      <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Your password was changed</h2>
+      <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+        Hi <strong>${name || 'there'}</strong>, your <strong>HRMSPro</strong> account password was successfully reset on ${new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}.
+      </p>
+      <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; padding: 16px; margin: 20px 0; text-align: center;">
+        <p style="color: #34d399; font-size: 14px; font-weight: 700; margin: 0;">✓ Password updated successfully</p>
+      </div>
+      <p style="color: #64748b; font-size: 12px;">
+        If you did not make this change, please contact your HR administrator immediately or use the Forgot Password flow to regain access.
+      </p>
+    </div>
+  `;
+  return renderEmailWrapper({ title: "HRMSPro: Your password was changed", bodyHtml });
+};
+
+
+
 /** Welcome / Account Created Email Template */
 export const renderAccountCreatedEmail = ({ name, email, tempPassword }) => {
   const passwordSection = tempPassword

@@ -35,7 +35,9 @@ export const authAPI = {
   me: () => api.get('/auth/me'),
   logout: () => { localStorage.removeItem('token'); localStorage.removeItem('user'); },
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (password: string, resetToken: string) => api.put(`/auth/reset-password/${resetToken}`, { password }),
+  resendResetOtp: (email: string) => api.post('/auth/forgot-password/resend', { email }),
+  verifyResetOtp: (data: { email: string; otp: string }) => api.post('/auth/verify-reset-otp', data),
+  resetPassword: (data: { resetToken: string; newPassword: string; confirmPassword: string }) => api.post('/auth/reset-password', data),
 };
 
 export const userAPI = {

@@ -57,6 +57,14 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
     otpLastSentAt: Date,
+    // Password-reset OTP (separate from login OTP to avoid mid-login collision)
+    resetOtpHash: String,
+    resetOtpExpiresAt: Date,
+    resetOtpAttempts: {
+      type: Number,
+      default: 0,
+    },
+    resetOtpLastSentAt: Date,
   },
   {
     timestamps: true,
