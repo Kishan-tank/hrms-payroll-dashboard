@@ -294,3 +294,106 @@ export const editPayrollRecord = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to update payroll record", error: error.message });
   }
 };
+
+// GET /api/payroll/unassigned?month=&year= — Admin/HR: employees with no payroll record for the given period
+export const getUnassignedEmployees = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+
+    if (!month || !year) {
+      return res.status(400).json({ success: false, message: "month and year are required" });
+    }
+
+    const yearNum = parseInt(year, 10);
+
+    // All active employees
+    const activeEmployees = await Employee.find({ status: { $in: ["Active", "Pending Onboarding"] }, isActive: { $ne: false } })
+      .select("_id employeeId name email department role basicPay joinDate");
+
+    if (activeEmployees.length === 0) {
+      return res.status(200).json({ success: true, employees: [] });
+    }
+
+    // Employees who already have a payroll record for this period
+    const assignedRecords = await Payroll.find({ month, year: yearNum, isActive: { $ne: false } })
+      .select("employeeId");
+    const assignedIds = new Set(assignedRecords.map(r => r.employeeId.toString()));
+
+    // Filter out employees who already have a record
+    const unassigned = activeEmployees.filter(emp => !assignedIds.has(emp._id.toString()));
+
+    res.status(200).json({ success: true, employees: unassigned });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch unassigned employees", error: error.message });
+  }
+};
+
+// POST /api/payroll/create-single — Admin/HR: create payroll record for a single employee
+export const createSinglePayroll = async (req, res) => {
+  try {
+    const { employeeId, month, year, basicPay: overrideBasicPay, deductions: overrideDeductions } = req.body;
+
+    if (!employeeId || !month || !year) {
+      return res.status(400).json({ success: false, message: "employeeId, month, and year are required" });
+    }
+
+    const yearNum = parseInt(year, 10);
+
+    // Check no existing record
+    const existing = await Payroll.findOne({ employeeId, month, year: yearNum, isActive: { $ne: false } });
+    if (existing) {
+      return res.status(409).json({ success: false, message: "Payroll record already exists for this employee and period" });
+    }
+
+    const employee = await Employee.findById(employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee not found" });
+    }
+
+    const basicPay = overrideBasicPay !== undefined ? Number(overrideBasicPay) : (employee.basicPay || 0);
+    if (!basicPay || basicPay <= 0) {
+      return res.status(400).json({ success: false, message: "A valid basic pay is required to set payroll" });
+    }
+
+    let deductions;
+    if (overrideDeductions !== undefined) {
+      deductions = Number(overrideDeductions);
+    } else {
+      const pf = Math.round(basicPay * 0.12);
+      const tdsRate = basicPay < 50000 ? 0.10 : 0.20;
+      const tds = Math.round(basicPay * tdsRate);
+      deductions = pf + tds;
+    }
+    const netPay = basicPay - deductions;
+
+    const record = await Payroll.create({
+      employeeId,
+      month,
+      year: yearNum,
+      basicPay,
+      deductions,
+      netPay,
+      status: "Pending",
+      processedAt: new Date(),
+    });
+
+    const populated = await record.populate("employeeId", "name email employeeId department");
+
+    // Also update employee's basicPay if overridden
+    if (overrideBasicPay !== undefined) {
+      await Employee.findByIdAndUpdate(employeeId, { basicPay: Number(overrideBasicPay) });
+    }
+
+    notifyChange({
+      user: populated.employeeId || { name: "Employee" },
+      action: "PAYROLL_EDIT",
+      details: { month, year: yearNum, basicPay, deductions, netPay, status: "Pending", note: "First-time payroll assignment" },
+      actor: req.user,
+    });
+
+    res.status(201).json({ success: true, message: "Payroll record created successfully", record: populated });
+  } catch (error) {
+    console.error("createSinglePayroll error:", error);
+    res.status(500).json({ success: false, message: "Failed to create payroll record", error: error.message });
+  }
+};

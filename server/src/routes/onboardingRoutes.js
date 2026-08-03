@@ -1,19 +1,21 @@
 import express from 'express';
-import { verifyToken } from '../middleware/authMiddleware.js';
+import multer from 'multer';
+import path from 'path';
+import { verifyToken, requireRole } from '../middleware/authMiddleware.js';
 import {
   getOnboardingState,
   updateOnboardingState,
   resetOnboardingState,
-} from '../controllers/onboardingController.js';
-import multer from 'multer';
-import path from 'path';
-import {
   saveProfile,
   saveBank,
   uploadDocuments,
+  savePolicy,
+  completeOnboarding,
+  getPendingReviews,
+  reviewOnboarding,
 } from '../controllers/onboardingController.js';
 
-// Configure multer storage
+// Configure multer storage for onboarding documents
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => {
@@ -25,19 +27,25 @@ const upload = multer({ storage });
 
 const router = express.Router();
 
-// All onboarding routes require a valid JWT
 router.use(verifyToken);
 
-router.get('/', getOnboardingState);            // GET /api/onboarding
-router.put('/', updateOnboardingState);         // PUT /api/onboarding
-router.post('/reset', resetOnboardingState);    // POST /api/onboarding/reset
+router.get('/', getOnboardingState);                           // GET /api/onboarding
+router.put('/', updateOnboardingState);                        // PUT /api/onboarding
+router.post('/reset', resetOnboardingState);                   // POST /api/onboarding/reset
 
 router.post('/profile', saveProfile);
 router.post('/bank', saveBank);
+router.post('/policy', savePolicy);
+router.post('/complete', completeOnboarding);
+
 router.post('/documents', upload.fields([
   { name: 'govId', maxCount: 1 },
   { name: 'offerLetter', maxCount: 1 },
   { name: 'certificates', maxCount: 1 }
 ]), uploadDocuments);
+
+// HR / Admin Review Endpoints
+router.get('/pending-reviews', requireRole("hr", "admin", "hr-manager"), getPendingReviews);
+router.patch('/:id/review-status', requireRole("hr", "admin", "hr-manager"), reviewOnboarding);
 
 export default router;

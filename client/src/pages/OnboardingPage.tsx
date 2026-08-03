@@ -31,12 +31,11 @@ export default function OnboardingPage() {
   const currentIndex = filteredSteps.findIndex(s => s.id === currentStepId);
   const completionPercent = Math.round((Math.max(0, currentIndex) / filteredSteps.length) * 100);
 
-  // Resume where you left off (Local Storage Mock)
+  // Resume where you left off (Local Storage)
   useEffect(() => {
     const savedStep = localStorage.getItem('onboarding_current_step');
     if (savedStep && steps.find(s => s.id === savedStep) && !isComplete) {
       setCurrentStep(savedStep as StepId);
-      toast.info('Resumed from where you left off');
     }
   }, []);
 
@@ -103,6 +102,31 @@ export default function OnboardingPage() {
 
   const profileStrength = calculateProfileStrength();
 
+  const [onboardingData, setOnboardingData] = useState<any>(null);
+
+  useEffect(() => {
+    onboardingService.getState().then(res => {
+      if (res.success && res.onboarding) {
+        setOnboardingData(res.onboarding);
+        if (res.onboarding.policyAccepted) setHandbookAgreed(true);
+        if (res.onboarding.employeeId) {
+          const emp = res.onboarding.employeeId;
+          setProfileForm(prev => ({
+            phone: emp.phone || prev.phone,
+            dob: emp.dob ? new Date(emp.dob).toISOString().split('T')[0] : prev.dob,
+            gender: emp.gender || prev.gender,
+            address: emp.address || prev.address,
+          }));
+          setBankForm(prev => ({
+            account: emp.maskedBankAccount || prev.account,
+            ifsc: emp.ifscCode || prev.ifsc,
+            bankName: emp.bankName || prev.bankName,
+          }));
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   const triggerAutoSave = () => {
@@ -119,9 +143,17 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
     try {
       switch (currentStepId) {
-        case 'profile':
-          if (!profileForm.phone.trim() || !profileForm.address.trim()) {
+        case 'profile': {
+          // All four fields are required
+          const missingProfile: string[] = [];
+          if (!profileForm.phone.trim()) missingProfile.push('Phone number');
+          if (!profileForm.dob) missingProfile.push('Date of birth');
+          if (!profileForm.gender.trim()) missingProfile.push('Gender');
+          if (!profileForm.address.trim()) missingProfile.push('Address');
+
+          if (missingProfile.length > 0) {
             setProfileError(true);
+            toast.error(`Required: ${missingProfile.join(', ')}`);
             setIsSubmitting(false);
             return;
           }
@@ -130,42 +162,69 @@ export default function OnboardingPage() {
           completeStep('profile');
           toast.success('Profile details saved successfully');
           break;
-        case 'documents':
-          const formData = new FormData();
-          if (govId) formData.append('govId', govId);
-          if (offerLetter) formData.append('offerLetter', offerLetter);
-          if (certificates) formData.append('certificates', certificates);
+        }
+        case 'documents': {
+          // All three documents are required
+          const missingDocs: string[] = [];
+          if (!govId) missingDocs.push('Government ID');
+          if (!offerLetter) missingDocs.push('Offer Letter');
+          if (!certificates) missingDocs.push('Certificates');
 
-          if (govId || offerLetter || certificates) {
-            await onboardingService.uploadDocuments(formData);
+          if (missingDocs.length > 0) {
+            toast.error(`Please upload: ${missingDocs.join(', ')}`);
+            setIsSubmitting(false);
+            return;
           }
+
+          const formData = new FormData();
+          formData.append('govId', govId!);
+          formData.append('offerLetter', offerLetter!);
+          formData.append('certificates', certificates!);
+
+          await onboardingService.uploadDocuments(formData);
           completeStep('documents');
           toast.success('Documents securely uploaded');
           break;
-        case 'bank':
-          if (!bankForm.account.trim() || !bankForm.ifsc.trim()) {
+        }
+        case 'bank': {
+          // All three bank fields are required
+          const missingBank: string[] = [];
+          if (!bankForm.account.trim()) missingBank.push('Account number');
+          if (!bankForm.ifsc.trim()) missingBank.push('IFSC code');
+          if (!bankForm.bankName.trim()) missingBank.push('Bank name');
+
+          if (missingBank.length > 0) {
+            toast.error(`Required: ${missingBank.join(', ')}`);
             setIsSubmitting(false);
             return;
           }
           await onboardingService.submitBank(bankForm);
           completeStep('bank');
-          toast.success('Bank details verified');
+          toast.success('Bank details verified and encrypted');
           break;
+        }
         case 'handbook':
           if (!handbookAgreed) {
+            toast.error('Please read and accept the handbook before continuing');
             setIsSubmitting(false);
             return;
           }
+          await onboardingService.submitPolicy(true);
+          await onboardingService.completeOnboarding();
           completeStep('handbook');
-          toast.success('Handbook acknowledged');
+          completeStep('complete');
+          toast.success('Onboarding complete! Submitted for HR review.');
           break;
       }
+      const refreshed = await onboardingService.getState();
+      if (refreshed.success) setOnboardingData(refreshed.onboarding);
     } catch (err: any) {
       toast.error(err.message || 'Failed to save progress');
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const handleBack = () => {
     if (currentIndex > 0) {
@@ -275,7 +334,9 @@ export default function OnboardingPage() {
   };
 
   const isContinueDisabled =
-    (currentStepId === 'bank' && (!bankForm.account.trim() || !bankForm.ifsc.trim())) ||
+    (currentStepId === 'profile' && (!profileForm.phone.trim() || !profileForm.dob || !profileForm.gender.trim() || !profileForm.address.trim())) ||
+    (currentStepId === 'documents' && (!govId || !offerLetter || !certificates)) ||
+    (currentStepId === 'bank' && (!bankForm.account.trim() || !bankForm.ifsc.trim() || !bankForm.bankName.trim())) ||
     (currentStepId === 'handbook' && !handbookAgreed);
 
   return (
@@ -376,8 +437,11 @@ export default function OnboardingPage() {
             remainingSteps={filteredSteps.length - currentIndex}
             estimatedMinutesRemaining={(filteredSteps.length - currentIndex) * 3}
             saveStatus={saveStatus}
-            employeeId="EMP-0142"
+            employeeId={onboardingData?.employeeId?.employeeId || "EMP-0142"}
             profileStrength={profileStrength}
+            reviewStatus={onboardingData?.reviewStatus || "In Progress"}
+            reviewNotes={onboardingData?.reviewNotes}
+            activityLogs={onboardingData?.activityLogs || []}
           />
         )}
 

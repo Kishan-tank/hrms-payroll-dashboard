@@ -3,10 +3,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, ShieldCheck } from 'lucide-react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import DataTable, { type DataTableColumn } from '../../components/common/DataTable';
 import { userAPI } from '../../services/api';
+import { onboardingService, type ApiOnboarding } from '../../services/hrmsApi';
+import OnboardingReviewModal from '../../components/onboarding/OnboardingReviewModal';
 import { useToast } from '../../context/ToastContext';
 import type { User } from '../../types';
 
@@ -49,7 +51,27 @@ export default function AdminUserManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
+  // Onboarding Review States
+  const [pendingOnboardings, setPendingOnboardings] = useState<ApiOnboarding[]>([]);
+  const [selectedOnboarding, setSelectedOnboarding] = useState<ApiOnboarding | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
   const toast = useToast();
+
+  const fetchPendingOnboardings = useCallback(async () => {
+    try {
+      const res = await onboardingService.getPendingReviews();
+      if (res.success) {
+        setPendingOnboardings(res.onboardings || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pending onboardings:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPendingOnboardings();
+  }, [fetchPendingOnboardings]);
 
   // Countdown timer for 30s resend cooldown
   useEffect(() => {
@@ -404,16 +426,31 @@ export default function AdminUserManagement() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              resetModalState();
-              setIsAddModalOpen(true);
-            }}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500 hover:shadow-blue-600/40"
-          >
-            + Add New User
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const pending = pendingOnboardings.find(o => o.reviewStatus === 'Pending Review') || pendingOnboardings[0] || null;
+                setSelectedOnboarding(pending);
+                setIsReviewModalOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-2xl bg-amber-500/20 border border-amber-500/30 px-4 py-2.5 text-sm font-bold text-amber-300 shadow-lg transition hover:bg-amber-500/30"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Onboarding Reviews ({pendingOnboardings.filter(o => o.reviewStatus === 'Pending Review').length} Pending)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                resetModalState();
+                setIsAddModalOpen(true);
+              }}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500 hover:shadow-blue-600/40"
+            >
+              + Add New User
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -768,6 +805,17 @@ export default function AdminUserManagement() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── ONBOARDING REVIEW MODAL ── */}
+      <OnboardingReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        onboarding={selectedOnboarding}
+        onReviewSubmit={() => {
+          fetchPendingOnboardings();
+          fetchUsers(currentPage, searchQuery, roleFilter);
+        }}
+      />
     </DashboardLayout>
   );
 }

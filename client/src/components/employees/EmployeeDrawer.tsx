@@ -1,5 +1,6 @@
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
+import { Clock, Calendar, CreditCard, FolderOpen, Zap, FileText, ExternalLink } from 'lucide-react';
 import type { ApiEmployee, ApiAttendance, ApiLeave, PayrollRecord, ApiDocument } from '../../services/hrmsApi';
 import { attendanceService, leaveService, payrollService, documentService } from '../../services/hrmsApi';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -46,6 +47,43 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
   const [documents, setDocuments] = useState<ApiDocument[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
+  // Robust multi-fallback matching helper
+  const matchesEmployee = (ref: any, emp: ApiEmployee | null): boolean => {
+    if (!ref || !emp) return false;
+
+    // Direct string ID match
+    if (typeof ref === 'string') {
+      const empUserId = emp.userId ? (typeof emp.userId === 'object' ? String(emp.userId._id) : String(emp.userId)) : null;
+      return (
+        ref === emp._id ||
+        ref === emp.employeeId ||
+        (Boolean(empUserId) && ref === empUserId)
+      );
+    }
+
+    // Object match
+    const refId = ref._id ? String(ref._id) : null;
+    const refEmpId = ref.employeeId ? String(ref.employeeId) : null;
+    const refEmail = ref.email ? String(ref.email).toLowerCase() : null;
+    const refUserId = ref.userId
+      ? (typeof ref.userId === 'object' ? String(ref.userId._id) : String(ref.userId))
+      : null;
+
+    const targetId = String(emp._id);
+    const targetEmpId = String(emp.employeeId);
+    const targetEmail = emp.email ? String(emp.email).toLowerCase() : null;
+    const targetUserId = emp.userId
+      ? (typeof emp.userId === 'object' ? String(emp.userId._id) : String(emp.userId))
+      : null;
+
+    return Boolean(
+      (refId && refId === targetId) ||
+      (refEmpId && refEmpId === targetEmpId) ||
+      (refEmail && targetEmail && refEmail === targetEmail) ||
+      (refUserId && targetUserId && refUserId === targetUserId)
+    );
+  };
+
   useEffect(() => {
     if (!open || !employee?._id) return;
     async function load() {
@@ -59,17 +97,28 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
         ]);
 
         if (attRes.status === 'fulfilled') {
-          setAttendance(attRes.value.records.filter((r) => r.employeeId?._id === employee!._id || (r.employeeId && r.employeeId.employeeId === employee!.employeeId)));
+          setAttendance(attRes.value.records.filter((r) => matchesEmployee(r.employeeId, employee)));
         }
         if (leavRes.status === 'fulfilled') {
-          setLeaves(leavRes.value.leaves.filter((l) => l.employeeId?._id === employee!._id));
+          setLeaves(leavRes.value.leaves.filter((l) => matchesEmployee(l.employeeId, employee)));
         }
         if (payRes.status === 'fulfilled') {
-          setPayroll(payRes.value.records.filter((p) => p.employeeId?._id === employee!._id));
+          setPayroll(payRes.value.records.filter((p) => matchesEmployee(p.employeeId, employee)));
         }
-        if (docRes.status === 'fulfilled') {
-          setDocuments(docRes.value.documents);
-        }
+
+        // Merge separate Document records with employee.documents array
+        const fetchedDocs: ApiDocument[] = docRes.status === 'fulfilled' ? docRes.value.documents : [];
+        const empDocs: ApiDocument[] = (employee!.documents || []).map((d: any, idx: number) => ({
+          _id: `emp_doc_${idx}`,
+          title: d.name || d.type || 'Onboarding Document',
+          type: d.type === 'gov_id' ? 'ID Proof' : d.type === 'offer_letter' ? 'Offer Letter' : 'Other',
+          fileUrl: d.url,
+          uploadedBy: employee!.name,
+          createdAt: employee!.createdAt || new Date().toISOString()
+        }));
+
+        setDocuments([...fetchedDocs, ...empDocs]);
+
       } catch (err) {
         console.error('Failed to load employee drawer data', err);
       } finally {
@@ -195,7 +244,11 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
               {activeTab === 'attendance' && (
                 <div className="space-y-4">
                   {loadingData ? (
-                    <p className="text-center text-sm text-slate-500 py-8">Loading attendance records...</p>
+                    <div className="space-y-3 animate-pulse">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-16 rounded-xl bg-slate-200 dark:bg-slate-800/60 w-full" />
+                      ))}
+                    </div>
                   ) : attendance.length > 0 ? (
                     attendance.map((att) => (
                       <div key={att._id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
@@ -210,9 +263,11 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
                     ))
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center text-center py-12">
-                      <div className="mb-4 text-5xl opacity-20">⏰</div>
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400 border border-blue-500/20 shadow-inner">
+                        <Clock className="h-8 w-8" />
+                      </div>
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Attendance Records</h3>
-                      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No recent check-in logs found for this employee.</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">No recent check-in logs found for this employee.</p>
                     </div>
                   )}
                 </div>
@@ -221,7 +276,11 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
               {activeTab === 'leave' && (
                 <div className="space-y-4">
                   {loadingData ? (
-                    <p className="text-center text-sm text-slate-500 py-8">Loading leave history...</p>
+                    <div className="space-y-3 animate-pulse">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-16 rounded-xl bg-slate-200 dark:bg-slate-800/60 w-full" />
+                      ))}
+                    </div>
                   ) : leaves.length > 0 ? (
                     leaves.map((l) => (
                       <div key={l._id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
@@ -237,9 +296,11 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
                     ))
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center text-center py-12">
-                      <div className="mb-4 text-5xl opacity-20">🌴</div>
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400 border border-amber-500/20 shadow-inner">
+                        <Calendar className="h-8 w-8" />
+                      </div>
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Leave Records</h3>
-                      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">This employee has not requested any leaves.</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">This employee has not requested any leaves.</p>
                     </div>
                   )}
                 </div>
@@ -248,7 +309,11 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
               {activeTab === 'payroll' && (
                 <div className="space-y-4">
                   {loadingData ? (
-                    <p className="text-center text-sm text-slate-500 py-8">Loading payroll records...</p>
+                    <div className="space-y-3 animate-pulse">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-16 rounded-xl bg-slate-200 dark:bg-slate-800/60 w-full" />
+                      ))}
+                    </div>
                   ) : payroll.length > 0 ? (
                     payroll.map((p) => (
                       <div key={p._id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
@@ -266,9 +331,11 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
                     ))
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center text-center py-12">
-                      <div className="mb-4 text-5xl opacity-20">💳</div>
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400 border border-emerald-500/20 shadow-inner">
+                        <CreditCard className="h-8 w-8" />
+                      </div>
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Payroll Records</h3>
-                      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No generated payslips found for this employee.</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">No generated payslips found for this employee.</p>
                     </div>
                   )}
                 </div>
@@ -277,29 +344,40 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
               {activeTab === 'documents' && (
                 <div className="space-y-4">
                   {loadingData ? (
-                    <p className="text-center text-sm text-slate-500 py-8">Loading documents...</p>
+                    <div className="space-y-3 animate-pulse">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-16 rounded-xl bg-slate-200 dark:bg-slate-800/60 w-full" />
+                      ))}
+                    </div>
                   ) : documents.length > 0 ? (
-                    documents.map((doc) => (
-                      <div key={doc._id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs">
-                            DOC
+                    documents.map((doc) => {
+                      const backendUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000';
+                      const token = localStorage.getItem('token') || '';
+                      const viewUrl = doc.fileUrl ? (doc.fileUrl.startsWith('http') ? doc.fileUrl : `${backendUrl}${doc.fileUrl}?token=${token}`) : '#';
+                      return (
+                        <div key={doc._id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-xs">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm text-slate-900 dark:text-white">{doc.title}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{doc.type} • {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : 'N/A'}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-bold text-sm text-slate-900 dark:text-white">{doc.title}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{doc.type} • {new Date(doc.createdAt).toLocaleDateString()}</p>
-                          </div>
+                          <a href={viewUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
+                            View <ExternalLink className="h-3 w-3" />
+                          </a>
                         </div>
-                        <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10">
-                          View
-                        </a>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center text-center py-12">
-                      <div className="mb-4 text-5xl opacity-20">📁</div>
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/10 dark:text-purple-400 border border-purple-500/20 shadow-inner">
+                        <FolderOpen className="h-8 w-8" />
+                      </div>
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Documents</h3>
-                      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No documents uploaded for this employee yet.</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">No documents uploaded for this employee yet.</p>
                     </div>
                   )}
                 </div>
@@ -308,9 +386,11 @@ export default function EmployeeDrawer({ open, onClose, employee }: EmployeeDraw
               {activeTab === 'activity' && (
                 <div className="space-y-4">
                   <div className="flex h-full flex-col items-center justify-center text-center py-12">
-                    <div className="mb-4 text-5xl opacity-20">⚡</div>
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/10 dark:text-indigo-400 border border-indigo-500/20 shadow-inner">
+                      <Zap className="h-8 w-8" />
+                    </div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Activity</h3>
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Employee profile created and active in {activeEmployee.department}.</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Employee profile created and active in {activeEmployee.department}.</p>
                   </div>
                 </div>
               )}

@@ -11,6 +11,66 @@ function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
+async function request<T>(
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+  path: string,
+  body?: unknown,
+  customOptions?: RequestInit
+): Promise<T> {
+  const isFormData = body instanceof FormData;
+  const headers = new Headers(customOptions?.headers || {});
+
+  if (!isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const auth = authHeaders();
+  if (auth.Authorization) {
+    headers.set('Authorization', auth.Authorization);
+  }
+
+  const options: RequestInit = {
+    ...customOptions,
+    method,
+    headers,
+    body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
+  };
+
+  if (method === 'GET') {
+    options.cache = 'no-store';
+  }
+
+  const res = await fetch(`${BASE}${path}`, options);
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  let data: any;
+
+  if (contentType.includes('application/json')) {
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error('Invalid JSON response from server');
+    }
+  } else {
+    if (!res.ok) {
+      throw new Error(`Server endpoint not found or error (${res.status})`);
+    }
+    data = await res.text();
+  }
+
+  if (!res.ok) {
+    const msg = (data as { message?: string })?.message ?? `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
+  return data as T;
+}
 export interface ApiGoal {
   _id: string;
   employeeId: string | { _id: string; name: string; department: string; role?: string; email?: string };
@@ -76,50 +136,6 @@ export const performanceService = {
     request<{ success: boolean; message: string }>('DELETE', `/performance/reviews/${id}`),
 };
 
-async function request<T>(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
-  path: string,
-  body?: unknown,
-  customOptions?: RequestInit
-): Promise<T> {
-  const isFormData = body instanceof FormData;
-  const headers = new Headers(customOptions?.headers || {});
-  
-  if (!isFormData && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const auth = authHeaders();
-  if (auth.Authorization) {
-    headers.set('Authorization', auth.Authorization);
-  }
-
-  const options: RequestInit = {
-    ...customOptions,
-    method,
-    headers,
-    body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
-  };
-
-  if (method === 'GET') {
-    options.cache = 'no-store';
-  }
-
-  const res = await fetch(`${BASE}${path}`, options);
-
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-  }
-
-  const data: T = await res.json();
-  if (!res.ok) {
-    const msg = (data as { message?: string })?.message ?? 'Request failed';
-    throw new Error(msg);
-  }
-  return data;
-}
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -131,9 +147,13 @@ export interface ApiEmployee {
   phone?: string;
   department: string;
   role: string;
-  status: 'Active' | 'On Leave' | 'Inactive';
+  status: 'Active' | 'On Leave' | 'Inactive' | string;
   joinDate: string;
   basicPay: number;
+  documents?: Array<{ name?: string; type?: string; url?: string }>;
+  userId?: string | { _id: string; email?: string };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AddEmployeePayload {
@@ -172,6 +192,17 @@ export interface PayrollSummary {
   paidCount: number;
   processingCount: number;
   pendingCount: number;
+}
+
+export interface UnassignedEmployee {
+  _id: string;
+  employeeId: string;
+  name: string;
+  email: string;
+  department: string;
+  role: string;
+  basicPay?: number;
+  joinDate?: string;
 }
 
 export interface HrSummary {
@@ -245,16 +276,6 @@ export interface ApiLeave {
   reason?: string;
 }
 
-export interface ApiDocument {
-  _id: string;
-  employeeId: string | null;
-  title: string;
-  type: string;
-  fileUrl: string;
-  uploadedBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -292,13 +313,13 @@ export const settingsService = {
 
   updateSettings: (settings: ApiSettings) =>
     request<{ success: boolean; settings: ApiSettings; message: string }>('PUT', '/settings', settings),
-    
+
   updateProfile: (name: string) =>
     request<{ success: boolean; user: any; message: string }>('PUT', '/settings/profile', { name }),
-    
+
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ success: boolean; message: string }>('PUT', '/settings/password', { currentPassword, newPassword }),
-    
+
   uploadPhoto: (formData: FormData) =>
     request<{ success: boolean; avatar: string; user: any; message: string }>('POST', '/settings/photo', formData, {
       headers: {
@@ -370,6 +391,21 @@ export const payrollService = {
   // Admin-only: edit a payroll record
   edit: (id: string, data: { basicPay?: number; deductions?: number; netPay?: number; status?: string }) =>
     request<{ success: boolean; message: string; record: PayrollRecord }>('PATCH', `/payroll/${id}`, data),
+
+  // HR/Admin: get employees who have no payroll record for the given period
+  getUnassigned: (month: string, year: number) => {
+    const qs = new URLSearchParams({ month, year: String(year) });
+    return request<{ success: boolean; employees: UnassignedEmployee[] }>('GET', `/payroll/unassigned?${qs.toString()}`);
+  },
+
+  // HR/Admin: create a first-time payroll record for a single employee
+  createSingle: (payload: {
+    employeeId: string;
+    month: string;
+    year: number;
+    basicPay?: number;
+    deductions?: number;
+  }) => request<{ success: boolean; message: string; record: PayrollRecord }>('POST', '/payroll/create-single', payload),
 
 };
 
@@ -712,25 +748,67 @@ export const taskService = {
 
 // ─── Onboarding ──────────────────────────────────────────────────────────────
 
+export interface ApiOnboardingActivity {
+  action: string;
+  timestamp: string;
+  details?: string;
+}
+
+export interface ApiOnboarding {
+  _id: string;
+  userId: string | { _id: string; name: string; email: string; role?: string };
+  employeeId?: any;
+  steps: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    status: 'pending' | 'in_progress' | 'completed';
+    completedAt?: string;
+  }>;
+  currentStepId: string;
+  policyAccepted?: boolean;
+  policyAcceptedAt?: string;
+  reviewStatus?: 'In Progress' | 'Pending Review' | 'Approved' | 'Rejected';
+  reviewNotes?: string;
+  reviewedBy?: any;
+  reviewedAt?: string;
+  activityLogs?: ApiOnboardingActivity[];
+  completedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const onboardingService = {
   getState: () =>
-    request<{ success: boolean; onboarding: any }>('GET', '/onboarding'),
+    request<{ success: boolean; onboarding: ApiOnboarding }>('GET', '/onboarding'),
 
   updateState: (payload: { steps: any[]; currentStepId: string; completedAt?: string }) =>
-    request<{ success: boolean; onboarding: any }>('PUT', '/onboarding', payload),
+    request<{ success: boolean; onboarding: ApiOnboarding }>('PUT', '/onboarding', payload),
 
   resetState: () =>
-    request<{ success: boolean; onboarding: any }>('POST', '/onboarding/reset'),
-    
+    request<{ success: boolean; onboarding: ApiOnboarding }>('POST', '/onboarding/reset'),
+
   submitProfile: (payload: { phone: string; dob: string; gender: string; address: string }) =>
     request<{ success: boolean }>('POST', '/onboarding/profile', payload),
-    
+
   submitBank: (payload: { account: string; ifsc: string; bankName: string }) =>
     request<{ success: boolean }>('POST', '/onboarding/bank', payload),
-    
+
+  submitPolicy: (agreed: boolean) =>
+    request<{ success: boolean; message: string }>('POST', '/onboarding/policy', { agreed }),
+
+  completeOnboarding: () =>
+    request<{ success: boolean; message: string; onboarding: ApiOnboarding }>('POST', '/onboarding/complete'),
+
+  getPendingReviews: () =>
+    request<{ success: boolean; onboardings: ApiOnboarding[] }>('GET', '/onboarding/pending-reviews'),
+
+  reviewOnboarding: (id: string, action: 'Approve' | 'Reject', notes?: string) =>
+    request<{ success: boolean; message: string; onboarding: ApiOnboarding }>('PATCH', `/onboarding/${id}/review-status`, { action, notes }),
+
   uploadDocuments: (formData: FormData) =>
     request<{ success: boolean }>('POST', '/onboarding/documents', formData, {
-      // Fetch will automatically set the correct Content-Type with boundary when body is FormData
       headers: {
         'Accept': 'application/json'
       }

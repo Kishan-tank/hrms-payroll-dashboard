@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, AlertTriangle, ChevronUp, X } from 'lucide-react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { payrollService } from '../services/hrmsApi';
-import type { PayrollRecord, PayrollSummary } from '../services/hrmsApi';
+import type { PayrollRecord, PayrollSummary, UnassignedEmployee } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import EmptyState from '../components/common/EmptyState';
@@ -52,6 +52,13 @@ export default function PayrollPage() {
   const { menuProps, handleContextMenu } = useContextMenu();
   const contextTargetRef = useRef<PayrollRecord | null>(null);
 
+  // Pending payroll (employees with no record for this period)
+  const [unassigned, setUnassigned] = useState<UnassignedEmployee[]>([]);
+  const [pendingOpen, setPendingOpen] = useState(true);
+  const [setPayrollTarget, setSetPayrollTarget] = useState<UnassignedEmployee | null>(null);
+  const [setPayrollForm, setSetPayrollForm] = useState({ basicPay: '', deductions: '' });
+  const [setPayrollSubmitting, setSetPayrollSubmitting] = useState(false);
+
   function buildPayrollMenuItems(row: PayrollRecord) {
     const items: any[] = [
       { label: 'View payslip', icon: 'eye', onClick: () => setSelectedRecord(row) },
@@ -84,12 +91,14 @@ export default function PayrollPage() {
         // and would leak that data into the employee's network tab even
         // though the UI never renders it.
       } else {
-        const [recs, sum] = await Promise.all([
+        const [recs, sum, unassignedRes] = await Promise.all([
           payrollService.getRecords({ month: filterMonth, year: filterYear }),
           payrollService.getSummary(filterMonth, filterYear),
+          payrollService.getUnassigned(filterMonth, filterYear),
         ]);
         setRecords(recs.records);
         setSummary(sum.summary);
+        setUnassigned(unassignedRes.employees);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -683,6 +692,114 @@ export default function PayrollPage() {
                   ))}
             </div>
 
+            {/* ── PENDING PAYROLL SECTION (employees with no payroll record) ── */}
+            {unassigned.length > 0 && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/5 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setPendingOpen(o => !o)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/20">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-amber-900 dark:text-amber-300">
+                        {unassigned.length} Employee{unassigned.length !== 1 ? 's' : ''} with No Payroll for {filterMonth} {filterYear}
+                      </p>
+                      <p className="text-xs text-amber-700/70 dark:text-amber-400/60">Set basic pay to include them in the payroll run</p>
+                    </div>
+                  </div>
+                  {pendingOpen ? (
+                    <ChevronUp className="h-4 w-4 text-amber-500" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-amber-500" />
+                  )}
+                </button>
+
+                {pendingOpen && (
+                  <div className="border-t border-amber-200 dark:border-amber-500/20">
+                    {/* Desktop table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-amber-100/60 dark:bg-amber-500/10 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                            <th className="px-5 py-3 text-left">Employee</th>
+                            <th className="px-5 py-3 text-left">Dept</th>
+                            <th className="px-5 py-3 text-left">Basic Pay on Record</th>
+                            <th className="px-5 py-3 text-left">Joined</th>
+                            <th className="px-5 py-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {unassigned.map((emp) => (
+                            <tr key={emp._id} className="border-t border-amber-200/50 dark:border-amber-500/10 hover:bg-amber-100/40 dark:hover:bg-amber-500/5 transition-colors">
+                              <td className="px-5 py-3">
+                                <div className="flex items-center gap-3">
+                                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                    {emp.name.charAt(0).toUpperCase()}
+                                  </span>
+                                  <div>
+                                    <p className="font-semibold text-slate-900 dark:text-white">{emp.name}</p>
+                                    <p className="text-xs text-slate-400">{emp.email}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{emp.department}</td>
+                              <td className="px-5 py-3">
+                                {emp.basicPay && emp.basicPay > 0
+                                  ? <span className="font-semibold text-slate-700 dark:text-slate-200">{fmt(emp.basicPay)}</span>
+                                  : <span className="text-xs font-medium text-red-500 dark:text-red-400">Not set</span>}
+                              </td>
+                              <td className="px-5 py-3 text-slate-500 text-xs">{emp.joinDate ? new Date(emp.joinDate).toLocaleDateString('en-IN') : '—'}</td>
+                              <td className="px-5 py-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSetPayrollTarget(emp);
+                                    setSetPayrollForm({ basicPay: String(emp.basicPay || ''), deductions: '' });
+                                  }}
+                                  className="rounded-xl bg-amber-500 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-amber-400 dark:bg-amber-600 dark:hover:bg-amber-500"
+                                >
+                                  Set Payroll
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile cards */}
+                    <div className="flex flex-col gap-3 p-4 md:hidden">
+                      {unassigned.map((emp) => (
+                        <div key={emp._id} className="flex items-center justify-between rounded-xl border border-amber-200 bg-white p-3 dark:border-amber-500/20 dark:bg-[#0B1121]">
+                          <div>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{emp.name}</p>
+                            <p className="text-xs text-slate-400">{emp.department}</p>
+                            <p className="mt-1 text-xs font-medium">
+                              {emp.basicPay && emp.basicPay > 0 ? fmt(emp.basicPay) : <span className="text-red-500">No pay set</span>}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSetPayrollTarget(emp);
+                              setSetPayrollForm({ basicPay: String(emp.basicPay || ''), deductions: '' });
+                            }}
+                            className="rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-amber-400"
+                          >
+                            Set Payroll
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Records table */}
             <div className="hidden md:block" onContextMenu={(e) => {
               if (!contextTargetRef.current) return;
@@ -797,89 +914,187 @@ export default function PayrollPage() {
             className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
             onClick={() => setEditRecord(null)}
           />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/60">
-            <div className="mb-5 flex items-center justify-between">
+          <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl shadow-black/60">
+            <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-white">Edit Payroll Record</h2>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <h2 className="text-base font-bold text-white">Edit Payroll Record</h2>
+                <p className="text-xs text-slate-400">
                   {editRecord.employeeId?.name ?? 'Employee'} — {editRecord.month} {editRecord.year}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditRecord(null)}
-                className="rounded-xl border border-white/10 p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+                className="rounded-xl border border-white/10 p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Basic Pay (₹)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={editForm.basicPay}
-                  onChange={(e) => setEditForm((f) => ({ ...f, basicPay: e.target.value }))}
-                  placeholder="e.g. 50000"
-                  className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-                <p className="mt-1 text-xs text-slate-500">Deductions &amp; Net Pay recalculate automatically if left unchanged below.</p>
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Basic Pay (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.basicPay}
+                    onChange={(e) => setEditForm((f) => ({ ...f, basicPay: e.target.value }))}
+                    placeholder="e.g. 50000"
+                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Status</label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Paid">Paid</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Deductions (₹)</label>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Deductions (₹)</label>
                   <input
                     type="number"
                     min="0"
                     value={editForm.deductions}
                     onChange={(e) => setEditForm((f) => ({ ...f, deductions: e.target.value }))}
                     placeholder="Auto"
-                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Net Pay (₹)</label>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Net Pay (₹)</label>
                   <input
                     type="number"
                     min="0"
                     value={editForm.netPay}
                     onChange={(e) => setEditForm((f) => ({ ...f, netPay: e.target.value }))}
                     placeholder="Auto"
-                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Status</label>
-                <select
-                  value={editForm.status}
-                  onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-                  className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Processing">Processing</option>
-                  <option value="Paid">Paid</option>
-                </select>
-              </div>
+              <p className="text-[11px] text-slate-500">Note: Deductions &amp; Net Pay recalculate automatically if Basic Pay is modified.</p>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setEditRecord(null)}
-                  className="flex-1 rounded-xl border border-white/10 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/5"
+                  className="flex-1 rounded-xl border border-white/10 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={editSubmitting}
-                  className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white transition hover:bg-blue-500 disabled:opacity-60"
+                  className="flex-1 rounded-xl bg-blue-600 py-2 text-sm font-bold text-white transition hover:bg-blue-500 disabled:opacity-60"
                 >
                   {editSubmitting ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ── SET PAYROLL MODAL (for unassigned employees) ── */}
+      {setPayrollTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            onClick={() => setSetPayrollTarget(null)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/60">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">Set Payroll</h2>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {setPayrollTarget.name} — {filterMonth} {filterYear}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSetPayrollTarget(null)}
+                className="rounded-xl border border-white/10 p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (setPayrollSubmitting) return;
+                const bp = Number(setPayrollForm.basicPay);
+                if (!bp || bp <= 0) { toast.error('Enter a valid basic pay'); return; }
+                setSetPayrollSubmitting(true);
+                try {
+                  await payrollService.createSingle({
+                    employeeId: setPayrollTarget._id,
+                    month: filterMonth,
+                    year: filterYear,
+                    basicPay: bp,
+                    deductions: setPayrollForm.deductions ? Number(setPayrollForm.deductions) : undefined,
+                  });
+                  toast.success(`Payroll set for ${setPayrollTarget.name}`);
+                  setSetPayrollTarget(null);
+                  void fetchData();
+                } catch (err: any) {
+                  toast.error(err.message || 'Failed to set payroll');
+                } finally {
+                  setSetPayrollSubmitting(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Basic Pay (₹) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={setPayrollForm.basicPay}
+                  onChange={(e) => setSetPayrollForm(f => ({ ...f, basicPay: e.target.value }))}
+                  placeholder="e.g. 50000"
+                  className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                />
+                <p className="mt-1 text-xs text-slate-500">Deductions (PF + TDS) will be auto-calculated unless overridden below.</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Custom Deductions (₹) <span className="normal-case text-slate-500">— optional</span></label>
+                <input
+                  type="number"
+                  min="0"
+                  value={setPayrollForm.deductions}
+                  onChange={(e) => setSetPayrollForm(f => ({ ...f, deductions: e.target.value }))}
+                  placeholder="Auto (PF 12% + TDS)"
+                  className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSetPayrollTarget(null)}
+                  className="flex-1 rounded-xl border border-white/10 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={setPayrollSubmitting}
+                  className="flex-1 rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white transition hover:bg-amber-400 disabled:opacity-60"
+                >
+                  {setPayrollSubmitting ? 'Creating…' : 'Set Payroll'}
                 </button>
               </div>
             </form>

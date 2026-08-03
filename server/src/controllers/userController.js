@@ -38,8 +38,8 @@ export const initiateUser = async (req, res) => {
       });
     }
 
-    // Check if email already belongs to an existing User
-    const existingUser = await User.findOne({ email: cleanEmail });
+    // Check if email already belongs to an active User (soft-deleted users' emails are reusable)
+    const existingUser = await User.findOne({ email: cleanEmail, isActive: { $ne: false } });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -160,8 +160,8 @@ export const confirmUser = async (req, res) => {
       });
     }
 
-    // Check again that email wasn't created concurrently
-    const existingUser = await User.findOne({ email: pendingUser.email });
+    // Check again that email wasn't created concurrently (ignoring soft-deleted accounts)
+    const existingUser = await User.findOne({ email: pendingUser.email, isActive: { $ne: false } });
     if (existingUser) {
       await PendingUser.deleteOne({ _id: pendingUser._id });
       return res.status(409).json({

@@ -4,8 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { employeeService } from '../services/hrmsApi';
-import type { ApiEmployee } from '../services/hrmsApi';
+import { employeeService, onboardingService, type ApiEmployee, type ApiOnboarding } from '../services/hrmsApi';
+import OnboardingReviewModal from '../components/onboarding/OnboardingReviewModal';
+import { ShieldCheck } from 'lucide-react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import ContextMenu from '../components/common/ContextMenu';
 import { useContextMenu } from '../hooks/useContextMenu';
@@ -184,6 +185,42 @@ export default function EmployeeManagement() {
   const [showBulkDeactivateModal, setShowBulkDeactivateModal] = useState(false);
   const [bulkDeptSelect, setBulkDeptSelect] = useState('Engineering');
 
+  // Onboarding Review States
+  const [pendingOnboardings, setPendingOnboardings] = useState<ApiOnboarding[]>([]);
+  const [selectedOnboarding, setSelectedOnboarding] = useState<ApiOnboarding | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  const fetchPendingOnboardings = useCallback(async () => {
+    try {
+      const res = await onboardingService.getPendingReviews();
+      if (res.success) {
+        setPendingOnboardings(res.onboardings || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pending onboardings:', err);
+    }
+  }, []);
+
+  // Tabs & Onboarding Reviews state
+  const [activeTab, setActiveTab] = useState<'directory' | 'onboarding'>('directory');
+  const [reviewSearch, setReviewSearch] = useState('');
+
+  // Filter ONLY onboardings with reviewStatus === 'Pending Review' or completed without final review
+  const pendingReviewsList = useMemo(() => {
+    return pendingOnboardings.filter((ob) => {
+      const isPending = ob.reviewStatus === 'Pending Review' || (ob.completedAt && ob.reviewStatus !== 'Approved' && ob.reviewStatus !== 'Rejected');
+      if (!isPending) return false;
+      if (!reviewSearch.trim()) return true;
+      const emp: any = typeof ob.employeeId === 'object' && ob.employeeId ? ob.employeeId : {};
+      const user: any = typeof ob.userId === 'object' && ob.userId ? ob.userId : {};
+      const name = (emp.name || user.name || '').toLowerCase();
+      const email = (emp.email || user.email || '').toLowerCase();
+      const query = reviewSearch.toLowerCase().trim();
+      return name.includes(query) || email.includes(query);
+    });
+  }, [pendingOnboardings, reviewSearch]);
+
+
   const handleBulkChangeDepartment = () => {
     setShowBulkDeptModal(true);
   };
@@ -217,8 +254,9 @@ export default function EmployeeManagement() {
 
   useEffect(() => { 
     void fetchEmployees(); 
+    void fetchPendingOnboardings();
     setSelectedRowIds(new Set()); // Clear selection on filter/page change
-  }, [fetchEmployees]);
+  }, [fetchEmployees, fetchPendingOnboardings]);
 
   // ── open add modal ────────────────────────────────────────────────────────
   function openAdd() {
@@ -379,94 +417,228 @@ export default function EmployeeManagement() {
   return (
     <DashboardLayout title="Employee Management">
       <div className="space-y-5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-950 dark:text-white">Employee Management</h1>
-            <p className="text-sm text-slate-400 dark:text-slate-500">{total} employees found</p>
-          </div>
-          <button type="button" onClick={openAdd} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            <Icon name="plus" /> Add Employee
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-slate-400"><Icon name="filter" /></span>
-          
-          {/* Department Dropdown */}
-          <div className="relative">
+        {/* Header Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-3">
+          <div className="flex items-center gap-6">
             <button
-              onClick={() => { setIsDeptOpen(!isDeptOpen); setIsStatusOpen(false); }}
-              className="flex items-center justify-between gap-2 w-40 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121]/50 dark:text-slate-200 dark:hover:bg-slate-800"
+              type="button"
+              onClick={() => setActiveTab('directory')}
+              className={`text-lg font-bold transition-colors pb-1 relative ${
+                activeTab === 'directory'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
             >
-              {department}
-              <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isDeptOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+              Employee Directory ({total})
+              {activeTab === 'directory' && (
+                <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
             </button>
 
-            {isDeptOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsDeptOpen(false)} />
-                <div className="absolute left-0 z-50 mt-2 w-48 max-h-64 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
-                  {departments.map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => { setDepartment(d); setPage(1); setIsDeptOpen(false); }}
-                      className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                        department === d
-                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
-                          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('onboarding')}
+              className={`text-lg font-bold transition-colors pb-1 relative flex items-center gap-2 ${
+                activeTab === 'onboarding'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              Onboarding Reviews
+              {pendingReviewsList.length > 0 && (
+                <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-extrabold text-white">
+                  {pendingReviewsList.length}
+                </span>
+              )}
+              {activeTab === 'onboarding' && (
+                <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
           </div>
 
-          {/* Status Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => { setIsStatusOpen(!isStatusOpen); setIsDeptOpen(false); }}
-              className="flex items-center justify-between gap-2 w-32 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121]/50 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              {status}
-              <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isStatusOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={openAdd} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 shadow-sm">
+              <Icon name="plus" /> Add Employee
             </button>
-
-            {isStatusOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsStatusOpen(false)} />
-                <div className="absolute left-0 z-50 mt-2 w-40 max-h-64 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
-                  {statuses.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => { setStatus(s); setPage(1); setIsStatusOpen(false); }}
-                      className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                        status === s
-                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
-                          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
           </div>
         </div>
 
-        {/* Error banner */}
-        {error && (
-          <ErrorState
-            size="sm"
-            description={error}
-            onRetry={() => void fetchEmployees()}
-          />
-        )}
+        {activeTab === 'onboarding' ? (
+          <div className="space-y-4">
+            {/* Search Bar for Pending Reviews */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Icon name="search" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search pending reviews by employee name or email..."
+                  value={reviewSearch}
+                  onChange={(e) => setReviewSearch(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm font-medium text-slate-900 placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-[#0B1121] dark:text-white dark:placeholder-slate-500"
+                />
+              </div>
+              <p className="text-xs font-semibold text-slate-400">
+                {pendingReviewsList.length} pending onboarding submission{pendingReviewsList.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            {/* Pending Onboarding List Table */}
+            {pendingReviewsList.length === 0 ? (
+              <EmptyState
+                icon={<ShieldCheck className="h-8 w-8 text-slate-400" />}
+                title="No Pending Onboarding Reviews"
+                description={
+                  reviewSearch
+                    ? `No pending reviews matching "${reviewSearch}".`
+                    : 'All employee onboarding submissions have been reviewed and processed.'
+                }
+              />
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                    <tr>
+                      <th className="px-6 py-3.5">Employee</th>
+                      <th className="px-6 py-3.5">Department</th>
+                      <th className="px-6 py-3.5">Submitted Date</th>
+                      <th className="px-6 py-3.5">Status</th>
+                      <th className="px-6 py-3.5 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {pendingReviewsList.map((ob) => {
+                      const emp: any = typeof ob.employeeId === 'object' && ob.employeeId ? ob.employeeId : {};
+                      const user: any = typeof ob.userId === 'object' && ob.userId ? ob.userId : {};
+                      const name = emp.name || user.name || 'Employee';
+                      const email = emp.email || user.email || 'N/A';
+                      const dept = emp.department || 'General';
+                      const dateStr = ob.completedAt || ob.updatedAt;
+                      const formattedDate = dateStr
+                        ? new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : '—';
+
+                      return (
+                        <tr key={ob._id} className="hover:bg-slate-50/80 dark:hover:bg-white/5 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">
+                                {name.charAt(0).toUpperCase()}
+                              </span>
+                              <div>
+                                <p className="font-bold text-slate-900 dark:text-white">{name}</p>
+                                <p className="text-xs text-slate-400">{email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">{dept}</td>
+                          <td className="px-6 py-4 text-xs text-slate-500 dark:text-slate-400">{formattedDate}</td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/20">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              Pending Review
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedOnboarding(ob);
+                                setIsReviewModalOpen(true);
+                              }}
+                              className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-blue-500"
+                            >
+                              Review Application
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-slate-400"><Icon name="filter" /></span>
+              
+              {/* Department Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => { setIsDeptOpen(!isDeptOpen); setIsStatusOpen(false); }}
+                  className="flex items-center justify-between gap-2 w-40 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121]/50 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  {department}
+                  <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isDeptOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                {isDeptOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsDeptOpen(false)} />
+                    <div className="absolute left-0 z-50 mt-2 w-48 max-h-64 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+                      {departments.map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => { setDepartment(d); setPage(1); setIsDeptOpen(false); }}
+                          className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                            department === d
+                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                              : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Status Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => { setIsStatusOpen(!isStatusOpen); setIsDeptOpen(false); }}
+                  className="flex items-center justify-between gap-2 w-32 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[#0B1121]/50 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  {status}
+                  <svg className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${isStatusOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                {isStatusOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsStatusOpen(false)} />
+                    <div className="absolute left-0 z-50 mt-2 w-40 max-h-64 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+                      {statuses.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => { setStatus(s); setPage(1); setIsStatusOpen(false); }}
+                          className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                            status === s
+                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                              : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Error banner */}
+            {error && (
+              <ErrorState
+                size="sm"
+                description={error}
+                onRetry={() => void fetchEmployees()}
+              />
+            )}
 
         {/* Table - Desktop Only */}
         <div className="hidden md:block" onContextMenu={(e) => {
@@ -573,6 +745,8 @@ export default function EmployeeManagement() {
             </div>
           )}
         </div>
+      </>
+    )}
       </div>
 
       {/* ── Floating Bulk Action Bar ── */}
@@ -819,6 +993,17 @@ export default function EmployeeManagement() {
       )}
 
       <ContextMenu {...menuProps} />
+
+      {/* Onboarding Review Modal */}
+      <OnboardingReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        onboarding={selectedOnboarding}
+        onReviewSubmit={() => {
+          void fetchPendingOnboardings();
+          void fetchEmployees();
+        }}
+      />
     </DashboardLayout>
   );
 }

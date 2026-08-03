@@ -1,6 +1,7 @@
 import React from 'react';
 import ActivityFeed from './ActivityFeed';
 import HRReviewCard from './HRReviewCard';
+import type { ApiOnboardingActivity } from '../../services/hrmsApi';
 
 interface ProgressSidebarProps {
   completionPercent: number;
@@ -9,6 +10,10 @@ interface ProgressSidebarProps {
   employeeId?: string;
   saveStatus: 'idle' | 'saving' | 'saved';
   profileStrength?: number;
+  reviewStatus?: 'In Progress' | 'Pending Review' | 'Approved' | 'Rejected';
+  reviewNotes?: string;
+  assignedHr?: string;
+  activityLogs?: ApiOnboardingActivity[];
 }
 
 const ProgressSidebar = React.memo(function ProgressSidebar({
@@ -17,7 +22,11 @@ const ProgressSidebar = React.memo(function ProgressSidebar({
   estimatedMinutesRemaining,
   employeeId = 'EMP-0142',
   saveStatus,
-  profileStrength = 0
+  profileStrength = 0,
+  reviewStatus = 'In Progress',
+  reviewNotes,
+  assignedHr = 'HR Team (Sarah Jenkins)',
+  activityLogs = []
 }: ProgressSidebarProps) {
   
   return (
@@ -76,10 +85,10 @@ const ProgressSidebar = React.memo(function ProgressSidebar({
         </div>
 
         {/* SECTION 2: HR Review */}
-        <HRReviewCard />
+        <HRReviewCard status={reviewStatus} assignedHr={assignedHr} notes={reviewNotes} />
 
         {/* SECTION 3: Activity */}
-        <ActivityFeed />
+        <ActivityFeed logs={activityLogs} />
 
         {/* SECTION 4: Sync Status Footer */}
         <div className="px-5 py-3 bg-slate-50 dark:bg-white/[0.02] border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
