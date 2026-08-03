@@ -13,7 +13,7 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-function Icon({ name, className = 'h-4 w-4' }: { name: 'building' | 'mail' | 'lock' | 'eye' | 'eyeOff' | 'arrow' | 'shield' | 'check' | 'users' | 'chart' | 'arrowRight' | 'arrowLeft' | 'calendar' | 'rupee' | 'clock'; className?: string }) {
+function Icon({ name, className = 'h-4 w-4' }: { name: 'building' | 'mail' | 'lock' | 'eye' | 'eyeOff' | 'arrow' | 'shield' | 'check' | 'users' | 'chart' | 'arrowRight' | 'arrowLeft' | 'calendar' | 'rupee' | 'clock' | 'crown' | 'user'; className?: string }) {
   const common = { className, fill: 'none', stroke: 'currentColor', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 2, viewBox: '0 0 24 24' };
   if (name === 'building') return <svg {...common}><path d="M8 21h8M9 8h1m-1 4h1m-1 4h1m4-8h1m-1 4h1m-1 4h1M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M4 21h16" /></svg>;
   if (name === 'mail') return <svg {...common}><rect x="4" y="6" width="16" height="12" rx="2" /><path d="m4 8 8 6 8-6" /></svg>;
@@ -21,6 +21,8 @@ function Icon({ name, className = 'h-4 w-4' }: { name: 'building' | 'mail' | 'lo
   if (name === 'eye') return <svg {...common}><path d="M3 12.5c.75-4.32 4.5-7.62 9-7.62s8.25 3.3 9 7.62c-.75 4.32-4.5 7.62-9 7.62s-8.25-3.3-9-7.62Z" /><path d="M14.25 12.5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg>;
   if (name === 'eyeOff') return <svg {...common}><path d="m3 3 18 18M10.58 10.58a2 2 0 0 0 2.83 2.83M9.88 5.09A10.45 10.45 0 0 1 12 4.88c4.5 0 8.25 3.3 9 7.62a10.2 10.2 0 0 1-2.22 4.44M6.12 6.12A10.7 10.7 0 0 0 3 12.5c.75 4.32 4.5 7.62 9 7.62 1.18 0 2.31-.23 3.35-.65" /></svg>;
   if (name === 'shield') return <svg {...common}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>;
+  if (name === 'crown') return <svg {...common}><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" /></svg>;
+  if (name === 'user') return <svg {...common}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
   if (name === 'check') return <svg {...common}><polyline points="20 6 9 17 4 12" /></svg>;
   if (name === 'users') return <svg {...common}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
   if (name === 'chart') return <svg {...common}><path d="M3 3v18h18M18 9l-5 5-3-3-5 5" /></svg>;
@@ -36,7 +38,7 @@ export default function LoginPage() {
   const { login, isLoading, error: apiError, clearError } = useAuthContext();
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [role, setRole] = useState<'hr-manager' | 'employee'>('hr-manager');
+  const [role, setRole] = useState<'admin' | 'hr-manager' | 'employee'>('admin');
 
   const { register, handleSubmit: hookFormSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -95,14 +97,14 @@ export default function LoginPage() {
             </span>
           </h1>
           <p className="mb-10 text-lg text-slate-400 leading-relaxed font-medium">
-            Secure role-based access for employees and HR managers — payroll, attendance, leave, and reports in one platform.
+            Admin-managed access for administrators, HR managers, and employees — payroll, attendance, leave, and reporting.
           </p>
 
           <div className="space-y-6">
             {[
-              { icon: 'shield', text: 'Enterprise-grade security & compliance' },
-              { icon: 'check', text: 'Automated payroll with zero errors' },
-              { icon: 'chart', text: 'Real-time attendance & leave tracking' }
+              { icon: 'shield', text: 'Enterprise-grade security & RBAC' },
+              { icon: 'check', text: 'Automated payroll & user management' },
+              { icon: 'chart', text: 'Real-time attendance & analytics' }
             ].map((item, idx) => (
               <motion.div
                 key={idx}
@@ -166,16 +168,19 @@ export default function LoginPage() {
 
             {/* Premium Role Selector Toggle */}
             <div className="mb-5 flex relative rounded-2xl bg-slate-950/50 p-1 border border-white/5 shadow-inner">
-              {['hr-manager', 'employee'].map((r) => (
+              {['admin', 'hr-manager', 'employee'].map((r) => (
                 <button
                   key={r}
                   type="button"
-                  onClick={() => setRole(r as 'hr-manager' | 'employee')}
-                  className={`relative z-10 flex-1 rounded-xl py-2 text-sm font-bold transition-colors duration-300 ${role === r ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                  onClick={() => setRole(r as 'admin' | 'hr-manager' | 'employee')}
+                  className={`relative z-10 flex-1 rounded-xl py-2 text-xs font-bold transition-colors duration-300 ${role === r ? 'text-white' : 'text-slate-500 hover:text-slate-300'
                     }`}
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {r === 'hr-manager' ? '🛡 HR Manager' : '👤 Employee'}
+                  <span className="relative z-10 flex items-center justify-center gap-1.5">
+                    {r === 'admin' && <Icon name="crown" className="h-3.5 w-3.5 text-amber-400" />}
+                    {r === 'hr-manager' && <Icon name="shield" className="h-3.5 w-3.5 text-blue-400" />}
+                    {r === 'employee' && <Icon name="user" className="h-3.5 w-3.5 text-emerald-400" />}
+                    <span>{r === 'admin' ? 'Admin' : r === 'hr-manager' ? 'HR Manager' : 'Employee'}</span>
                   </span>
                   {role === r && (
                     <motion.div
@@ -188,18 +193,7 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* Compact Horizontal Trust Strip */}
-            <div className="mb-6 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              {[
-                { v: '150+', l: 'Enterprises' },
-                { v: '99.7%', l: 'Accuracy' },
-                { v: '1,248', l: 'Employees' }
-              ].map(t => (
-                <div key={t.l} className="flex items-center gap-1.5 rounded-full border border-white/5 bg-white/5 px-2.5 py-1 text-[10px] font-bold text-slate-400">
-                  <span className="text-blue-400">{t.v}</span> {t.l}
-                </div>
-              ))}
-            </div>
+
 
             {apiError && (
               <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm font-medium text-red-400 flex items-start gap-3 backdrop-blur-md">
@@ -255,7 +249,7 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="group relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(37,99,235,0.5)] disabled:pointer-events-none disabled:opacity-70"
               >
-                {isLoading ? 'Signing in...' : `Continue as ${role === 'hr-manager' ? 'HR Manager' : 'Employee'} →`}
+                {isLoading ? 'Signing in...' : `Continue as ${role === 'admin' ? 'Admin' : role === 'hr-manager' ? 'HR Manager' : 'Employee'} →`}
               </button>
 
               <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -271,14 +265,6 @@ export default function LoginPage() {
                 ))}
               </div>
             </form>
-
-
-
-            <p className="mt-6 text-center text-sm font-medium text-slate-400">
-              Don't have an account? <Link to="/register" className="font-bold text-blue-400 hover:text-blue-300 transition-colors">Sign up free</Link>
-            </p>
-
-
 
           </div>
         </motion.div>

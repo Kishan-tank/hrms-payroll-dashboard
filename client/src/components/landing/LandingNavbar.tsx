@@ -98,15 +98,9 @@ export default function LandingNavbar() {
         <div className="ml-auto hidden items-center gap-4 lg:flex">
           <Link
             to="/login"
-            className="text-sm font-semibold text-slate-300 transition-colors hover:text-white"
-          >
-            Sign In
-          </Link>
-          <Link
-            to="/register"
             className="relative overflow-hidden rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] transition-all hover:bg-blue-500 hover:shadow-[0_0_20px_rgba(37,99,235,0.6)] hover:-translate-y-0.5"
           >
-            Get Started Free
+            Sign In to Portal
           </Link>
         </div>
 
@@ -149,17 +143,10 @@ export default function LandingNavbar() {
             <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-4">
               <Link
                 to="/login"
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-slate-300"
-                onClick={() => setMobileOpen(false)}
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
                 className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]"
                 onClick={() => setMobileOpen(false)}
               >
-                Get Started Free
+                Sign In to Portal
               </Link>
             </div>
           </div>

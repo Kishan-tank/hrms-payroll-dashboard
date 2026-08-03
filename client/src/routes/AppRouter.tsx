@@ -8,13 +8,13 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Eagerly loaded (critical path)
 import LoginPage from '../pages/Login/LoginPage';
-import RegisterPage from '../pages/Register/RegisterPage';
 import ForgotPasswordPage from '../pages/Login/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/Login/ResetPasswordPage';
 import Home from '../pages/Home';
 import NotFoundPage from '../pages/NotFoundPage';
 
 // Lazy loaded (heavy pages)
+const AdminUserManagement = lazy(() => import('../pages/Admin/AdminUserManagement'));
 const DesignSystemPage = lazy(() => import('../pages/DesignSystemPage'));
 const OnboardingPage = lazy(() => import('../pages/OnboardingPage'));
 const EmployeeDashboard = lazy(() => import('../pages/EmployeeDashboard'));
@@ -52,7 +52,6 @@ export default function AppRouter() {
                 {/* ── Public routes – no login required ── */}
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                 {/* /design-system is a dev-only tool — unreachable in production builds */}
@@ -71,9 +70,14 @@ export default function AppRouter() {
               <Route path="/leave" element={<LeavePage />} />
               <Route path="/payroll" element={<PayrollPage />} />
               
-              <Route path="/company-hub" element={<CompanyHubPage />} /> {/* <-- ADD THIS */}
-              <Route path="/performance" element={<PerformancePage />} /> {/* <-- ADD THIS */}
+              <Route path="/company-hub" element={<CompanyHubPage />} />
+              <Route path="/performance" element={<PerformancePage />} />
             </Route>
+
+                {/* ── Admin-only routes ── */}
+                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                  <Route path="/admin/users" element={<AdminUserManagement />} />
+                </Route>
 
                 {/* ── Employee-only routes ── */}
                 <Route element={<ProtectedRoute allowedRoles={['employee']} />}>

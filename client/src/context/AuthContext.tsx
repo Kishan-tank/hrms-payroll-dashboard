@@ -1,14 +1,13 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { User, RegisterRequest } from '../types';
+import type { User } from '../types';
 import { authAPI } from '../services/api';
 import { useTheme } from './ThemeContext';
 
 interface AuthContextValue {
   user: User | null;
-  login: (credentials: { email: string; password: string }, selectedRole: 'employee' | 'hr-manager') => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  login: (credentials: { email: string; password: string }, selectedRole?: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   error: string | null;
@@ -40,11 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await authAPI.me();
         const { user: u } = res.data as { user: User };
-        u.role = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
         setUser(u);
       } catch (err) {
         console.error('Token validation failed', err);
-        // localStorage is cleared by the interceptor
         setUser(null);
         navigate('/login');
       }
@@ -55,12 +52,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Redirect based on role after any successful login */
   const redirectByRole = useCallback(
     (u: User) => {
-      if (u.role === 'employee') {
-        setTheme('dark');
-      }
-      if (u.role === 'hr-manager') {
+      const role = String(u.role).toLowerCase();
+      if (role === 'admin') {
+        navigate('/admin/users');
+      } else if (['hr-manager', 'hr manager', 'hr'].includes(role)) {
         navigate('/hr-dashboard');
       } else {
+        setTheme('dark');
         navigate('/employee-dashboard');
       }
     },
@@ -69,25 +67,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Real API login */
   const login = useCallback(
-    async (credentials: { email: string; password: string }, selectedRole: 'employee' | 'hr-manager') => {
+    async (credentials: { email: string; password: string }, selectedRole?: string) => {
       setIsLoading(true);
       setError(null);
       try {
         const res = await authAPI.login(credentials);
         const { token, user: u } = res.data as { token: string; user: User };
-        const actualRole = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
 
-        if (actualRole !== selectedRole) {
-          throw new Error(
-            actualRole === "hr-manager"
-              ? "This account is registered as HR Manager. Please select HR Manager to continue."
-              : "This account is registered as Employee. Please select Employee to continue."
-          );
+        const actualRole = String(u.role).toLowerCase();
+
+        if (actualRole !== 'admin' && selectedRole && selectedRole !== actualRole) {
+          const expected = actualRole === 'hr-manager' ? 'HR Manager' : 'Employee';
+          throw new Error(`This account is registered as ${expected}. Please select ${expected} to continue.`);
         }
-        
-        u.role = actualRole;
-        
-        // Save for mock consistency
+
         localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(u));
@@ -111,30 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [redirectByRole],
   );
 
-  const register = useCallback(async (data: RegisterRequest) => {
-    setIsLoading(true); setError(null);
-    try {
-      const res = await authAPI.register(data);
-      const { token, user: u } = res.data as { token: string; user: User };
-      
-      const actualRole = (u.role === 'hr-manager' || u.role === 'admin') ? 'hr-manager' : 'employee';
-      u.role = actualRole;
-
-      localStorage.setItem("hrms_registered_user", JSON.stringify({ email: u.email, name: u.name, role: u.role }));
-      localStorage.setItem('token', token); 
-      localStorage.setItem('user', JSON.stringify(u));
-      
-      setUser(u); 
-      navigate(u.role === 'employee' ? '/employee-dashboard' : '/hr-dashboard');
-    } catch (err: unknown) {
-      const message = ((err as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Registration failed';
-      setError(message);
-      throw err;
-    } finally { 
-      setIsLoading(false); 
-    }
-  }, [navigate]);
-
   const logout = useCallback(() => {
     authAPI.logout();
     localStorage.removeItem('user');
@@ -147,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, register, logout, isLoading, error, clearError }}
+      value={{ user, login, logout, isLoading, error, clearError }}
     >
       {children}
     </AuthContext.Provider>

@@ -18,13 +18,14 @@ type IconName =
   | 'companyHub'
   | 'help'
   | 'tasks'
-  | 'checklist';
+  | 'checklist'
+  | 'shield';
 
 interface NavItem {
   label: string;
   path: string;
   icon: IconName;
-  roles?: Array<'EMPLOYEE' | 'HR_MANAGER'>;
+  roles?: Array<'EMPLOYEE' | 'HR_MANAGER' | 'ADMIN'>;
 }
 
 interface NavGroup {
@@ -36,10 +37,11 @@ const NAV_GROUPS: NavGroup[] = [
   {
     group: 'Main',
     items: [
+      { label: 'User Management', path: '/admin/users', icon: 'shield', roles: ['ADMIN'] },
       { label: 'Dashboard', path: '/employee-dashboard', icon: 'dashboard', roles: ['EMPLOYEE'] },
       { label: 'Onboarding', path: '/onboarding', icon: 'checklist', roles: ['EMPLOYEE'] },
       { label: 'Tasks', path: '/tasks', icon: 'tasks', roles: ['EMPLOYEE'] },
-      { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['HR_MANAGER'] },
+      { label: 'Dashboard', path: '/hr-dashboard', icon: 'dashboard', roles: ['HR_MANAGER', 'ADMIN'] },
       { label: 'Attendance', path: '/attendance', icon: 'attendance' },
       { label: 'Leave Management', path: '/leave', icon: 'leave' },
     ]
@@ -47,9 +49,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     group: 'Team & Organization',
     items: [
-      { label: 'Employees', path: '/employees', icon: 'employees', roles: ['HR_MANAGER'] },
+      { label: 'Employees', path: '/employees', icon: 'employees', roles: ['HR_MANAGER', 'ADMIN'] },
       { label: 'Payroll', path: '/payroll', icon: 'payroll' },
-      { label: 'Analytics', path: '/analytics', icon: 'reports', roles: ['HR_MANAGER'] },
+      { label: 'Analytics', path: '/analytics', icon: 'reports', roles: ['HR_MANAGER', 'ADMIN'] },
       { label: 'Company Hub', path: '/company-hub', icon: 'companyHub' },
       { label: 'Performance', path: '/performance', icon: 'performance' },
     ]
@@ -90,6 +92,7 @@ function Icon({ name, className = 'h-5 w-5' }: { name: IconName; className?: str
     case 'help': return <svg {...c}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01" /></svg>;
     case 'companyHub': return <svg {...c}><path d="M8 21h8M9 8h1m-1 4h1m-1 4h1m4-8h1m-1 4h1m-1 4h1M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M4 21h16" /></svg>;
     case 'tasks': return <svg {...c}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>;
+    case 'shield': return <svg {...c}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>;
     default: return null;
   }
 }
@@ -103,7 +106,9 @@ export default function Sidebar() {
   const { user, logout } = useAuthContext();
 
   const normalizedRole = user?.role?.toLowerCase() || '';
-  const userRole = ['hr-manager', 'hr manager', 'hr', 'manager'].includes(normalizedRole)
+  const userRole = normalizedRole === 'admin'
+    ? 'ADMIN'
+    : ['hr-manager', 'hr manager', 'hr', 'manager'].includes(normalizedRole)
     ? 'HR_MANAGER'
     : 'EMPLOYEE';
 

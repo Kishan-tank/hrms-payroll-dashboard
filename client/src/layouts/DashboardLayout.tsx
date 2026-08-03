@@ -25,9 +25,11 @@ export default function DashboardLayout({
   const displayName = user?.name ?? userName ?? 'User';
   const normalizedRole = user?.role?.toLowerCase() || '';
   const displayRole = user
-    ? ['hr-manager', 'hr manager', 'hr', 'manager'].includes(normalizedRole)
-      ? 'HR Manager'
-      : 'Employee'
+    ? normalizedRole === 'admin'
+      ? 'System Admin'
+      : ['hr-manager', 'hr manager', 'hr', 'manager'].includes(normalizedRole)
+        ? 'HR Manager'
+        : 'Employee'
     : (userRole ?? 'Employee');
 
   return (
