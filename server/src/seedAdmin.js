@@ -25,6 +25,7 @@ const seedAdmin = async () => {
     if (existingAdmin) {
       existingAdmin.email = adminEmail;
       existingAdmin.password = hashedPassword;
+      existingAdmin.isVerified = true;
       await existingAdmin.save();
 
       // Sync linked Employee profile
@@ -46,6 +47,7 @@ const seedAdmin = async () => {
       department: "Administration",
       designation: "System Administrator",
       isActive: true,
+      isVerified: true,
     });
 
     // Create linked Employee profile

@@ -10,6 +10,7 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import LoginPage from '../pages/Login/LoginPage';
 import ForgotPasswordPage from '../pages/Login/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/Login/ResetPasswordPage';
+import VerifyAccountPage from '../pages/Auth/VerifyAccountPage';
 import Home from '../pages/Home';
 import NotFoundPage from '../pages/NotFoundPage';
 
@@ -52,6 +53,7 @@ export default function AppRouter() {
                 {/* ── Public routes – no login required ── */}
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/verify-account" element={<VerifyAccountPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                 {/* /design-system is a dev-only tool — unreachable in production builds */}

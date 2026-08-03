@@ -108,6 +108,29 @@ const renderEmailWrapper = ({ title, bodyHtml }) => {
   `;
 };
 
+/** Account Verification OTP Email Template (15 min expiry) */
+export const renderAccountVerificationEmail = (otpCode, expiresMinutes = 15) => {
+  const bodyHtml = `
+    <div style="text-align: center;">
+      <span class="badge badge-info">Account Email Verification</span>
+      <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Verify Your HRMSPro Account</h2>
+      <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+        Welcome to <strong>HRMSPro</strong>! Please use the 6-digit verification code below to verify your email address before logging in.
+      </p>
+      
+      <div class="otp-box">
+        <p class="otp-code">${otpCode}</p>
+        <p style="color: #64748b; font-size: 11px; margin-top: 8px;">Valid for ${expiresMinutes} minutes</p>
+      </div>
+
+      <p style="color: #64748b; font-size: 12px;">
+        If you did not request this account, please ignore this email or contact support.
+      </p>
+    </div>
+  `;
+  return renderEmailWrapper({ title: "HRMSPro: Verify your account", bodyHtml });
+};
+
 /** OTP Verification Email Template */
 export const renderOtpEmail = (otpCode, expiresMinutes = 5) => {
   const bodyHtml = `
@@ -139,7 +162,7 @@ export const renderAccountCreatedEmail = ({ name, email, tempPassword }) => {
         <p style="color: #94a3b8; font-size: 12px; margin: 0 0 6px 0;">Temporary Login Password:</p>
         <p style="font-family: monospace; font-size: 20px; font-weight: bold; color: #34d399; margin: 0; word-break: break-all;">${tempPassword}</p>
       </div>
-      <p style="color: #fbbf24; font-size: 12px;">⚠️ Please change your password after logging in for security.</p>
+      <p style="color: #fbbf24; font-size: 12px;">⚠️ Please verify your account and change your password after logging in.</p>
     `
     : `
       <p style="color: #94a3b8; font-size: 14px;">Please contact your administrator or use the forgot password flow to set your account password.</p>
@@ -167,50 +190,63 @@ export const renderAccountCreatedEmail = ({ name, email, tempPassword }) => {
   return renderEmailWrapper({ title: "Welcome to HRMSPro", bodyHtml });
 };
 
-/** Role Update Email Template */
-export const renderRoleUpdatedEmail = ({ name, newRole }) => {
-  const displayRole = newRole === "hr-manager" ? "HR Manager" : newRole === "admin" ? "System Admin" : "Employee";
-  const bodyHtml = `
-    <div>
-      <span class="badge badge-warning">Role Updated</span>
-      <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Account Role Notice</h2>
-      <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
-        Hello <strong>${name}</strong>, your account permissions in <strong>HRMSPro</strong> have been updated by an administrator.
-      </p>
+/** Role Update Email Template (User & Admin copies) */
+export const renderRoleUpdatedEmail = ({ name, oldRole, newRole, isAdminNotice = false, timestamp = new Date().toLocaleString() }) => {
+  const displayOldRole = oldRole === "hr-manager" ? "HR Manager" : oldRole === "admin" ? "System Admin" : "Employee";
+  const displayNewRole = newRole === "hr-manager" ? "HR Manager" : newRole === "admin" ? "System Admin" : "Employee";
 
-      <div class="otp-box" style="text-align: center;">
-        <p style="color: #94a3b8; font-size: 12px; margin: 0 0 6px 0;">New Account Role:</p>
-        <p style="font-size: 22px; font-weight: bold; color: #60a5fa; margin: 0;">${displayRole}</p>
-      </div>
+  const title = isAdminNotice ? `HRMSPro Audit: Role changed for ${name}` : "HRMSPro: Your role was updated";
 
-      <p style="color: #94a3b8; font-size: 13px;">
-        Your dashboard navigation and workspace access permissions have been adjusted accordingly.
-      </p>
-    </div>
-  `;
-  return renderEmailWrapper({ title: "HRMSPro Account Role Updated", bodyHtml });
-};
-
-/** Account Deactivation Email Template */
-export const renderAccountDeactivatedEmail = ({ name }) => {
-  const bodyHtml = `
-    <div>
-      <span class="badge badge-danger">Access Revoked</span>
-      <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Account Status Notice</h2>
-      <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
-        Hello <strong>${name}</strong>, your account access for <strong>HRMSPro</strong> has been revoked by an administrator.
-      </p>
-
-      <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 16px; margin: 20px 0;">
-        <p style="color: #f87171; font-size: 13px; margin: 0;">
-          Your account status is now set to <strong>Inactive</strong> and active sessions have been terminated.
+  const bodyHtml = isAdminNotice
+    ? `
+      <div>
+        <span class="badge badge-info">Admin Audit Trail</span>
+        <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">User Role Change Logged</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+          You changed <strong>${name}</strong>'s role from <strong>${displayOldRole}</strong> to <strong>${displayNewRole}</strong> on <code>${timestamp}</code>.
         </p>
       </div>
+    `
+    : `
+      <div>
+        <span class="badge badge-warning">Role Updated</span>
+        <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Account Role Notice</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+          Hello <strong>${name}</strong>, your account role has been changed from <strong>${displayOldRole}</strong> to <strong>${displayNewRole}</strong>.
+        </p>
+        <div class="otp-box" style="text-align: center;">
+          <p style="color: #94a3b8; font-size: 12px; margin: 0 0 6px 0;">New Account Role:</p>
+          <p style="font-size: 22px; font-weight: bold; color: #60a5fa; margin: 0;">${displayNewRole}</p>
+        </div>
+      </div>
+    `;
 
-      <p style="color: #64748b; font-size: 12px;">
-        If you believe this is an error, please contact your organization's HR department or administrator.
-      </p>
-    </div>
-  `;
-  return renderEmailWrapper({ title: "HRMSPro Account Access Revoked", bodyHtml });
+  return renderEmailWrapper({ title, bodyHtml });
+};
+
+/** Account Deactivation Email Template (User & Admin copies) */
+export const renderAccountDeactivatedEmail = ({ name, email, isAdminNotice = false, timestamp = new Date().toLocaleString() }) => {
+  const title = isAdminNotice ? `HRMSPro Audit: Removed user ${name}` : "HRMSPro: Your account access was revoked";
+
+  const bodyHtml = isAdminNotice
+    ? `
+      <div>
+        <span class="badge badge-danger">Admin Audit Trail</span>
+        <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">User Account Removal Logged</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+          You removed user <strong>${name}</strong> (<code>${email}</code>) on <code>${timestamp}</code>.
+        </p>
+      </div>
+    `
+    : `
+      <div>
+        <span class="badge badge-danger">Access Revoked</span>
+        <h2 style="color: #ffffff; margin-top: 12px; font-size: 20px;">Account Access Revoked</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+          Hello <strong>${name}</strong>, your account access for <strong>HRMSPro</strong> has been revoked by an administrator.
+        </p>
+      </div>
+    `;
+
+  return renderEmailWrapper({ title, bodyHtml });
 };

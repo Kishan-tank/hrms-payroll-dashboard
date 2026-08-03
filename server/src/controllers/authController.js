@@ -4,7 +4,7 @@ import crypto from "crypto";
 import User from "../models/user.js";
 import Employee from "../models/employee.js";
 import { sendEmail } from "../utils/mailer.js";
-import { renderOtpEmail } from "../templates/emailTemplate.js";
+import { renderOtpEmail, renderAccountVerificationEmail } from "../templates/emailTemplate.js";
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -66,6 +66,16 @@ export const loginUser = async (req, res) => {
       });
     }
 
+    // Check account verification status before password check
+    if (user.isVerified === false) {
+      return res.status(403).json({
+        success: false,
+        isUnverified: true,
+        email: user.email,
+        message: "Please verify your email before logging in",
+      });
+    }
+
     const isPasswordMatch = await bcrypt.compare(password, user.password);
 
     if (!isPasswordMatch) {
@@ -117,6 +127,138 @@ export const loginUser = async (req, res) => {
   }
 };
 
+/** Account Email Verification Endpoint (POST /verify-account) */
+export const verifyAccount = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and verification code are required",
+      });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    if (!user || !user.verifyOtpHash || !user.verifyOtpExpiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired code",
+      });
+    }
+
+    if (new Date() > new Date(user.verifyOtpExpiresAt)) {
+      user.verifyOtpHash = undefined;
+      user.verifyOtpExpiresAt = undefined;
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired code",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(String(otp).trim(), user.verifyOtpHash);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired code",
+      });
+    }
+
+    user.isVerified = true;
+    user.verifyOtpHash = undefined;
+    user.verifyOtpExpiresAt = undefined;
+    user.verifyOtpLastSentAt = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Account verified successfully! You can now log in.",
+    });
+  } catch (error) {
+    console.error("verifyAccount error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Account verification failed",
+    });
+  }
+};
+
+/** Resend Account Verification OTP Endpoint (POST /verify-account/resend) */
+export const resendAccountVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Account is already verified",
+      });
+    }
+
+    // Enforce 30-second cooldown
+    if (user.verifyOtpLastSentAt) {
+      const timeDiff = Date.now() - new Date(user.verifyOtpLastSentAt).getTime();
+      if (timeDiff < 30000) {
+        const remainingSec = Math.ceil((30000 - timeDiff) / 1000);
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${remainingSec} seconds before requesting another code.`,
+        });
+      }
+    }
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+
+    user.verifyOtpHash = otpHash;
+    user.verifyOtpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    user.verifyOtpLastSentAt = new Date();
+    await user.save();
+
+    console.log(`\n==================================================`);
+    console.log(`🔑 [DEV VERIFY OTP FALLBACK] Code for ${user.email}: ${otpCode}`);
+    console.log(`==================================================\n`);
+
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: "HRMSPro: Verify your account",
+      html: renderAccountVerificationEmail(otpCode, 15),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: emailResult.success
+        ? "Verification code sent to your email"
+        : `Email delivery failed (${emailResult.error}). Check server terminal for dev code: ${otpCode}`,
+    });
+  } catch (error) {
+    console.error("resendAccountVerification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to resend verification code",
+    });
+  }
+};
+
 export const verifyOtp = async (req, res) => {
   try {
     const { tempToken, otp } = req.body;
@@ -154,7 +296,6 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // Check expiration
     if (new Date() > new Date(user.otpExpiresAt)) {
       user.otpHash = undefined;
       user.otpExpiresAt = undefined;
@@ -166,7 +307,6 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // Max attempt limit check (5 tries)
     if (user.otpAttempts >= 5) {
       user.otpHash = undefined;
       user.otpExpiresAt = undefined;
@@ -189,7 +329,6 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // Clear OTP fields upon successful verification
     user.otpHash = undefined;
     user.otpExpiresAt = undefined;
     user.otpAttempts = 0;
@@ -257,7 +396,6 @@ export const resendOtp = async (req, res) => {
       });
     }
 
-    // Enforce 30-second cooldown between resends
     if (user.otpLastSentAt) {
       const timeDiff = Date.now() - new Date(user.otpLastSentAt).getTime();
       if (timeDiff < 30000) {

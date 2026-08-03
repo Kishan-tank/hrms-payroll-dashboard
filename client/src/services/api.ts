@@ -29,6 +29,8 @@ export const authAPI = {
   login: (data: { email: string; password: string }) => api.post('/auth/login', data),
   verifyOtp: (data: { tempToken: string; otp: string }) => api.post('/auth/login/verify-otp', data),
   resendOtp: (data: { tempToken: string }) => api.post('/auth/login/resend-otp', data),
+  verifyAccount: (data: { email: string; otp: string }) => api.post('/auth/verify-account', data),
+  resendAccountVerification: (data: { email: string }) => api.post('/auth/verify-account/resend', data),
   /** Validate the stored token and return the current user from the server. */
   me: () => api.get('/auth/me'),
   logout: () => { localStorage.removeItem('token'); localStorage.removeItem('user'); },

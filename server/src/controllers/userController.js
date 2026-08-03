@@ -1,11 +1,10 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.js";
 import Employee from "../models/employee.js";
-import { sendEmail } from "../utils/mailer.js";
+import { sendEmail, notifyChange } from "../utils/mailer.js";
 import {
   renderAccountCreatedEmail,
-  renderRoleUpdatedEmail,
-  renderAccountDeactivatedEmail,
+  renderAccountVerificationEmail,
 } from "../templates/emailTemplate.js";
 
 const normaliseRole = (rawRole) => {
@@ -54,6 +53,10 @@ export const createUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(initialPassword, 10);
 
+    // Generate 6-digit verification OTP (15 min expiry)
+    const verifyOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verifyOtpHash = await bcrypt.hash(verifyOtpCode, 10);
+
     const user = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
@@ -62,6 +65,10 @@ export const createUser = async (req, res) => {
       department: department || "General",
       designation: designation || "Staff",
       isActive: true,
+      isVerified: false,
+      verifyOtpHash,
+      verifyOtpExpiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+      verifyOtpLastSentAt: new Date(),
     });
 
     // Create linked Employee profile
@@ -79,7 +86,19 @@ export const createUser = async (req, res) => {
       isActive: true,
     });
 
-    // Fire-and-forget welcome email notification
+    // Print dev verify OTP in terminal
+    console.log(`\n==================================================`);
+    console.log(`🔑 [DEV VERIFY OTP] Account Verification Code for ${user.email}: ${verifyOtpCode}`);
+    console.log(`==================================================\n`);
+
+    // Fire-and-forget account verification email notification
+    sendEmail({
+      to: user.email,
+      subject: "HRMSPro: Verify your account",
+      html: renderAccountVerificationEmail(verifyOtpCode, 15),
+    }).catch((err) => console.error("[Mailer] Account verification notification error:", err));
+
+    // Fire-and-forget welcome account email notification
     sendEmail({
       to: user.email,
       subject: "Welcome to HRMSPro - Account Created",
@@ -92,6 +111,7 @@ export const createUser = async (req, res) => {
 
     const userResponse = user.toObject();
     delete userResponse.password;
+    delete userResponse.verifyOtpHash;
 
     res.status(201).json({
       success: true,
@@ -152,6 +172,7 @@ export const updateUserRole = async (req, res) => {
       });
     }
 
+    const oldRole = user.role;
     user.role = newRole;
     await user.save();
 
@@ -161,15 +182,12 @@ export const updateUserRole = async (req, res) => {
       { $set: { role: newRole } }
     );
 
-    // Fire-and-forget role update notification email
-    sendEmail({
-      to: user.email,
-      subject: "HRMSPro Account Role Updated",
-      html: renderRoleUpdatedEmail({
-        name: user.name,
-        newRole,
-      }),
-    }).catch((err) => console.error("[Mailer] Role update notification error:", err));
+    // Fire-and-forget dual audit notification emails (to user AND admin email)
+    notifyChange({
+      user,
+      action: "ROLE_UPDATE",
+      details: { oldRole, newRole },
+    });
 
     const userResponse = user.toObject();
     delete userResponse.password;
@@ -225,14 +243,12 @@ export const deleteUser = async (req, res) => {
       { $set: { status: "Inactive", isActive: false, deletedAt: new Date() } }
     );
 
-    // Fire-and-forget account deactivation notification email
-    sendEmail({
-      to: user.email,
-      subject: "HRMSPro Account Access Revoked",
-      html: renderAccountDeactivatedEmail({
-        name: user.name,
-      }),
-    }).catch((err) => console.error("[Mailer] Account deactivation notification error:", err));
+    // Fire-and-forget dual audit notification emails (to user AND admin email)
+    notifyChange({
+      user,
+      action: "ACCOUNT_DEACTIVATE",
+      details: {},
+    });
 
     res.status(200).json({
       success: true,

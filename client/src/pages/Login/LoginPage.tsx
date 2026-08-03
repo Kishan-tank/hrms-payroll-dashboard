@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthContext } from '../../context/AuthContext';
 import { authAPI } from '../../services/api';
@@ -36,6 +36,7 @@ function Icon({ name, className = 'h-4 w-4' }: { name: 'building' | 'mail' | 'lo
 }
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const { login, completeLoginSession, isLoading, error: apiError, clearError } = useAuthContext();
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
@@ -74,10 +75,13 @@ export default function LoginPage() {
         setRequiresOtp(true);
         setResendCooldown(30);
       }
-    } catch (err) {
-      // Handled by AuthContext error state
+    } catch (err: any) {
+      if (err?.response?.data?.isUnverified) {
+        const userEmail = err?.response?.data?.email || data.email;
+        navigate(`/verify-account?email=${encodeURIComponent(userEmail)}`);
+      }
     }
-  }, [role, login, clearError]);
+  }, [role, login, clearError, navigate]);
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
