@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { leaveService, ApiLeave } from '../services/hrmsApi';
+import { leaveService, leavePolicyService, ApiLeave, ApiLeavePolicy } from '../services/hrmsApi';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import DataTable from '../components/common/DataTable';
@@ -14,6 +14,7 @@ import ErrorState from '../components/common/ErrorState';
 import ContextMenu from '../components/common/ContextMenu';
 import { useContextMenu } from '../hooks/useContextMenu';
 import LeaveApprovalModal from '../components/leave/LeaveApprovalModal';
+import LeavePolicyModal from '../components/leave/LeavePolicyModal';
 
 const leaveSchema = z.object({
   leaveType: z.string().min(1),
@@ -29,10 +30,11 @@ type LeaveFormData = z.infer<typeof leaveSchema>;
 
 export default function LeavePage() {
   const { user } = useAuthContext();
-  const { success, info, error: toastError } = useToast();
+  const { success, error: toastError } = useToast();
   // Safely check role regardless of casing
   const normalizedRole = user?.role?.toLowerCase() || '';
   const isEmployee = !['hr', 'hr-manager', 'admin'].includes(normalizedRole);
+  const isAdmin = normalizedRole === 'admin';
   const displayName = user?.name || 'HR Manager';
 
   const { menuProps, handleContextMenu } = useContextMenu();
@@ -44,6 +46,10 @@ export default function LeavePage() {
     leave: ApiLeave;
     action: 'Approved' | 'Rejected';
   } | null>(null);
+
+  // Leave Policies state
+  const [policies, setPolicies] = useState<ApiLeavePolicy[]>([]);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
 
   function requestApproval(leave: ApiLeave, action: 'Approved' | 'Rejected') {
     setPendingApproval({ leave, action });
@@ -100,9 +106,21 @@ export default function LeavePage() {
     }
   }, [isEmployee, user]);
 
+  const fetchPolicies = useCallback(async () => {
+    try {
+      const res = await leavePolicyService.getPolicies();
+      if (res.success) {
+        setPolicies(res.policies || []);
+      }
+    } catch (err) {
+      console.error('Failed to load leave policies:', err);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchLeaves();
-  }, [fetchLeaves]);
+    void fetchPolicies();
+  }, [fetchLeaves, fetchPolicies]);
 
   const filtered = useMemo(() => (filter === 'All' ? leaveRequests : leaveRequests.filter((item) => item.status === filter)), [filter, leaveRequests]);
 
@@ -336,14 +354,14 @@ export default function LeavePage() {
               Welcome, <span className="font-semibold text-slate-700 dark:text-slate-300">{displayName}</span> — {isEmployee ? 'apply for leave and track your requests.' : 'review requests, approve leave, and monitor workforce availability.'}
             </p>
           </div>
-          {!isEmployee && (
+          {isAdmin && (
             <button
               type="button"
-              onClick={() => info('Create Policy is coming soon')}
-              className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
+              onClick={() => setIsPolicyModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 shadow-sm"
               style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
             >
-              Create Policy
+              <span>+</span> Create Policy
             </button>
           )}
         </div>
@@ -381,6 +399,44 @@ export default function LeavePage() {
             </div>
           ))}
         </div>
+
+        {/* Active Organization Leave Policies */}
+        {policies.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#0B1121]">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Organization Leave Policies</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Rules and yearly allotments configured by system administrators</p>
+              </div>
+              <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-400 border border-blue-500/20">
+                {policies.length} {policies.length === 1 ? 'Policy' : 'Policies'} Active
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {policies.map((p) => (
+                <div
+                  key={p._id}
+                  className="rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.02]"
+                >
+                  <div className="flex items-start justify-between">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white">{p.name}</h4>
+                    <span className="text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
+                      {p.daysAllotted} Days/Yr
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                    <p><strong>Type:</strong> {p.leaveType}</p>
+                    <p><strong>Department:</strong> {p.department || 'All'}</p>
+                    {p.allowCarryForward && (
+                      <p className="text-emerald-400 font-semibold">✓ Carry-forward allowed (Max {p.maxCarryForwardDays} days)</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Employee Apply Leave Form ── */}
         {isEmployee && (
@@ -625,6 +681,11 @@ export default function LeavePage() {
         </div>
 
       </div>
+      <LeavePolicyModal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        onSuccess={(newPolicy) => setPolicies((prev) => [newPolicy, ...prev])}
+      />
       <LeaveApprovalModal
         open={pendingApproval !== null && pendingApproval.action !== null && pendingApproval.leave !== null}
         action={pendingApproval?.action ?? null}

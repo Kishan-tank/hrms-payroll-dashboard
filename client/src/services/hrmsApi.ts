@@ -417,6 +417,32 @@ export const leaveService = {
     request<{ success: boolean; message: string }>('DELETE', `/leave/${id}/cancel`),
 };
 
+export interface ApiLeavePolicy {
+  _id: string;
+  name: string;
+  leaveType: string;
+  daysAllotted: number;
+  department?: string;
+  applicableRoles?: string[];
+  allowCarryForward?: boolean;
+  maxCarryForwardDays?: number;
+  isActive?: boolean;
+  createdAt?: string;
+}
+
+export const leavePolicyService = {
+  getPolicies: () => request<{ success: boolean; policies: ApiLeavePolicy[] }>('GET', '/leave-policies'),
+  createPolicy: (payload: {
+    name: string;
+    leaveType: string;
+    daysAllotted: number;
+    department?: string;
+    applicableRoles?: string[];
+    allowCarryForward?: boolean;
+    maxCarryForwardDays?: number;
+  }) => request<{ success: boolean; message: string; policy: ApiLeavePolicy }>('POST', '/leave-policies', payload),
+};
+
 // ─── AI Assistant ────────────────────────────────────────────────────────────
 
 export interface AIInsight {
