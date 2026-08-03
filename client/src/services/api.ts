@@ -41,8 +41,12 @@ export const authAPI = {
 export const userAPI = {
   getUsers: (params?: { search?: string; role?: string; page?: number; limit?: number }) =>
     api.get('/users', { params }),
-  createUser: (data: { name: string; email: string; role: string; password?: string; department?: string; designation?: string }) =>
-    api.post('/users', data),
+  initiateUser: (data: { name: string; email: string; role: string; department?: string; designation?: string }) =>
+    api.post('/users/initiate', data),
+  confirmUser: (data: { pendingId?: string; email?: string; otp: string; password?: string }) =>
+    api.post('/users/confirm', data),
+  resendPendingOtp: (data: { pendingId?: string; email?: string }) =>
+    api.post('/users/resend-otp', data),
   updateRole: (id: string, role: string) =>
     api.patch(`/users/${id}/role`, { role }),
   deleteUser: (id: string) =>

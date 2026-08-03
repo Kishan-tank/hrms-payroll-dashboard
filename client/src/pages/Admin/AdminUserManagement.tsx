@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -36,11 +36,28 @@ export default function AdminUserManagement() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [createdTempPassword, setCreatedTempPassword] = useState<{ email: string; pass: string } | null>(null);
 
+  // 2-Step Add User Wizard State
+  const [addStep, setAddStep] = useState<1 | 2>(1);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string>('');
+  const [pendingOtp, setPendingOtp] = useState<string>('');
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+
   // Action loading states for race-condition guarding
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const toast = useToast();
+
+  // Countdown timer for 30s resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const fetchUsers = useCallback(async (page = 1, search = '', role = 'All') => {
     setLoading(true);
@@ -74,6 +91,7 @@ export default function AdminUserManagement() {
     register,
     handleSubmit,
     reset,
+    getValues,
     formState: { errors },
   } = useForm<AddUserFormData>({
     resolver: zodResolver(addUserSchema),
@@ -87,34 +105,108 @@ export default function AdminUserManagement() {
     },
   });
 
-  const handleCreateUser = async (data: AddUserFormData) => {
+  const resetModalState = useCallback(() => {
+    reset();
+    setAddStep(1);
+    setPendingId(null);
+    setPendingEmail('');
+    setPendingOtp('');
+    setOtpError(null);
+  }, [reset]);
+
+  // Step 1: Initiate User Creation
+  const handleInitiateUser = async (data: AddUserFormData) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setOtpError(null);
+
     try {
-      const res = await userAPI.createUser({
+      const res = await userAPI.initiateUser({
         name: data.name,
         email: data.email,
         role: data.role,
-        password: data.password || undefined,
         department: data.department,
         designation: data.designation,
       });
 
       if (res.data.success) {
-        toast.success(`User ${data.name} created successfully!`);
+        setPendingId(res.data.pendingId || null);
+        setPendingEmail(res.data.email || data.email);
+        setAddStep(2);
+        setResendCooldown(30);
+        toast.success(`Verification code sent to ${data.email}`);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to initiate user creation';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Step 2: Confirm OTP & Create User
+  const handleConfirmUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    if (!pendingOtp.trim() || pendingOtp.trim().length < 6) {
+      setOtpError('Please enter the 6-digit verification code');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setOtpError(null);
+
+    const data = getValues();
+
+    try {
+      const res = await userAPI.confirmUser({
+        pendingId: pendingId || undefined,
+        email: pendingEmail,
+        otp: pendingOtp.trim(),
+        password: data.password || undefined,
+      });
+
+      if (res.data.success) {
+        toast.success(`User ${pendingEmail} created successfully!`);
         setIsAddModalOpen(false);
-        reset();
+        resetModalState();
 
         if (res.data.tempPassword) {
           setCreatedTempPassword({
-            email: data.email,
+            email: pendingEmail,
             pass: res.data.tempPassword,
           });
         }
         fetchUsers(1, searchQuery, roleFilter);
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to create user';
+      const msg = err.response?.data?.message || 'Invalid or expired code';
+      setOtpError(msg);
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Resend OTP in Step 2
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    setOtpError(null);
+
+    try {
+      const res = await userAPI.resendPendingOtp({
+        pendingId: pendingId || undefined,
+        email: pendingEmail,
+      });
+
+      if (res.data.success) {
+        toast.success(`New verification code sent to ${pendingEmail}`);
+        setResendCooldown(30);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to resend code';
+      setOtpError(msg);
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -137,13 +229,11 @@ export default function AdminUserManagement() {
     try {
       const res = await userAPI.updateRole(userId, nextRole);
       if (res.data.success) {
-        toast.success(
-          `Updated ${user.name}'s role to ${nextRole === 'hr-manager' ? 'HR Manager' : 'Employee'}`
-        );
+        toast.success(`Updated ${user.name}'s role to ${nextRole === 'hr-manager' ? 'HR Manager' : 'Employee'}`);
         fetchUsers(currentPage, searchQuery, roleFilter);
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to update user role';
+      const msg = err.response?.data?.message || 'Failed to update role';
       toast.error(msg);
     } finally {
       setActionLoadingId(null);
@@ -159,245 +249,197 @@ export default function AdminUserManagement() {
     try {
       const res = await userAPI.deleteUser(userId);
       if (res.data.success) {
-        toast.success(`Deactivated ${userToDelete.name}`);
+        toast.success(`User ${userToDelete.name} deactivated successfully!`);
         setUserToDelete(null);
         fetchUsers(currentPage, searchQuery, roleFilter);
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to deactivate user';
+      const msg = err.response?.data?.message || 'Failed to delete user';
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Columns for frozen DataTable consumption
-  const columns: DataTableColumn<User>[] = useMemo(
-    () => [
-      {
-        key: 'name',
-        header: 'User',
-        sortable: true,
-        render: (row) => (
-          <div className="flex items-center gap-3">
-            <img
-              src={
-                row.avatar ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name)}&background=2563eb&color=fff`
-              }
-              alt={row.name}
-              className="h-9 w-9 rounded-full object-cover shadow-sm ring-1 ring-white/10"
-            />
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-white">{row.name}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {row.designation || row.department || 'General'}
-              </p>
-            </div>
+  const columns: DataTableColumn<User>[] = [
+    {
+      key: 'name',
+      header: 'User Info',
+      render: (user: User) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/20 text-sm font-bold text-blue-400 border border-blue-500/30">
+            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
           </div>
-        ),
+          <div>
+            <div className="font-semibold text-white">{user.name}</div>
+            <div className="text-xs text-slate-400">{user.email}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (user: User) => {
+        const r = String(user.role).toLowerCase();
+        let bgClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        let label = 'Employee';
+
+        if (r === 'admin') {
+          bgClass = 'bg-purple-500/15 text-purple-300 border-purple-500/30';
+          label = 'System Admin';
+        } else if (r === 'hr-manager') {
+          bgClass = 'bg-blue-500/15 text-blue-300 border-blue-500/30';
+          label = 'HR Manager';
+        }
+
+        return (
+          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${bgClass}`}>
+            {label}
+          </span>
+        );
       },
-      {
-        key: 'email',
-        header: 'Email',
-        sortable: true,
-        render: (row) => (
-          <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{row.email}</span>
-        ),
-      },
-      {
-        key: 'role',
-        header: 'Role',
-        sortable: true,
-        render: (row) => {
-          const r = String(row.role).toLowerCase();
-          if (r === 'admin') {
-            return (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs font-bold text-purple-400">
-                <svg className="h-3.5 w-3.5 text-purple-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" />
-                </svg>
-                System Admin
-              </span>
-            );
-          }
-          if (['hr-manager', 'hr manager', 'hr'].includes(r)) {
-            return (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-400">
-                <svg className="h-3.5 w-3.5 text-blue-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-                </svg>
-                HR Manager
-              </span>
-            );
-          }
-          return (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400">
-              <svg className="h-3.5 w-3.5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              Employee
-            </span>
-          );
-        },
-      },
-      {
-        key: 'status',
-        header: 'Status',
-        render: (row) => {
-          const active = row.isActive !== false;
-          return (
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                active
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
-              }`}
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      render: (user: User) => <span className="text-slate-300 font-medium">{user.department || 'General'}</span>,
+    },
+    {
+      key: 'designation',
+      header: 'Designation',
+      render: (user: User) => <span className="text-slate-300 font-medium">{user.designation || 'Staff'}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (user: User) => (
+        <span
+          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+            user.isActive !== false
+              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+              : 'bg-red-500/15 text-red-400 border-red-500/30'
+          }`}
+        >
+          {user.isActive !== false ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (user: User) => {
+        const userId = user._id || user.id;
+        const isCurrentAdmin = String(user.role).toLowerCase() === 'admin';
+        const isLoadingThis = actionLoadingId === userId;
+
+        if (isCurrentAdmin) {
+          return <span className="text-xs font-semibold text-slate-500 italic">Protected</span>;
+        }
+
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleToggleRole(user)}
+              disabled={isLoadingThis}
+              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
             >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  active ? 'bg-emerald-400' : 'bg-red-400'
-                }`}
-              />
-              {active ? 'Active' : 'Inactive'}
-            </span>
-          );
-        },
+              {isLoadingThis ? '...' : String(user.role).toLowerCase() === 'employee' ? 'Make HR' : 'Make Employee'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setUserToDelete(user)}
+              disabled={isLoadingThis}
+              className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+            >
+              Remove
+            </button>
+          </div>
+        );
       },
-      {
-        key: 'actions',
-        header: 'Actions',
-        className: 'text-right',
-        headerClassName: 'text-right',
-        render: (row) => {
-          const userId = row._id || row.id;
-          const r = String(row.role).toLowerCase();
-          const isAdmin = r === 'admin';
-          const isLoadingAction = actionLoadingId === userId;
-
-          if (isAdmin) {
-            return (
-              <span className="text-xs font-semibold text-slate-500 italic">Protected Admin</span>
-            );
-          }
-
-          return (
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                disabled={isLoadingAction}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleRole(row);
-                }}
-                className="rounded-lg border border-white/10 bg-slate-800/80 px-2.5 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-700 hover:text-white disabled:opacity-50"
-              >
-                {isLoadingAction
-                  ? 'Updating…'
-                  : r === 'employee'
-                  ? 'Promote to HR'
-                  : 'Demote to Employee'}
-              </button>
-
-              <button
-                type="button"
-                disabled={isLoadingAction}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setUserToDelete(row);
-                }}
-                className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50"
-              >
-                Remove
-              </button>
-            </div>
-          );
-        },
-      },
-    ],
-    [actionLoadingId]
-  );
+    },
+  ];
 
   return (
-    <DashboardLayout title="User Management" userRole="System Admin">
+    <DashboardLayout title="User Management">
       <div className="space-y-6">
-        {/* Top Header Banner */}
+        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              <svg className="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-              </svg>
-              System User Directory
-            </h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Admin control panel: Create accounts, manage roles, and enforce security policies.
+            <h1 className="text-2xl font-bold text-white tracking-tight">Admin User Management</h1>
+            <p className="text-xs font-medium text-slate-400 mt-1">
+              Create, manage, and assign system access permissions across your organization.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition hover:scale-[1.02] hover:shadow-blue-500/40"
+            onClick={() => {
+              resetModalState();
+              setIsAddModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500 hover:shadow-blue-600/40"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
-            </svg>
-            Add New User
+            + Add New User
           </button>
         </div>
 
-        {/* Role Filter & Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/5 bg-slate-900/60 p-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-400">Filter Role:</span>
-            {['All', 'employee', 'hr-manager'].map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRoleFilter(r)}
-                className={`rounded-xl px-3 py-1 text-xs font-bold transition ${
-                  roleFilter === r
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                {r === 'All' ? 'All Roles' : r === 'hr-manager' ? 'HR Managers' : 'Employees'}
-              </button>
-            ))}
+        {/* Filters */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-xl">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2">
+            <span className="text-slate-400">🔍</span>
+            <input
+              type="text"
+              placeholder="Search users by name or email..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-transparent text-sm text-white placeholder-slate-500 outline-none"
+            />
           </div>
 
-          <div className="text-xs font-semibold text-slate-400">
-            Total Users: <span className="text-white font-bold">{totalItems}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-400">Role:</span>
+            <select
+              value={roleFilter}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs font-semibold text-white outline-none focus:border-blue-500"
+            >
+              <option value="All">All Roles</option>
+              <option value="employee">Employee</option>
+              <option value="hr-manager">HR Manager</option>
+              <option value="admin">System Admin</option>
+            </select>
           </div>
         </div>
 
-        {/* DataTable - Consumed as-is without touching internals */}
+        {/* Table */}
         <DataTable
           columns={columns}
           data={users}
           loading={loading}
-          searchable
-          searchPlaceholder="Search users by name or email…"
-          onSearch={(query) => setSearchQuery(query)}
           totalItems={totalItems}
           currentPage={currentPage}
-          pageSize={10}
-          onPageChange={(page) => setCurrentPage(page)}
-          rowKey={(row, idx) => row._id || row.id || idx}
+          onPageChange={(p) => setCurrentPage(p)}
         />
       </div>
 
-      {/* ── ADD USER MODAL ── */}
+      {/* ── TWO-STEP ADD USER MODAL ── */}
       <AnimatePresence>
         {isAddModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAddModalOpen(false)}
+            <div
+              onClick={() => {
+                setIsAddModalOpen(false);
+                resetModalState();
+              }}
               className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
             />
 
@@ -413,112 +455,185 @@ export default function AdminUserManagement() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
-                  Add New User Account
+                  {addStep === 1 ? 'Add New User (Step 1 of 2)' : 'Confirm User Email (Step 2 of 2)'}
                 </h3>
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
+                  onClick={() => {
+                    setIsAddModalOpen(false);
+                    resetModalState();
+                  }}
                   className="rounded-full p-1 text-slate-400 hover:bg-white/10 hover:text-white"
                 >
                   ✕
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4">
-                <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-slate-300">Full Name *</span>
-                  <input
-                    {...register('name')}
-                    placeholder="e.g. John Doe"
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
-                  />
-                  {errors.name && (
-                    <span className="mt-1 block text-xs text-red-400">{errors.name.message}</span>
-                  )}
-                </label>
-
-                <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-slate-300">Email Address *</span>
-                  <input
-                    {...register('email')}
-                    type="email"
-                    placeholder="john@company.com"
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
-                  />
-                  {errors.email && (
-                    <span className="mt-1 block text-xs text-red-400">{errors.email.message}</span>
-                  )}
-                </label>
-
-                <div className="grid grid-cols-2 gap-3">
+              {/* STEP 1 FORM */}
+              {addStep === 1 && (
+                <form onSubmit={handleSubmit(handleInitiateUser)} className="space-y-4">
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-slate-300">Role *</span>
-                    <select
-                      {...register('role')}
+                    <span className="mb-1 block text-xs font-semibold text-slate-300">Full Name *</span>
+                    <input
+                      {...register('name')}
+                      placeholder="e.g. John Doe"
                       className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                    />
+                    {errors.name && (
+                      <span className="mt-1 block text-xs text-red-400">{errors.name.message}</span>
+                    )}
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-semibold text-slate-300">Email Address *</span>
+                    <input
+                      {...register('email')}
+                      type="email"
+                      placeholder="john@company.com"
+                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                    />
+                    {errors.email && (
+                      <span className="mt-1 block text-xs text-red-400">{errors.email.message}</span>
+                    )}
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-300">Role *</span>
+                      <select
+                        {...register('role')}
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                      >
+                        <option value="employee">Employee</option>
+                        <option value="hr-manager">HR Manager</option>
+                      </select>
+                      {errors.role && (
+                        <span className="mt-1 block text-xs text-red-400">{errors.role.message}</span>
+                      )}
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-300">
+                        Initial Password (Optional)
+                      </span>
+                      <input
+                        {...register('password')}
+                        type="password"
+                        placeholder="Auto-generated if empty"
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-300">Department</span>
+                      <input
+                        {...register('department')}
+                        placeholder="e.g. Engineering"
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold text-slate-300">Designation</span>
+                      <input
+                        {...register('designation')}
+                        placeholder="e.g. Software Engineer"
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddModalOpen(false);
+                        resetModalState();
+                      }}
+                      className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
                     >
-                      <option value="employee">Employee</option>
-                      <option value="hr-manager">HR Manager</option>
-                    </select>
-                    {errors.role && (
-                      <span className="mt-1 block text-xs text-red-400">{errors.role.message}</span>
-                    )}
-                  </label>
+                      Cancel
+                    </button>
 
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-slate-300">
-                      Initial Password (Optional)
-                    </span>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-500 disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Sending Code…' : 'Send Verification Code →'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* STEP 2 FORM */}
+              {addStep === 2 && (
+                <form onSubmit={handleConfirmUser} className="space-y-4">
+                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 text-xs text-blue-300">
+                    A 6-digit verification OTP code was sent to <strong className="text-white">{pendingEmail}</strong>. Enter the code below to confirm and create the account.
+                  </div>
+
+                  {otpError && (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-semibold text-red-400 text-center">
+                      {otpError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-300">6-Digit Verification OTP Code *</label>
                     <input
-                      {...register('password')}
-                      type="password"
-                      placeholder="Auto-generated if empty"
-                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                      type="text"
+                      maxLength={6}
+                      value={pendingOtp}
+                      onChange={(e) => setPendingOtp(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      className="w-full tracking-[8px] text-center font-mono text-2xl font-bold text-blue-400 rounded-2xl border border-white/10 bg-slate-950 py-3 px-4 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
                     />
-                    {errors.password && (
-                      <span className="mt-1 block text-xs text-red-400">{errors.password.message}</span>
-                    )}
-                  </label>
-                </div>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-slate-300">Department</span>
-                    <input
-                      {...register('department')}
-                      placeholder="e.g. Engineering"
-                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
-                    />
-                  </label>
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <button
+                      type="button"
+                      disabled={resendCooldown > 0 || isSubmitting}
+                      onClick={handleResendOtp}
+                      className="font-bold text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                    </button>
 
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-slate-300">Designation</span>
-                    <input
-                      {...register('designation')}
-                      placeholder="e.g. Software Engineer"
-                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-blue-500"
-                    />
-                  </label>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setAddStep(1)}
+                      className="text-slate-400 hover:text-white font-medium"
+                    >
+                      ← Edit User Details
+                    </button>
+                  </div>
 
-                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddModalOpen(false)}
-                    className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
-                  >
-                    Cancel
-                  </button>
+                  <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddModalOpen(false);
+                        resetModalState();
+                      }}
+                      className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
+                    >
+                      Cancel
+                    </button>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-500 disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Creating…' : 'Create User'}
-                  </button>
-                </div>
-              </form>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || !pendingOtp || pendingOtp.length < 6}
+                      className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Creating User…' : 'Confirm & Create User'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </motion.div>
           </div>
         )}
@@ -540,7 +655,7 @@ export default function AdminUserManagement() {
             >
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <svg className="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 2-2 2m-2-2 2 2m7 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z" />
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-white">Temporary Password Generated</h3>

@@ -1,6 +1,8 @@
 import express from "express";
 import {
-  createUser,
+  initiateUser,
+  confirmUser,
+  resendPendingOtp,
   updateUserRole,
   deleteUser,
   getUsers,
@@ -13,7 +15,9 @@ const router = express.Router();
 router.use(verifyToken, requireRole("admin"));
 
 router.get("/", getUsers);
-router.post("/", createUser);
+router.post("/initiate", initiateUser);
+router.post("/confirm", confirmUser);
+router.post("/resend-otp", resendPendingOtp);
 router.patch("/:id/role", updateUserRole);
 router.delete("/:id", deleteUser);
 
