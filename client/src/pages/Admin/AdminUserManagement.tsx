@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Search } from 'lucide-react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import DataTable, { type DataTableColumn } from '../../components/common/DataTable';
 import { userAPI } from '../../services/api';
@@ -389,7 +390,7 @@ export default function AdminUserManagement() {
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-xl">
           <div className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2">
-            <span className="text-slate-400">🔍</span>
+            <Search className="h-4 w-4 text-slate-400 shrink-0" />
             <input
               type="text"
               placeholder="Search users by name or email..."
