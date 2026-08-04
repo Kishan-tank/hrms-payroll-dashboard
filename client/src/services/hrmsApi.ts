@@ -262,6 +262,7 @@ export interface ApiAttendance {
   checkIn?: string;
   checkOut?: string;
   status: string;
+  reason?: string;
 }
 
 export interface ApiLeave {
@@ -759,14 +760,14 @@ export interface ApiOnboarding {
   userId: string | { _id: string; name: string; email: string; role?: string };
   employeeId?: any;
   steps: Array<{
-    id: string;
+    id: 'profile' | 'documents' | 'bank' | 'handbook' | 'complete';
     title: string;
     description: string;
     icon: string;
     status: 'pending' | 'in_progress' | 'completed';
     completedAt?: string;
   }>;
-  currentStepId: string;
+  currentStepId: 'profile' | 'documents' | 'bank' | 'handbook' | 'complete';
   policyAccepted?: boolean;
   policyAcceptedAt?: string;
   reviewStatus?: 'In Progress' | 'Pending Review' | 'Approved' | 'Rejected';
